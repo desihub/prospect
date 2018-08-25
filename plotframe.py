@@ -37,8 +37,8 @@ for filename in framefiles:
         bk.ColumnDataSource(cdsdata, name=fr.meta['CAMERA'][0])
         )
 
-# fig = bk.figure(height=450, width=800)
-fig = bk.figure(height=350, width=800)
+plot_width=800
+fig = bk.figure(height=350, width=plot_width)
 colors = dict(b='#1f77b4', r='#d62728', z='maroon')
 for spec in cds_spectra:
     fig.line('plotwave', 'plotflux', source=spec, line_color=colors[spec.name])
@@ -91,8 +91,35 @@ update_plot = CustomJS(args=args, code="""
 smootherslider.js_on_change('value', update_plot)
 ifiberslider.js_on_change('value', update_plot)
 
+#-----
+#- Add navigation buttons
+navigation_button_width = 30
+prev_button = Button(label="<", width=navigation_button_width)
+next_button = Button(label=">", width=navigation_button_width)
+
+prev_callback = CustomJS(
+    args=dict(ifiberslider=ifiberslider),
+    code="""
+    if(ifiberslider.value>0) {
+        ifiberslider.value--
+    }
+    """)
+next_callback = CustomJS(
+    args=dict(ifiberslider=ifiberslider, nspec=fr.nspec),
+    code="""
+    if(ifiberslider.value<nspec+1) {
+        ifiberslider.value++
+    }
+    """)
+
+prev_button.js_on_event('button_click', prev_callback)
+next_button.js_on_event('button_click', next_callback)
+
+#-----
 ### bk.show(bk.Column(fig, widgetbox(zslider), widgetbox(ifiberslider)))
-bk.show(bk.Column(fig, widgetbox(ifiberslider, width=800), widgetbox(smootherslider)))
+slider_width = plot_width - 2*navigation_button_width
+navigator = bk.Row(prev_button, next_button, widgetbox(ifiberslider, width=slider_width))
+bk.show(bk.Column(fig, navigator, widgetbox(smootherslider)))
 
 #--- DEBUG ---
 # import IPython
