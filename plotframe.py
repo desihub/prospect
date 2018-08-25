@@ -43,19 +43,23 @@ colors = dict(b='#1f77b4', r='#d62728', z='maroon')
 for spec in cds_spectra:
     fig.line('plotwave', 'plotflux', source=spec, line_color=colors[spec.name])
 
-# zslider_callback  = CustomJS(args=dict(spectrum=spectrum), code="""
-#     var data = spectrum.data
-#     var z = cb_obj.value
-#     var origwave = data['origwave']
-#     var plotwave = data['plotwave']
-#     for (var i=0; i<wave.length; i++) {
-#         wave[i] = obswave[i] / (1+z)
-#     }
-#     spectrum.change.emit()
-#     """)
-#
-# zslider = Slider(start=0, end=2.0, value=0.0, step=0.01, title='Redshift')
-# zslider.js_on_change('value', zslider_callback)
+zslider_callback  = CustomJS(
+    args=dict(spectra=cds_spectra),
+    code="""
+    var z = cb_obj.value
+    for (var i=0; i<spectra.length; i++) {
+        var data = spectra[i].data
+        var origwave = data['origwave']
+        var plotwave = data['plotwave']
+        for (var j=0; j<plotwave.length; j++) {
+            plotwave[j] = origwave[j] / (1+z)
+        }
+        spectra[i].change.emit()
+    }
+    """)
+
+zslider = Slider(start=0, end=2.0, value=0.0, step=0.01, title='Redshift')
+zslider.js_on_change('value', zslider_callback)
 
 ifiberslider = Slider(start=0, end=fr.nspec-1, value=0, step=1, title='Fiber')
 smootherslider = Slider(start=1, end=21, value=1, step=1, title='Smooth')
@@ -119,7 +123,12 @@ next_button.js_on_event('button_click', next_callback)
 ### bk.show(bk.Column(fig, widgetbox(zslider), widgetbox(ifiberslider)))
 slider_width = plot_width - 2*navigation_button_width
 navigator = bk.Row(prev_button, next_button, widgetbox(ifiberslider, width=slider_width))
-bk.show(bk.Column(fig, navigator, widgetbox(smootherslider)))
+bk.show(bk.Column(
+    fig,
+    navigator,
+    widgetbox(smootherslider),
+    widgetbox(zslider),
+    ))
 
 #--- DEBUG ---
 # import IPython
