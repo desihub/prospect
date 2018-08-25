@@ -2,11 +2,12 @@ import numpy as np
 import bokeh.plotting as bk
 
 from bokeh.models import ColumnDataSource, CustomJS
-from bokeh.models.widgets import Slider, Button
+from bokeh.models.widgets import Slider, Button, Div
 from bokeh.layouts import widgetbox
 # from bokeh.layouts import row, column
 
 import desispec.io
+from desitarget.targetmask import desi_mask
 # bp.output_notebook()
 
 framefiles = [
@@ -16,6 +17,14 @@ framefiles = [
 ]
 frames = list()
 cds_spectra = list()
+
+target_bits = list()
+for i in range(100):
+    target_bits.append('blat')
+    target_bits.append('foo')
+    target_bits.append('bar')
+    target_bits.append('biz')
+    target_bits.append('bat')
 
 for filename in framefiles:
     fr = desispec.io.read_frame(filename)
@@ -36,6 +45,18 @@ for filename in framefiles:
     cds_spectra.append(
         bk.ColumnDataSource(cdsdata, name=fr.meta['CAMERA'][0])
         )
+
+fmdict = dict()
+for colname in ['TARGETID', 'DESI_TARGET']:
+    fmdict[colname] = fr.fibermap[colname]
+
+target_names = list()
+for dt in fr.fibermap['DESI_TARGET']:
+    names = ' '.join(desi_mask.names(dt))
+    target_names.append(names)
+
+fmdict['TARGET_NAMES'] = target_names
+cds_fibermap = bk.ColumnDataSource(fmdict, name='fibermap')
 
 plot_width=800
 fig = bk.figure(height=350, width=plot_width)
@@ -63,16 +84,22 @@ zslider.js_on_change('value', zslider_callback)
 
 ifiberslider = Slider(start=0, end=fr.nspec-1, value=0, step=1, title='Fiber')
 smootherslider = Slider(start=1, end=21, value=1, step=1, title='Smooth')
+target_info = Div(text=target_names[0])
 
 #-----
-args = dict(
-    spectra=cds_spectra,
-    ifiberslider=ifiberslider,
-    smootherslider=smootherslider
-    )
-update_plot = CustomJS(args=args, code="""
-    ifiber = ifiberslider.value
-    nsmooth = smootherslider.value
+update_plot = CustomJS(
+    args = dict(
+        spectra = cds_spectra,
+        fibermap = cds_fibermap,
+        ifiberslider = ifiberslider,
+        smootherslider = smootherslider,
+        target_info = target_info,
+        ),
+    code = """
+    var ifiber = ifiberslider.value
+    var nsmooth = smootherslider.value
+    var target_names = fibermap.data['TARGET_NAMES']
+    target_info.text = target_names[ifiber]
     for (var i=0; i<spectra.length; i++) {
         var data = spectra[i].data
         var plotflux = data['plotflux']
@@ -120,11 +147,14 @@ prev_button.js_on_event('button_click', prev_callback)
 next_button.js_on_event('button_click', next_callback)
 
 #-----
+
+#-----
 ### bk.show(bk.Column(fig, widgetbox(zslider), widgetbox(ifiberslider)))
 slider_width = plot_width - 2*navigation_button_width
 navigator = bk.Row(prev_button, next_button, widgetbox(ifiberslider, width=slider_width))
 bk.show(bk.Column(
     fig,
+    widgetbox(target_info),
     navigator,
     widgetbox(smootherslider),
     widgetbox(zslider),
