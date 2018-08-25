@@ -19,32 +19,35 @@ cds_spectra = list()
 
 for filename in framefiles:
     fr = desispec.io.read_frame(filename)
+    bad = (fr.ivar == 0.0) | (fr.mask != 0)
+    fr.flux[bad] = np.nan
     frames.append(fr)
 
     cdsdata=dict(
-        obswave=fr.wave.copy(),
-        wave=fr.wave.copy(),
-        flux=fr.flux[0],
+        origwave=fr.wave.copy(),
+        plotwave=fr.wave.copy(),
+        plotflux=fr.flux[0],
         )
 
     for i in range(fr.nspec):
-        key = 'flux'+str(i)
+        key = 'origflux'+str(i)
         cdsdata[key] = fr.flux[i]
     
     cds_spectra.append(
         bk.ColumnDataSource(cdsdata, name=fr.meta['CAMERA'][0])
         )
 
-fig = bk.figure(height=450, width=800)
+# fig = bk.figure(height=450, width=800)
+fig = bk.figure(height=350, width=800)
 colors = dict(b='#1f77b4', r='#d62728', z='maroon')
 for spec in cds_spectra:
-    fig.line('wave', 'flux', source=spec, line_color=colors[spec.name])
+    fig.line('plotwave', 'plotflux', source=spec, line_color=colors[spec.name])
 
 # zslider_callback  = CustomJS(args=dict(spectrum=spectrum), code="""
 #     var data = spectrum.data
 #     var z = cb_obj.value
-#     var wave = data['wave']
-#     var obswave = data['obswave']
+#     var origwave = data['origwave']
+#     var plotwave = data['plotwave']
 #     for (var i=0; i<wave.length; i++) {
 #         wave[i] = obswave[i] / (1+z)
 #     }
@@ -54,47 +57,44 @@ for spec in cds_spectra:
 # zslider = Slider(start=0, end=2.0, value=0.0, step=0.01, title='Redshift')
 # zslider.js_on_change('value', zslider_callback)
 
-#-----
-ifiberslider_callback  = CustomJS(args=dict(spectra=cds_spectra), code="""
-    var ifiber = cb_obj.value
-    for (var i=0; i<spectra.length; i++) {
-        var data = spectra[i].data
-        var flux = data['flux']
-        var newflux = data['flux'+ifiber]
-        for (var j=0; j<flux.length; j++) {
-            flux[j] = newflux[j]
-        }
-        spectra[i].change.emit()
-    }
-    """)
-
 ifiberslider = Slider(start=0, end=fr.nspec-1, value=0, step=1, title='Fiber')
-ifiberslider.js_on_change('value', ifiberslider_callback)
+smootherslider = Slider(start=1, end=21, value=1, step=1, title='Smooth')
 
 #-----
-smoother_callback = CustomJS(args=dict(spectra=cds_spectra, ifiberslider=ifiberslider), code="""
+args = dict(
+    spectra=cds_spectra,
+    ifiberslider=ifiberslider,
+    smootherslider=smootherslider
+    )
+update_plot = CustomJS(args=args, code="""
     ifiber = ifiberslider.value
-    nsmooth = cb_obj.value
+    nsmooth = smootherslider.value
     for (var i=0; i<spectra.length; i++) {
         var data = spectra[i].data
-        var flux = data['flux']
-        var newflux = data['flux'+ifiber]
-        for (var j=nsmooth; j<flux.length-nsmooth; j++) {
-            flux[j] = 0.0
-            for (var k=-nsmooth; k<=nsmooth; k++) {
-                flux[j] = flux[j] + newflux[j+k] / (2*nsmooth+1)
+        var plotflux = data['plotflux']
+        var origflux = data['origflux'+ifiber]
+        for (var j=0; j<plotflux.length; j++) {
+            plotflux[j] = 0.0
+            var n = 0
+            for (var k=Math.max(0, j-nsmooth); k<Math.min(plotflux.length, j+nsmooth); k++) {
+                fx = origflux[k]
+                if(fx == fx) {
+                    plotflux[j] = plotflux[j] + fx
+                    n++
+                }
             }
+            plotflux[j] = plotflux[j] / n
         }
         spectra[i].change.emit()
     }
 """)
-smootherslider = Slider(start=1, end=21, value=1, step=1, title='Smooth')
-smootherslider.js_on_change('value', smoother_callback)
+smootherslider.js_on_change('value', update_plot)
+ifiberslider.js_on_change('value', update_plot)
 
 ### bk.show(bk.Column(fig, widgetbox(zslider), widgetbox(ifiberslider)))
-bk.show(bk.Column(fig, widgetbox(ifiberslider), widgetbox(smootherslider)))
+bk.show(bk.Column(fig, widgetbox(ifiberslider, width=800), widgetbox(smootherslider)))
 
 #--- DEBUG ---
-import IPython
-IPython.embed()
+# import IPython
+# IPython.embed()
 #--- DEBUG ---
