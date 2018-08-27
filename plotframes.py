@@ -46,6 +46,10 @@ def plotframes(framefiles, notebook=False):
             bk.ColumnDataSource(cdsdata, name=fr.meta['CAMERA'][0])
             )
 
+    title = 'Night {}  ExpID {}  Spectrograph {}'.format(
+        fr.meta['NIGHT'], fr.meta['EXPID'], fr.meta['CAMERA'][1]
+    )
+
     fmdict = dict()
     for colname in ['TARGETID', 'DESI_TARGET']:
         fmdict[colname] = fr.fibermap[colname]
@@ -59,7 +63,9 @@ def plotframes(framefiles, notebook=False):
     cds_fibermap = bk.ColumnDataSource(fmdict, name='fibermap')
 
     plot_width=800
-    fig = bk.figure(height=350, width=plot_width)
+    fig = bk.figure(height=350, width=plot_width, title=title)
+    fig.xaxis.axis_label = 'Wavelength [Å]'
+    fig.yaxis.axis_label = 'Flux'
     colors = dict(b='#1f77b4', r='#d62728', z='maroon')
     for spec in cds_spectra:
         fig.line('plotwave', 'plotflux', source=spec, line_color=colors[spec.name])
@@ -238,11 +244,11 @@ _line_list = [
     #
     # Absorption lines
     #
-    # {"name" : "Hζ",   "longname" : "Balmer ζ",         "lambda" : 3889.049, "emission": False },
+    {"name" : "Hζ",   "longname" : "Balmer ζ",         "lambda" : 3889.049, "emission": False },
     {"name" : "K",    "longname" : "K (Ca II 3933)",   "lambda" : 3933.7,   "emission": False },
     {"name" : "H",    "longname" : "H (Ca II 3968)",   "lambda" : 3968.5,   "emission": False },
-    # {"name" : "Hε",   "longname" : "Balmer ε",         "lambda" : 3970.072, "emission": False },
-    # {"name" : "Hδ",   "longname" : "Balmer δ",         "lambda" : 4101.734, "emission": False },
+    {"name" : "Hε",   "longname" : "Balmer ε",         "lambda" : 3970.072, "emission": False },
+    {"name" : "Hδ",   "longname" : "Balmer δ",         "lambda" : 4101.734, "emission": False },
     {"name" : "G",    "longname" : "G (Ca I 4307)",    "lambda" : 4307.74,  "emission": False },
     {"name" : "Hγ",   "longname" : "Balmer γ",         "lambda" : 4340.464, "emission": False },
     {"name" : "Hβ",   "longname" : "Balmer β",         "lambda" : 4861.325, "emission": False },
