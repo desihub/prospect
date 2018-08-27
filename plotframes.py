@@ -1,7 +1,8 @@
 import numpy as np
 import bokeh.plotting as bk
 
-from bokeh.models import ColumnDataSource, CustomJS, LabelSet, Label, Span
+from bokeh.models import ColumnDataSource, CDSView, IndexFilter
+from bokeh.models import CustomJS, LabelSet, Label, Span
 from bokeh.models.widgets import Slider, Button, Div, CheckboxButtonGroup
 from bokeh.layouts import widgetbox
 # from bokeh.layouts import row, column
@@ -70,7 +71,7 @@ def plotframes(framefiles, notebook=False):
     #-----
     #- Add widgets for controling plots
     zslider_callback  = CustomJS(
-        args=dict(spectra=cds_spectra, line_data=line_data, line_lables=line_labels),
+        args=dict(spectra=cds_spectra),
         code="""
         var z = cb_obj.value
         for (var i=0; i<spectra.length; i++) {
@@ -82,47 +83,44 @@ def plotframes(framefiles, notebook=False):
             }
             spectra[i].change.emit()
         }
-
-        // TODO: add rest/obs wave button; adjust line locations
-        // var restwave = line_data.data['restwave']
-        // var plotwave = line_data.data['plotwave']
-        // for (var i=0; i<restwave.length; i++) {
-        //     plotwave[i] = restwave[i]*(1+z)
-        // }
         """)
 
     zslider = Slider(start=0, end=4.0, value=0.0, step=0.01, title='Redshift')
     zslider.js_on_change('value', zslider_callback)
 
     ifiberslider = Slider(start=0, end=fr.nspec-1, value=0, step=1, title='Fiber')
-    smootherslider = Slider(start=1, end=21, value=1, step=1, title='Smooth')
+    smootherslider = Slider(start=1, end=31, value=1, step=1, title='Smooth')
     target_info = Div(text=target_names[0])
 
     #-----
     #- Toggle lines
     lines_button_group = CheckboxButtonGroup(
-            labels=["Emission", "Absorption"], active=[0, 0])
+            labels=["Emission", "Absorption"], active=[])
 
     lines_callback = CustomJS(
         args = dict(line_data=line_data, lines=lines, line_labels=line_labels),
         code="""
-        var show_emission = cb_obj.value[0]
-        var show_absorption = cb_obj.value[1]
-        var emission = line_data['emission']
-        console.log('blat')
+        var show_emission = false
+        var show_absorption = false
+        if (cb_obj.active.indexOf(0) >= 0) {  // index 0=Emission in active list
+            show_emission = true
+        }
+        if (cb_obj.active.indexOf(1) >= 0) {  // index 1=Absorption in active list
+            show_absorption = true
+        }
+
         for(var i=0; i<lines.length; i++) {
-            if(show_emission && emission[i]) {
-                lines[i].display = True
-                console.log('yes'+i)
+            if(line_data.data['emission'][i]) {
+                lines[i].visible = show_emission
+                line_labels[i].visible = show_emission
             } else {
-                lines[i].display = False
-                console.log('no'+i)
+                lines[i].visible = show_absorption
+                line_labels[i].visible = show_absorption
             }
         }
-        line_data.change.emit()
         """
     )
-    lines_button_group.js_on_event('button_click', lines_callback)
+    lines_button_group.js_on_click(lines_callback)
     # lines_button_group.js_on_change('value', lines_callback)
 
     #-----
@@ -193,15 +191,10 @@ def plotframes(framefiles, notebook=False):
         fig,
         widgetbox(target_info),
         navigator,
-        widgetbox(smootherslider),
-        widgetbox(zslider),
+        widgetbox(smootherslider, width=plot_width//2),
+        widgetbox(zslider, width=plot_width//2),
         widgetbox(lines_button_group),
         ))
-
-    #--- DEBUG ---
-    # import IPython
-    # IPython.embed()
-    #--- DEBUG ---
 
 _line_list = [
     #
@@ -260,7 +253,7 @@ _line_list = [
     {"name" : "Hα",   "longname" : "Balmer α",         "lambda" : 6562.801, "emission": False },
     ]
 
-def add_lines(fig, z, fig_height=350):
+def add_lines(fig, z, emission=True, fig_height=350):
     line_data = dict()
     line_data['restwave'] = np.array([row['lambda'] for row in _line_list])
     line_data['plotwave'] = line_data['restwave'] * (1+z)
@@ -293,27 +286,39 @@ def add_lines(fig, z, fig_height=350):
 
     #- Add vertical spans to figure
     lines = list()
-    for w in line_data['plotwave']:
-        s = Span(location=w, dimension='height', line_color='green', line_alpha=0.5)
+    labels = list()
+    for w, y, name, emission in zip(
+            line_data['plotwave'],
+            line_data['y'],
+            line_data['plotname'],
+            line_data['emission']
+            ):
+        if emission:
+            color = 'magenta'
+        else:
+            color = 'green'
+
+        s = Span(location=w, dimension='height', line_color=color,
+                line_alpha=1.0, visible=False)
+
         fig.add_layout(s)
         lines.append(s)
 
-    #- Add labels to figure
-    line_data = bk.ColumnDataSource(line_data)
-    labels = LabelSet(x='plotwave', y='y', x_units='data', y_units='screen',
-                      text='name', text_color='green', text_font_size="8pt",
-                      level='glyph',
-                      x_offset=2, y_offset=0, source=line_data, render_mode='canvas')
+        lb = Label(x=w, y=y, x_units='data', y_units='screen',
+                    text=name, text_color='gray', text_font_size="8pt",
+                    x_offset=2, y_offset=0, visible=False)
+        fig.add_layout(lb)
+        labels.append(lb)
 
-    fig.add_layout(labels)
+    line_data = bk.ColumnDataSource(line_data)
     return line_data, lines, labels
 
 
 if __name__ == '__main__':
     framefiles = [
         'data/cframe-b0-00000020.fits',
-        # 'data/cframe-r0-00000020.fits',
-        # 'data/cframe-z0-00000020.fits',
+        'data/cframe-r0-00000020.fits',
+        'data/cframe-z0-00000020.fits',
     ]
     plotframes(framefiles)
 
