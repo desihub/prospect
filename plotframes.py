@@ -76,10 +76,14 @@ def plotframes(framefiles, notebook=False):
 
     #-----
     #- Add widgets for controling plots
+    zslider = Slider(start=0.0, end=4.0, value=0.0, step=0.01, title='Redshift')
+    dzslider = Slider(start=0.0, end=0.01, value=0.0, step=0.0001, title='+ Delta redshift')
+    dzslider.format = "0[.]0000"
+
     zslider_callback  = CustomJS(
-        args=dict(spectra=cds_spectra),
+        args=dict(spectra=cds_spectra, zslider=zslider, dzslider=dzslider, fig=fig),
         code="""
-        var z = cb_obj.value
+        var z = zslider.value + dzslider.value
         for (var i=0; i<spectra.length; i++) {
             var data = spectra[i].data
             var origwave = data['origwave']
@@ -91,8 +95,8 @@ def plotframes(framefiles, notebook=False):
         }
         """)
 
-    zslider = Slider(start=0, end=4.0, value=0.0, step=0.01, title='Redshift')
     zslider.js_on_change('value', zslider_callback)
+    dzslider.js_on_change('value', zslider_callback)
 
     ifiberslider = Slider(start=0, end=fr.nspec-1, value=0, step=1, title='Fiber')
     smootherslider = Slider(start=1, end=31, value=1, step=1, title='Smooth')
@@ -198,10 +202,19 @@ def plotframes(framefiles, notebook=False):
         widgetbox(target_info),
         navigator,
         widgetbox(smootherslider, width=plot_width//2),
-        widgetbox(zslider, width=plot_width//2),
+        bk.Row(
+            widgetbox(zslider, width=plot_width//2),
+            widgetbox(dzslider, width=plot_width//2),
+            ),
         widgetbox(lines_button_group),
         ))
+ 
+    #--- DEBUG ---
+    # import IPython
+    # IPython.embed()
+    #--- DEBUG ---
 
+#-------------------------------------------------------------------------
 _line_list = [
     #
     # This is the set of emission lines from the spZline files.
@@ -272,7 +285,7 @@ def add_lines(fig, z, emission=True, fig_height=350):
     for i in range(len(line_data['restwave'])):
         if i == 0:
             if _line_list[i]['emission']:
-                y.append(fig_height - 50)
+                y.append(fig_height - 100)
             else:
                 y.append(5)
         else:
@@ -284,7 +297,7 @@ def add_lines(fig, z, emission=True, fig_height=350):
                     y.append(y[-1] + 15)
             else:
                 if line_data['emission'][i]:
-                    y.append(fig_height-50)
+                    y.append(fig_height-100)
                 else:
                     y.append(5)
 
