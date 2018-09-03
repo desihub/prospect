@@ -6,6 +6,7 @@ from bokeh.models import CustomJS, LabelSet, Label, Span
 from bokeh.models.widgets import (
     Slider, Button, Div, CheckboxButtonGroup, RadioButtonGroup)
 from bokeh.layouts import widgetbox
+import bokeh.events
 # from bokeh.layouts import row, column
 
 import desispec.io
@@ -61,13 +62,41 @@ def plotframes(framefiles, notebook=False):
     fmdict['TARGET_NAMES'] = target_names
     cds_fibermap = bk.ColumnDataSource(fmdict, name='fibermap')
 
+
     plot_width=800
-    fig = bk.figure(height=350, width=plot_width, title=title)
+    plot_height=400
+    # tools = 'pan,box_zoom,wheel_zoom,undo,redo,reset,save'
+    tools = 'pan,box_zoom,wheel_zoom,reset,save'
+    fig = bk.figure(height=plot_height, width=plot_width, title=title,
+        tools=tools, toolbar_location='above')
+    fig.toolbar.active_drag = fig.tools[1]    #- box zoom
+    fig.toolbar.active_scroll = fig.tools[2]  #- wheel zoom
     fig.xaxis.axis_label = 'Wavelength [Å]'
     fig.yaxis.axis_label = 'Flux'
+    fig.xaxis.axis_label_text_font_style = 'normal'
+    fig.yaxis.axis_label_text_font_style = 'normal'
     colors = dict(b='#1f77b4', r='#d62728', z='maroon')
     for spec in cds_spectra:
         fig.line('plotwave', 'plotflux', source=spec, line_color=colors[spec.name])
+
+    zoomfig = bk.figure(height=plot_height//2, width=plot_height//2,
+        y_range=fig.y_range, x_range=(5000,5100),
+        # output_backend="webgl",
+        toolbar_location=None, tools=[])
+
+    for spec in cds_spectra:
+        zoomfig.line('plotwave', 'plotflux', source=spec,
+            line_color=colors[spec.name], line_width=1, line_alpha=1.0)
+
+    #- Callback to update zoom window x-range
+    zoom_callback = CustomJS(
+        args=dict(zoomfig=zoomfig),
+        code="""
+            zoomfig.x_range.start = cb_obj.x - 100;
+            zoomfig.x_range.end = cb_obj.x + 100;
+        """)
+
+    fig.js_on_event(bokeh.events.MouseMove, zoom_callback)
 
     #-----
     #- Emission and absorption lines
@@ -258,7 +287,7 @@ def plotframes(framefiles, notebook=False):
         widgetbox(next_button, width=navigation_button_width+20),
         widgetbox(ifiberslider, width=slider_width-20))
     bk.show(bk.Column(
-        fig,
+        bk.Row(fig, zoomfig),
         widgetbox(target_info),
         navigator,
         widgetbox(smootherslider, width=plot_width//2),
