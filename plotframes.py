@@ -3,7 +3,8 @@ import bokeh.plotting as bk
 
 from bokeh.models import ColumnDataSource, CDSView, IndexFilter
 from bokeh.models import CustomJS, LabelSet, Label, Span
-from bokeh.models.widgets import Slider, Button, Div, CheckboxButtonGroup
+from bokeh.models.widgets import (
+    Slider, Button, Div, CheckboxButtonGroup, RadioButtonGroup)
 from bokeh.layouts import widgetbox
 # from bokeh.layouts import row, column
 
@@ -18,18 +19,16 @@ def plotframes(framefiles, notebook=False):
     frames = list()
     cds_spectra = list()
 
-    target_bits = list()
-    for i in range(100):
-        target_bits.append('blat')
-        target_bits.append('foo')
-        target_bits.append('bar')
-        target_bits.append('biz')
-        target_bits.append('bat')
-
     for filename in framefiles:
         fr = desispec.io.read_frame(filename)
+
+        #- For faster testing, trim to a subset of spectra
+        fr = fr[0:50]
+
+        #- Set masked bins to NaN so that Bokeh won't plot them
         bad = (fr.ivar == 0.0) | (fr.mask != 0)
         fr.flux[bad] = np.nan
+
         frames.append(fr)
 
         cdsdata=dict(
@@ -80,23 +79,81 @@ def plotframes(framefiles, notebook=False):
     dzslider = Slider(start=0.0, end=0.01, value=0.0, step=0.0001, title='+ Delta redshift')
     dzslider.format = "0[.]0000"
 
+    #- Observer vs. Rest frame wavelengths
+    waveframe_buttons = RadioButtonGroup(
+        labels=["Obs", "Rest"], active=0)
+
     zslider_callback  = CustomJS(
-        args=dict(spectra=cds_spectra, zslider=zslider, dzslider=dzslider, fig=fig),
+        args=dict(
+            spectra=cds_spectra,
+            zslider=zslider,
+            dzslider=dzslider,
+            waveframe_buttons=waveframe_buttons,
+            line_data=line_data, lines=lines, line_labels=line_labels,
+            fig=fig,
+            ),
         code="""
         var z = zslider.value + dzslider.value
-        for (var i=0; i<spectra.length; i++) {
-            var data = spectra[i].data
-            var origwave = data['origwave']
-            var plotwave = data['plotwave']
-            for (var j=0; j<plotwave.length; j++) {
-                plotwave[j] = origwave[j] / (1+z)
+        var line_restwave = line_data.data['restwave']
+        // Observer Frame
+        if(waveframe_buttons.active == 0) {
+            var x = 0.0
+            for(i=0; i<line_restwave.length; i++) {
+                x = line_restwave[i] * (1+z)
+                lines[i].location = x
+                line_labels[i].x = x
             }
-            spectra[i].change.emit()
+            for (var i=0; i<spectra.length; i++) {
+                var data = spectra[i].data
+                var origwave = data['origwave']
+                var plotwave = data['plotwave']
+                for (var j=0; j<plotwave.length; j++) {
+                    plotwave[j] = origwave[j]
+                }
+                spectra[i].change.emit()
+            }
+        // Rest Frame
+        } else {
+            for(i=0; i<line_restwave.length; i++) {
+                lines[i].location = line_restwave[i]
+                line_labels[i].x = line_restwave[i]
+            }
+            for (var i=0; i<spectra.length; i++) {
+                var data = spectra[i].data
+                var origwave = data['origwave']
+                var plotwave = data['plotwave']
+                for (var j=0; j<plotwave.length; j++) {
+                    plotwave[j] = origwave[j] / (1+z)
+                }
+                spectra[i].change.emit()
+            }
         }
         """)
 
     zslider.js_on_change('value', zslider_callback)
     dzslider.js_on_change('value', zslider_callback)
+    waveframe_buttons.js_on_click(zslider_callback)
+
+    plotrange_callback = CustomJS(
+        args = dict(
+            zslider=zslider,
+            dzslider=dzslider,
+            waveframe_buttons=waveframe_buttons,
+            fig=fig,
+        ),
+        code="""
+        var z = zslider.value + dzslider.value
+        // Observer Frame
+        if(waveframe_buttons.active == 0) {
+            fig.x_range.start = fig.x_range.start * (1+z)
+            fig.x_range.end = fig.x_range.end * (1+z)
+        } else {
+            fig.x_range.start = fig.x_range.start / (1+z)
+            fig.x_range.end = fig.x_range.end / (1+z)
+        }
+        """
+    )
+    waveframe_buttons.js_on_click(plotrange_callback)
 
     ifiberslider = Slider(start=0, end=fr.nspec-1, value=0, step=1, title='Fiber')
     smootherslider = Slider(start=1, end=31, value=1, step=1, title='Smooth')
@@ -196,15 +253,19 @@ def plotframes(framefiles, notebook=False):
 
     #-----
     slider_width = plot_width - 2*navigation_button_width
-    navigator = bk.Row(prev_button, next_button, widgetbox(ifiberslider, width=slider_width))
+    navigator = bk.Row(
+        widgetbox(prev_button, width=navigation_button_width),
+        widgetbox(next_button, width=navigation_button_width+20),
+        widgetbox(ifiberslider, width=slider_width-20))
     bk.show(bk.Column(
         fig,
         widgetbox(target_info),
         navigator,
         widgetbox(smootherslider, width=plot_width//2),
         bk.Row(
-            widgetbox(zslider, width=plot_width//2),
-            widgetbox(dzslider, width=plot_width//2),
+            widgetbox(waveframe_buttons, width=120),
+            widgetbox(zslider, width=plot_width//2 - 60),
+            widgetbox(dzslider, width=plot_width//2 - 60),
             ),
         widgetbox(lines_button_group),
         ))
