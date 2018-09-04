@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import bokeh.plotting as bk
 
@@ -11,57 +13,87 @@ import bokeh.events
 
 import desispec.io
 from desitarget.targetmask import desi_mask
+import desispec.spectra
+import desispec.frame
 
-def plotframes(framefiles, notebook=False):
+def frames2spectra(frames):
+    '''Convert input list of Frames into Spectra object
+
+    Do no propagate resolution, scores
+    '''
+    bands = list()
+    wave = dict()
+    flux = dict()
+    ivar = dict()
+    mask = dict()
+    for fr in frames:
+        band = fr.meta['CAMERA'][0]
+        bands.append(band)
+        wave[band] = fr.wave
+        flux[band] = fr.flux
+        ivar[band] = fr.ivar
+        mask[band] = fr.mask
+    
+    spectra = desispec.spectra.Spectra(
+        bands, wave, flux, ivar, mask, fibermap=fr.fibermap, meta=fr.meta
+    )
+    return spectra
+
+
+def plotspectra(spectra, notebook=False, title=None):
+    '''
+    TODO: document
+    '''
 
     if notebook:
         bk.output_notebook()
 
-    frames = list()
+    #- If inputs are frames, convert to a spectra object
+    if isinstance(spectra, list) and isinstance(spectra[0], desispec.frame.Frame):
+        spectra = frames2spectra(spectra)
+        frame_input = True
+    else:
+        frame_input = False
+
+    if frame_input and title is None:
+        meta = spectra.meta
+        title = 'Night {} ExpID {} Spectrograph {}'.format(
+            meta['NIGHT'], meta['EXPID'], meta['CAMERA'][1],
+        )
+
+    nspec = spectra.num_spectra()
     cds_spectra = list()
 
-    for filename in framefiles:
-        fr = desispec.io.read_frame(filename)
-
-        #- For faster testing, trim to a subset of spectra
-        fr = fr[0:50]
-
+    for band in spectra.bands:
         #- Set masked bins to NaN so that Bokeh won't plot them
-        bad = (fr.ivar == 0.0) | (fr.mask != 0)
-        fr.flux[bad] = np.nan
-
-        frames.append(fr)
+        bad = (spectra.ivar[band] == 0.0) | (spectra.mask[band] != 0)
+        spectra.flux[band][bad] = np.nan
 
         cdsdata=dict(
-            origwave=fr.wave.copy(),
-            plotwave=fr.wave.copy(),
-            plotflux=fr.flux[0],
+            origwave=spectra.wave[band].copy(),
+            plotwave=spectra.wave[band].copy(),
+            plotflux=spectra.flux[band][0],
             )
 
-        for i in range(fr.nspec):
+        for i in range(nspec):
             key = 'origflux'+str(i)
-            cdsdata[key] = fr.flux[i]
+            cdsdata[key] = spectra.flux[band][i]
     
         cds_spectra.append(
-            bk.ColumnDataSource(cdsdata, name=fr.meta['CAMERA'][0])
+            bk.ColumnDataSource(cdsdata, name=band)
             )
-
-    title = 'Night {}  ExpID {}  Spectrograph {}'.format(
-        fr.meta['NIGHT'], fr.meta['EXPID'], fr.meta['CAMERA'][1]
-    )
 
     fmdict = dict()
     for colname in ['TARGETID', 'DESI_TARGET']:
-        fmdict[colname] = fr.fibermap[colname]
+        fmdict[colname] = spectra.fibermap[colname]
 
     target_names = list()
-    for dt in fr.fibermap['DESI_TARGET']:
+    for dt in spectra.fibermap['DESI_TARGET']:
         names = ' '.join(desi_mask.names(dt))
         target_names.append(names)
 
     fmdict['TARGET_NAMES'] = target_names
     cds_fibermap = bk.ColumnDataSource(fmdict, name='fibermap')
-
 
     plot_width=800
     plot_height=400
@@ -184,7 +216,12 @@ def plotframes(framefiles, notebook=False):
     )
     waveframe_buttons.js_on_click(plotrange_callback)
 
-    ifiberslider = Slider(start=0, end=fr.nspec-1, value=0, step=1, title='Fiber')
+    ifiberslider = Slider(start=0, end=nspec-1, value=0, step=1)
+    if frame_input:
+        ifiberslider.title = 'Fiber'
+    else:
+        ifiberslider.title = 'Target'
+
     smootherslider = Slider(start=1, end=31, value=1, step=1, title='Smooth')
     target_info = Div(text=target_names[0])
 
@@ -270,7 +307,7 @@ def plotframes(framefiles, notebook=False):
         }
         """)
     next_callback = CustomJS(
-        args=dict(ifiberslider=ifiberslider, nspec=fr.nspec),
+        args=dict(ifiberslider=ifiberslider, nspec=nspec),
         code="""
         if(ifiberslider.value<nspec+1) {
             ifiberslider.value++
@@ -429,5 +466,15 @@ if __name__ == '__main__':
         'data/cframe-r0-00000020.fits',
         'data/cframe-z0-00000020.fits',
     ]
-    plotframes(framefiles)
 
+    frames = list()
+    for filename in framefiles:
+        fr = desispec.io.read_frame(filename)
+        fr = fr[0:50]  #- Trim for faster debugging
+        frames.append(fr)
+
+    plotspectra(frames)
+
+    # specfile = 'data/spectra-64-5261.fits'
+    # spectra = desispec.io.read_spectra(specfile)
+    # plotspectra(spectra, title=os.path.basename(specfile))
