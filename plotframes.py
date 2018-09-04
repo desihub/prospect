@@ -100,7 +100,7 @@ def plotspectra(spectra, notebook=False, title=None):
     # tools = 'pan,box_zoom,wheel_zoom,undo,redo,reset,save'
     tools = 'pan,box_zoom,wheel_zoom,reset,save'
     fig = bk.figure(height=plot_height, width=plot_width, title=title,
-        tools=tools, toolbar_location='above')
+        tools=tools, toolbar_location='above', y_range=(-10, 20))
     fig.toolbar.active_drag = fig.tools[1]    #- box zoom
     fig.toolbar.active_scroll = fig.tools[2]  #- wheel zoom
     fig.xaxis.axis_label = 'Wavelength [Å]'
@@ -265,12 +265,25 @@ def plotspectra(spectra, notebook=False, title=None):
             smootherslider = smootherslider,
             lines_button_group = lines_button_group,
             target_info = target_info,
+            fig = fig,
             ),
         code = """
         var ifiber = ifiberslider.value
         var nsmooth = smootherslider.value
         var target_names = fibermap.data['TARGET_NAMES']
         target_info.text = target_names[ifiber]
+
+        function get_y_minmax(pmin, pmax, data) {
+            // copy before sorting to not impact original, and filter out NaN
+            var dx = data.slice().filter(Boolean)
+            dx.sort()
+            var imin = Math.floor(pmin * dx.length)
+            var imax = Math.floor(pmax * dx.length)
+            return [dx[imin], dx[imax]]
+        }
+
+        var ymin = 0.0
+        var ymax = 0.0
         for (var i=0; i<spectra.length; i++) {
             var data = spectra[i].data
             var plotflux = data['plotflux']
@@ -288,7 +301,19 @@ def plotspectra(spectra, notebook=False, title=None):
                 plotflux[j] = plotflux[j] / n
             }
             spectra[i].change.emit()
+
+            tmp = get_y_minmax(0.01, 0.99, plotflux)
+            ymin = Math.min(ymin, tmp[0])
+            ymax = Math.max(ymax, tmp[1])
         }
+
+        // update y_range
+        if(ymin<0) {
+            fig.y_range.start = ymin * 1.4
+        } else {
+            fig.y_range.start = ymin * 0.6
+        }
+        fig.y_range.end = ymax * 1.4
     """)
     smootherslider.js_on_change('value', update_plot)
     ifiberslider.js_on_change('value', update_plot)
