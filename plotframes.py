@@ -1,6 +1,7 @@
-import os
+import os, sys
 
 import numpy as np
+from astropy.table import Table
 import bokeh.plotting as bk
 
 from bokeh.models import ColumnDataSource, CDSView, IndexFilter
@@ -39,8 +40,72 @@ def frames2spectra(frames):
     )
     return spectra
 
+def create_model(spectra, zbest):
+    '''
+    Returns model_wave[nwave], model_flux[nspec, nwave], row matched to zbest,
+    which can be in a different order than spectra.
+    '''
+    import redrock.templates
+    from desispec.interpolation import resample_flux
 
-def plotspectra(spectra, notebook=False, title=None):
+    nspec = spectra.num_spectra()
+    assert len(zbest) == nspec
+
+    #- Load redrock templates; redirect stdout because redrock is chatty
+    saved_stdout = sys.stdout
+    sys.stdout = open('/dev/null', 'w')
+    try:
+        templates = dict()
+        for filename in redrock.templates.find_templates():
+            tx = redrock.templates.Template(filename)
+            templates[(tx.template_type, tx.sub_type)] = tx
+    except Exception as err:
+        sys.stdout = saved_stdout
+        raise(err)
+
+    sys.stdout = saved_stdout
+
+    #- Empty model flux arrays per band to fill
+    model_flux = dict()
+    for band in spectra.bands:
+        model_flux[band] = np.zeros(spectra.flux[band].shape)
+
+    targetids = spectra.target_ids()
+    for i in range(len(zbest)):
+        zb = zbest[i]
+        j = np.where(targetids == zb['TARGETID'])[0][0]
+
+        tx = templates[(zb['SPECTYPE'], zb['SUBTYPE'])]
+        coeff = zb['COEFF'][0:tx.nbasis]
+        model = tx.flux.T.dot(coeff).T
+        for band in spectra.bands:
+            mx = resample_flux(spectra.wave[band], tx.wave*(1+zb['Z']), model)
+            model_flux[band][i] = spectra.R[band][j].dot(mx)
+
+    #- Now combine to a single wavelength grid across all cameras
+    #- TODO: assumes b,r,z all exist
+    br_split = 0.5*(spectra.wave['b'][-1] + spectra.wave['r'][0])
+    rz_split = 0.5*(spectra.wave['r'][-1] + spectra.wave['z'][0])
+    keep = dict()
+    keep['b'] = (spectra.wave['b'] < br_split)
+    keep['r'] = (br_split <= spectra.wave['r']) & (spectra.wave['r'] < rz_split)
+    keep['z'] = (rz_split <= spectra.wave['z'])
+    model_wave = np.concatenate( [
+        spectra.wave['b'][keep['b']],
+        spectra.wave['r'][keep['r']],
+        spectra.wave['z'][keep['z']],
+    ] )
+
+    mflux = np.concatenate( [
+        model_flux['b'][:, keep['b']],
+        model_flux['r'][:, keep['r']],
+        model_flux['z'][:, keep['z']],
+    ], axis=1 )
+
+    return model_wave, mflux
+
+
+def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
     '''
     TODO: document
     '''
@@ -61,6 +126,7 @@ def plotspectra(spectra, notebook=False, title=None):
             meta['NIGHT'], meta['EXPID'], meta['CAMERA'][1],
         )
 
+    #- Gather spectra into ColumnDataSource objects for Bokeh
     nspec = spectra.num_spectra()
     cds_spectra = list()
 
@@ -72,17 +138,39 @@ def plotspectra(spectra, notebook=False, title=None):
         cdsdata=dict(
             origwave=spectra.wave[band].copy(),
             plotwave=spectra.wave[band].copy(),
-            plotflux=spectra.flux[band][0],
             )
 
         for i in range(nspec):
             key = 'origflux'+str(i)
             cdsdata[key] = spectra.flux[band][i]
-    
+
+        cdsdata['plotflux'] = cdsdata['origflux0']
+
         cds_spectra.append(
             bk.ColumnDataSource(cdsdata, name=band)
             )
 
+    #- Gather models into ColumnDataSource objects, row matched to spectra
+    #- TODO: allow more than one zcatalog entry with different ZNUM per targetid
+    mwave, mflux = model
+    model_obswave = mwave.copy()
+    model_restwave = mwave.copy()
+    cds_model_data = dict(
+        origwave = mwave.copy(),
+        plotwave = mwave.copy(),
+        plotflux = np.zeros(len(mwave)),
+    )
+    targetids = spectra.target_ids()
+    for i in range(nspec):
+        key = 'origflux'+str(i)
+        j = np.where(zcatalog['TARGETID'] == targetids[i])[0][0]
+        cds_model_data[key] = mflux[j]
+
+    cds_model_data['plotflux'] = cds_model_data['origflux0']
+
+    cds_model = bk.ColumnDataSource(cds_model_data)
+
+    #- TODO: add redshifts here?
     fmdict = dict()
     for colname in ['TARGETID', 'DESI_TARGET']:
         fmdict[colname] = spectra.fibermap[colname]
@@ -111,6 +199,8 @@ def plotspectra(spectra, notebook=False, title=None):
     for spec in cds_spectra:
         fig.line('plotwave', 'plotflux', source=spec, line_color=colors[spec.name])
 
+    fig.line('plotwave', 'plotflux', source=cds_model, line_color='black')
+
     zoomfig = bk.figure(height=plot_height//2, width=plot_height//2,
         y_range=fig.y_range, x_range=(5000,5100),
         # output_backend="webgl",
@@ -119,6 +209,8 @@ def plotspectra(spectra, notebook=False, title=None):
     for spec in cds_spectra:
         zoomfig.line('plotwave', 'plotflux', source=spec,
             line_color=colors[spec.name], line_width=1, line_alpha=1.0)
+
+    zoomfig.line('plotwave', 'plotflux', source=cds_model, line_color='black')
 
     #- Callback to update zoom window x-range
     zoom_callback = CustomJS(
@@ -147,24 +239,26 @@ def plotspectra(spectra, notebook=False, title=None):
     zslider_callback  = CustomJS(
         args=dict(
             spectra=cds_spectra,
+            model=cds_model,
             zslider=zslider,
             dzslider=dzslider,
             waveframe_buttons=waveframe_buttons,
             line_data=line_data, lines=lines, line_labels=line_labels,
             fig=fig,
             ),
+        #- TODO: reorder to reduce duplicated code
         code="""
         var z = zslider.value + dzslider.value
         var line_restwave = line_data.data['restwave']
         // Observer Frame
         if(waveframe_buttons.active == 0) {
             var x = 0.0
-            for(i=0; i<line_restwave.length; i++) {
+            for(var i=0; i<line_restwave.length; i++) {
                 x = line_restwave[i] * (1+z)
                 lines[i].location = x
                 line_labels[i].x = x
             }
-            for (var i=0; i<spectra.length; i++) {
+            for(var i=0; i<spectra.length; i++) {
                 var data = spectra[i].data
                 var origwave = data['origwave']
                 var plotwave = data['plotwave']
@@ -173,6 +267,15 @@ def plotspectra(spectra, notebook=False, title=None):
                 }
                 spectra[i].change.emit()
             }
+
+            // Update model wavelength array
+            var origwave = model.data['origwave']
+            var plotwave = model.data['plotwave']
+            for(var i=0; i<plotwave.length; i++) {
+                plotwave[i] = origwave[i]
+            }
+            model.change.emit()
+
         // Rest Frame
         } else {
             for(i=0; i<line_restwave.length; i++) {
@@ -188,6 +291,14 @@ def plotspectra(spectra, notebook=False, title=None):
                 }
                 spectra[i].change.emit()
             }
+
+            // Update model wavelength array
+            var origwave = model.data['origwave']
+            var plotwave = model.data['plotwave']
+            for(var i=0; i<plotwave.length; i++) {
+                plotwave[i] = origwave[i] / (1+z)
+            }
+            model.change.emit()
         }
         """)
 
@@ -260,6 +371,7 @@ def plotspectra(spectra, notebook=False, title=None):
     update_plot = CustomJS(
         args = dict(
             spectra = cds_spectra,
+            model = cds_model,
             fibermap = cds_fibermap,
             ifiberslider = ifiberslider,
             smootherslider = smootherslider,
@@ -267,6 +379,7 @@ def plotspectra(spectra, notebook=False, title=None):
             target_info = target_info,
             fig = fig,
             ),
+        #- TODO: add smoother function to reduce duplicated code
         code = """
         var ifiber = ifiberslider.value
         var nsmooth = smootherslider.value
@@ -306,6 +419,23 @@ def plotspectra(spectra, notebook=False, title=None):
             ymin = Math.min(ymin, tmp[0])
             ymax = Math.max(ymax, tmp[1])
         }
+
+        // update model
+        var plotflux = model.data['plotflux']
+        var origflux = model.data['origflux'+ifiber]
+        for (var j=0; j<plotflux.length; j++) {
+            plotflux[j] = 0.0
+            var n = 0
+            for (var k=Math.max(0, j-nsmooth); k<Math.min(plotflux.length, j+nsmooth); k++) {
+                fx = origflux[k]
+                if(fx == fx) {
+                    plotflux[j] = plotflux[j] + fx
+                    n++
+                }
+            }
+            plotflux[j] = plotflux[j] / n
+        }
+        model.change.emit()
 
         // update y_range
         if(ymin<0) {
@@ -486,20 +616,23 @@ def add_lines(fig, z, emission=True, fig_height=350):
 
 
 if __name__ == '__main__':
-    framefiles = [
-        'data/cframe-b0-00000020.fits',
-        'data/cframe-r0-00000020.fits',
-        'data/cframe-z0-00000020.fits',
-    ]
+    # framefiles = [
+    #     'data/cframe-b0-00000020.fits',
+    #     'data/cframe-r0-00000020.fits',
+    #     'data/cframe-z0-00000020.fits',
+    # ]
+    #
+    # frames = list()
+    # for filename in framefiles:
+    #     fr = desispec.io.read_frame(filename)
+    #     fr = fr[0:50]  #- Trim for faster debugging
+    #     frames.append(fr)
+    #
+    # plotspectra(frames)
 
-    frames = list()
-    for filename in framefiles:
-        fr = desispec.io.read_frame(filename)
-        fr = fr[0:50]  #- Trim for faster debugging
-        frames.append(fr)
-
-    plotspectra(frames)
-
-    # specfile = 'data/spectra-64-5261.fits'
-    # spectra = desispec.io.read_spectra(specfile)
-    # plotspectra(spectra, title=os.path.basename(specfile))
+    specfile = 'data/spectra-64-5261.fits'
+    zbfile = specfile.replace('spectra-64-', 'zbest-64-')
+    spectra = desispec.io.read_spectra(specfile)
+    zbest = Table.read(zbfile, 'ZBEST')
+    mwave, mflux = create_model(spectra, zbest)
+    plotspectra(spectra, zcatalog=zbest, model=(mwave, mflux), title=os.path.basename(specfile))
