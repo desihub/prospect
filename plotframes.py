@@ -5,7 +5,7 @@ from astropy.table import Table
 import bokeh.plotting as bk
 
 from bokeh.models import ColumnDataSource, CDSView, IndexFilter
-from bokeh.models import CustomJS, LabelSet, Label, Span
+from bokeh.models import CustomJS, LabelSet, Label, Span, Legend
 from bokeh.models.widgets import (
     Slider, Button, Div, CheckboxButtonGroup, RadioButtonGroup)
 from bokeh.layouts import widgetbox
@@ -196,15 +196,27 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
     fig.xaxis.axis_label_text_font_style = 'normal'
     fig.yaxis.axis_label_text_font_style = 'normal'
     colors = dict(b='#1f77b4', r='#d62728', z='maroon')
-    for spec in cds_spectra:
-        fig.line('plotwave', 'plotflux', source=spec, line_color=colors[spec.name])
 
-    fig.line('plotwave', 'plotflux', source=cds_model, line_color='black')
+    data_lines = list()
+    for spec in cds_spectra:
+        lx = fig.line('plotwave', 'plotflux', source=spec, line_color=colors[spec.name])
+        data_lines.append(lx)
+
+    model_lines = list()
+    lx = fig.line('plotwave', 'plotflux', source=cds_model, line_color='black')
+    model_lines.append(lx)
 
     zoomfig = bk.figure(height=plot_height//2, width=plot_height//2,
         y_range=fig.y_range, x_range=(5000,5100),
         # output_backend="webgl",
         toolbar_location=None, tools=[])
+
+    legend = Legend(items=[
+        ("data",  data_lines[-1::-1]),  #- reversed to get blue as lengend entry
+        ("model", model_lines),
+    ])
+    fig.add_layout(legend, 'center')
+    fig.legend.click_policy = 'hide'    #- or 'mute'
 
     for spec in cds_spectra:
         zoomfig.line('plotwave', 'plotflux', source=spec,
