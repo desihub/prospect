@@ -1,3 +1,15 @@
+"""
+TODO
+* add image cutout
+* add target details tab
+* add code details tab (version, SPECPROD)
+* add TARGETID, Z ± ZERR, ZWARN, SPECTYPE
+* redshift model fit
+* better smoothing kernel, e.g. gaussian
+* sky? ivar? (could be useful, but makes data payload larger)
+* scanning buttons
+"""
+
 import os, sys
 
 import numpy as np
@@ -150,9 +162,24 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
             bk.ColumnDataSource(cdsdata, name=band)
             )
 
-    #- Gather models into ColumnDataSource objects, row matched to spectra
+    #- Reorder zcatalog to match input targets
     #- TODO: allow more than one zcatalog entry with different ZNUM per targetid
+    targetids = spectra.target_ids()
+    ii = np.argsort(np.argsort(targetids))
+    jj = np.argsort(zcatalog['TARGETID'])
+    kk = jj[ii]
+    zcatalog = zcatalog[kk]
+
+    #- That sequence of argsorts may feel like magic,
+    #- so make sure we got it right
+    assert np.all(zcatalog['TARGETID'] == targetids)
+    assert np.all(zcatalog['TARGETID'] == spectra.fibermap['TARGETID'])
+
+    #- Also need to re-order input model fluxes
     mwave, mflux = model
+    mflux = mflux[kk]
+
+    #- Gather models into ColumnDataSource objects, row matched to spectra
     model_obswave = mwave.copy()
     model_restwave = mwave.copy()
     cds_model_data = dict(
@@ -160,28 +187,38 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
         plotwave = mwave.copy(),
         plotflux = np.zeros(len(mwave)),
     )
-    targetids = spectra.target_ids()
+
     for i in range(nspec):
         key = 'origflux'+str(i)
-        j = np.where(zcatalog['TARGETID'] == targetids[i])[0][0]
-        cds_model_data[key] = mflux[j]
+        cds_model_data[key] = mflux[i]
 
     cds_model_data['plotflux'] = cds_model_data['origflux0']
 
     cds_model = bk.ColumnDataSource(cds_model_data)
 
-    #- TODO: add redshifts here?
-    fmdict = dict()
-    for colname in ['TARGETID', 'DESI_TARGET']:
-        fmdict[colname] = spectra.fibermap[colname]
-
+    #- Subset of zcatalog and fibermap columns into ColumnDataSource
     target_names = list()
     for dt in spectra.fibermap['DESI_TARGET']:
         names = ' '.join(desi_mask.names(dt))
         target_names.append(names)
 
-    fmdict['TARGET_NAMES'] = target_names
-    cds_fibermap = bk.ColumnDataSource(fmdict, name='fibermap')
+    target_info = list()
+    for i, row in enumerate(zcatalog):
+        target_info.append('Target {}: {}<BR/>{} z={:.4f} ± {:.4f}  ZWARN={}'.format(
+            row['TARGETID'], target_names[i], row['SPECTYPE'], row['Z'], row['ZERR'], row['ZWARN'],
+        ))
+
+    cds_zcatalog = bk.ColumnDataSource(dict(
+        targetid = zcatalog['TARGETID'],
+        spectype = zcatalog['SPECTYPE'].astype(str),
+        subtype = zcatalog['SUBTYPE'].astype(str),
+        z = zcatalog['Z'],
+        zerr = zcatalog['ZERR'],
+        zwarn = zcatalog['ZWARN'],
+        desi_target = spectra.fibermap['DESI_TARGET'],
+        target_names = target_names,
+        target_info = target_info,
+    ), name='zcatalog')
 
     plot_width=800
     plot_height=400
@@ -236,12 +273,15 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
 
     #-----
     #- Emission and absorption lines
-    line_data, lines, line_labels = add_lines(fig, z=0)
+    line_data, lines, line_labels = add_lines(fig, z=zcatalog['Z'][0])
 
     #-----
     #- Add widgets for controling plots
-    zslider = Slider(start=0.0, end=4.0, value=0.0, step=0.01, title='Redshift')
-    dzslider = Slider(start=0.0, end=0.01, value=0.0, step=0.0001, title='+ Delta redshift')
+    z = zcatalog['Z'][0]
+    z1 = np.floor(z*100)/100
+    dz = z-z1
+    zslider = Slider(start=0.0, end=4.0, value=z1, step=0.01, title='Redshift')
+    dzslider = Slider(start=0.0, end=0.01, value=dz, step=0.0001, title='+ Delta redshift')
     dzslider.format = "0[.]0000"
 
     #- Observer vs. Rest frame wavelengths
@@ -346,7 +386,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
         ifiberslider.title = 'Target'
 
     smootherslider = Slider(start=1, end=31, value=1, step=1, title='Smooth')
-    target_info = Div(text=target_names[0])
+    target_info_div = Div(text=target_info[0])
 
     #-----
     #- Toggle lines
@@ -384,19 +424,25 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
         args = dict(
             spectra = cds_spectra,
             model = cds_model,
-            fibermap = cds_fibermap,
+            zcatalog = cds_zcatalog,
             ifiberslider = ifiberslider,
             smootherslider = smootherslider,
+            zslider=zslider,
+            dzslider=dzslider,
             lines_button_group = lines_button_group,
-            target_info = target_info,
+            target_info = target_info_div,
             fig = fig,
             ),
         #- TODO: add smoother function to reduce duplicated code
         code = """
         var ifiber = ifiberslider.value
         var nsmooth = smootherslider.value
-        var target_names = fibermap.data['TARGET_NAMES']
-        target_info.text = target_names[ifiber]
+        target_info.text = zcatalog.data['target_info'][ifiber]
+
+        var z = zcatalog.data['z'][ifiber]
+        var z1 = Math.floor(z*100) / 100
+        zslider.value = z1
+        dzslider.value = (z - z1)
 
         function get_y_minmax(pmin, pmax, data) {
             // copy before sorting to not impact original, and filter out NaN
@@ -492,7 +538,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
         widgetbox(ifiberslider, width=slider_width-20))
     bk.show(bk.Column(
         bk.Row(fig, zoomfig),
-        widgetbox(target_info),
+        widgetbox(target_info_div, width=plot_width),
         navigator,
         widgetbox(smootherslider, width=plot_width//2),
         bk.Row(
