@@ -3,7 +3,6 @@ TODO
 * add image cutout
 * add target details tab
 * add code details tab (version, SPECPROD)
-* add TARGETID, Z ± ZERR, ZWARN, SPECTYPE
 * redshift model fit
 * better smoothing kernel, e.g. gaussian
 * sky? ivar? (could be useful, but makes data payload larger)
@@ -288,10 +287,18 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
     waveframe_buttons = RadioButtonGroup(
         labels=["Obs", "Rest"], active=0)
 
+    ifiberslider = Slider(start=0, end=nspec-1, value=0, step=1)
+    if frame_input:
+        ifiberslider.title = 'Fiber'
+    else:
+        ifiberslider.title = 'Target'
+
     zslider_callback  = CustomJS(
         args=dict(
             spectra=cds_spectra,
             model=cds_model,
+            zcatalog = cds_zcatalog,
+            ifiberslider = ifiberslider,
             zslider=zslider,
             dzslider=dzslider,
             waveframe_buttons=waveframe_buttons,
@@ -302,6 +309,8 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
         code="""
         var z = zslider.value + dzslider.value
         var line_restwave = line_data.data['restwave']
+        var ifiber = ifiberslider.value
+        var zfit = zcatalog.data['z'][ifiber]
         // Observer Frame
         if(waveframe_buttons.active == 0) {
             var x = 0.0
@@ -324,7 +333,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
             var origwave = model.data['origwave']
             var plotwave = model.data['plotwave']
             for(var i=0; i<plotwave.length; i++) {
-                plotwave[i] = origwave[i]
+                plotwave[i] = origwave[i] * (1+z) / (1+zfit)
             }
             model.change.emit()
 
@@ -348,7 +357,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
             var origwave = model.data['origwave']
             var plotwave = model.data['plotwave']
             for(var i=0; i<plotwave.length; i++) {
-                plotwave[i] = origwave[i] / (1+z)
+                plotwave[i] = origwave[i] / (1+zfit)
             }
             model.change.emit()
         }
@@ -378,12 +387,6 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
         """
     )
     waveframe_buttons.js_on_click(plotrange_callback)
-
-    ifiberslider = Slider(start=0, end=nspec-1, value=0, step=1)
-    if frame_input:
-        ifiberslider.title = 'Fiber'
-    else:
-        ifiberslider.title = 'Target'
 
     smootherslider = Slider(start=1, end=31, value=1, step=1, title='Smooth')
     target_info_div = Div(text=target_info[0])
@@ -612,9 +615,31 @@ _line_list = [
     {"name" : "Hα",   "longname" : "Balmer α",         "lambda" : 6562.801, "emission": False },
     ]
 
+def _airtovac(w):
+    """Convert air wavelengths to vacuum wavelengths. Don't convert less than 2000 Å.
+
+    Parameters
+    ----------
+    w : :class:`float`
+        Wavelength [Å] of the line in air.
+
+    Returns
+    -------
+    :class:`float`
+        Wavelength [Å] of the line in vacuum.
+    """
+    if w < 2000.0:
+        return w;
+    vac = w
+    for iter in range(2):
+        sigma2 = (1.0e4/vac)*(1.0e4/vac)
+        fact = 1.0 + 5.792105e-2/(238.0185 - sigma2) + 1.67917e-3/(57.362 - sigma2)
+        vac = w*fact
+    return vac
+
 def add_lines(fig, z, emission=True, fig_height=350):
     line_data = dict()
-    line_data['restwave'] = np.array([row['lambda'] for row in _line_list])
+    line_data['restwave'] = np.array([_airtovac(row['lambda']) for row in _line_list])
     line_data['plotwave'] = line_data['restwave'] * (1+z)
     line_data['name'] = [row['name'] for row in _line_list]
     line_data['longname'] = [row['name'] for row in _line_list]
