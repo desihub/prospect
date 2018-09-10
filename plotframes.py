@@ -388,7 +388,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
     )
     waveframe_buttons.js_on_click(plotrange_callback)
 
-    smootherslider = Slider(start=1, end=31, value=1, step=1, title='Smooth')
+    smootherslider = Slider(start=0, end=31, value=0, step=1.0, title='Gaussian Sigma Smooth')
     target_info_div = Div(text=target_info[0])
 
     #-----
@@ -436,7 +436,6 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
             target_info = target_info_div,
             fig = fig,
             ),
-        #- TODO: add smoother function to reduce duplicated code
         code = """
         var ifiber = ifiberslider.value
         var nsmooth = smootherslider.value
@@ -456,6 +455,15 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
             return [dx[imin], dx[imax]]
         }
 
+        // Smoothing kernel
+        var kernel = [];
+        for(var i=-2*nsmooth; i<=2*nsmooth; i++) {
+            kernel.push(Math.exp(-(i**2)/(2*nsmooth)))
+        }
+        var kernel_offset = Math.floor(kernel.length/2)
+
+        // Smooth plot and recalculate ymin/ymax
+        // TODO: add smoother function to reduce duplicated code
         var ymin = 0.0
         var ymax = 0.0
         for (var i=0; i<spectra.length; i++) {
@@ -463,16 +471,24 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
             var plotflux = data['plotflux']
             var origflux = data['origflux'+ifiber]
             for (var j=0; j<plotflux.length; j++) {
-                plotflux[j] = 0.0
-                var n = 0
-                for (var k=Math.max(0, j-nsmooth); k<Math.min(plotflux.length, j+nsmooth); k++) {
-                    fx = origflux[k]
-                    if(fx == fx) {
-                        plotflux[j] = plotflux[j] + fx
-                        n++
+                if(nsmooth == 0) {
+                    plotflux[j] = origflux[j]
+                } else {
+                    plotflux[j] = 0.0
+                    var weight = 0.0
+                    // TODO: speed could be improved by moving `if` out of loop
+                    for (var k=0; k<kernel.length; k++) {
+                        var m = j+k-kernel_offset
+                        if((m >= 0) && (m < plotflux.length)) {
+                            var fx = origflux[m]
+                            if(fx == fx) {
+                                plotflux[j] = plotflux[j] + fx * kernel[k]
+                                weight += kernel[k]
+                            }
+                        }
                     }
+                    plotflux[j] = plotflux[j] / weight
                 }
-                plotflux[j] = plotflux[j] / n
             }
             spectra[i].change.emit()
 
@@ -485,16 +501,24 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
         var plotflux = model.data['plotflux']
         var origflux = model.data['origflux'+ifiber]
         for (var j=0; j<plotflux.length; j++) {
-            plotflux[j] = 0.0
-            var n = 0
-            for (var k=Math.max(0, j-nsmooth); k<Math.min(plotflux.length, j+nsmooth); k++) {
-                fx = origflux[k]
-                if(fx == fx) {
-                    plotflux[j] = plotflux[j] + fx
-                    n++
+            if(nsmooth == 0) {
+                plotflux[j] = origflux[j]
+            } else {
+                plotflux[j] = 0.0
+                var weight = 0.0
+                // TODO: speed could be improved by moving `if` out of loop
+                for (var k=0; k<kernel.length; k++) {
+                    var m = j+k-kernel_offset
+                    if((m >= 0) && (m < plotflux.length)) {
+                        var fx = origflux[m]
+                        if(fx == fx) {
+                            plotflux[j] = plotflux[j] + fx * kernel[k]
+                            weight += kernel[k]
+                        }
+                    }
                 }
+                plotflux[j] = plotflux[j] / weight
             }
-            plotflux[j] = plotflux[j] / n
         }
         model.change.emit()
 
