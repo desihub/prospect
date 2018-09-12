@@ -164,60 +164,61 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
     #- Reorder zcatalog to match input targets
     #- TODO: allow more than one zcatalog entry with different ZNUM per targetid
     targetids = spectra.target_ids()
-    ii = np.argsort(np.argsort(targetids))
-    jj = np.argsort(zcatalog['TARGETID'])
-    kk = jj[ii]
-    zcatalog = zcatalog[kk]
+    if zcatalog is not None:
+        ii = np.argsort(np.argsort(targetids))
+        jj = np.argsort(zcatalog['TARGETID'])
+        kk = jj[ii]
+        zcatalog = zcatalog[kk]
 
-    #- That sequence of argsorts may feel like magic,
-    #- so make sure we got it right
-    assert np.all(zcatalog['TARGETID'] == targetids)
-    assert np.all(zcatalog['TARGETID'] == spectra.fibermap['TARGETID'])
+        #- That sequence of argsorts may feel like magic,
+        #- so make sure we got it right
+        assert np.all(zcatalog['TARGETID'] == targetids)
+        assert np.all(zcatalog['TARGETID'] == spectra.fibermap['TARGETID'])
 
-    #- Also need to re-order input model fluxes
-    mwave, mflux = model
-    mflux = mflux[kk]
+        #- Also need to re-order input model fluxes
+        if model is not None:
+            mwave, mflux = model
+            model = mwave, mflux[kk]
 
     #- Gather models into ColumnDataSource objects, row matched to spectra
-    model_obswave = mwave.copy()
-    model_restwave = mwave.copy()
-    cds_model_data = dict(
-        origwave = mwave.copy(),
-        plotwave = mwave.copy(),
-        plotflux = np.zeros(len(mwave)),
-    )
+    if model is not None:
+        mwave, mflux = model
+        model_obswave = mwave.copy()
+        model_restwave = mwave.copy()
+        cds_model_data = dict(
+            origwave = mwave.copy(),
+            plotwave = mwave.copy(),
+            plotflux = np.zeros(len(mwave)),
+        )
 
-    for i in range(nspec):
-        key = 'origflux'+str(i)
-        cds_model_data[key] = mflux[i]
+        for i in range(nspec):
+            key = 'origflux'+str(i)
+            cds_model_data[key] = mflux[i]
 
-    cds_model_data['plotflux'] = cds_model_data['origflux0']
-
-    cds_model = bk.ColumnDataSource(cds_model_data)
+        cds_model_data['plotflux'] = cds_model_data['origflux0']
+        cds_model = bk.ColumnDataSource(cds_model_data)
+    else:
+        cds_model = None
 
     #- Subset of zcatalog and fibermap columns into ColumnDataSource
-    target_names = list()
-    for dt in spectra.fibermap['DESI_TARGET']:
-        names = ' '.join(desi_mask.names(dt))
-        target_names.append(names)
-
     target_info = list()
-    for i, row in enumerate(zcatalog):
-        target_info.append('Target {}: {}<BR/>{} z={:.4f} ± {:.4f}  ZWARN={}'.format(
-            row['TARGETID'], target_names[i], row['SPECTYPE'], row['Z'], row['ZERR'], row['ZWARN'],
-        ))
+    for i, row in enumerate(spectra.fibermap):
+        target_bit_names = ' '.join(desi_mask.names(row['DESI_TARGET']))
+        txt = 'Target {}: {}'.format(row['TARGETID'], target_bit_names)
+        if zcatalog is not None:
+            txt += '<BR/>{} z={:.4f} ± {:.4f}  ZWARN={}'.format(
+                zcatalog['SPECTYPE'][i],
+                zcatalog['Z'][i],
+                zcatalog['ZERR'][i],
+                zcatalog['ZWARN'][i],
+            )
+        target_info.append(txt)
 
-    cds_zcatalog = bk.ColumnDataSource(dict(
-        targetid = zcatalog['TARGETID'],
-        spectype = zcatalog['SPECTYPE'].astype(str),
-        subtype = zcatalog['SUBTYPE'].astype(str),
-        z = zcatalog['Z'],
-        zerr = zcatalog['ZERR'],
-        zwarn = zcatalog['ZWARN'],
-        desi_target = spectra.fibermap['DESI_TARGET'],
-        target_names = target_names,
-        target_info = target_info,
-    ), name='zcatalog')
+    cds_targetinfo = bk.ColumnDataSource(
+        dict(target_info=target_info),
+        name='targetinfo')
+    if zcatalog is not None:
+        cds_targetinfo.add(zcatalog['Z'], name='z')
 
     plot_width=800
     plot_height=400
@@ -238,27 +239,35 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
         lx = fig.line('plotwave', 'plotflux', source=spec, line_color=colors[spec.name])
         data_lines.append(lx)
 
-    model_lines = list()
-    lx = fig.line('plotwave', 'plotflux', source=cds_model, line_color='black')
-    model_lines.append(lx)
+    if cds_model is not None:
+        model_lines = list()
+        lx = fig.line('plotwave', 'plotflux', source=cds_model, line_color='black')
+        model_lines.append(lx)
 
+        legend = Legend(items=[
+            ("data",  data_lines[-1::-1]),  #- reversed to get blue as lengend entry
+            ("model", model_lines),
+        ])
+    else:
+        legend = Legend(items=[
+            ("data",  data_lines[-1::-1]),  #- reversed to get blue as lengend entry
+        ])
+
+    fig.add_layout(legend, 'center')
+    fig.legend.click_policy = 'hide'    #- or 'mute'
+
+    #- Zoom figure around mouse hover of main plot
     zoomfig = bk.figure(height=plot_height//2, width=plot_height//2,
         y_range=fig.y_range, x_range=(5000,5100),
         # output_backend="webgl",
         toolbar_location=None, tools=[])
 
-    legend = Legend(items=[
-        ("data",  data_lines[-1::-1]),  #- reversed to get blue as lengend entry
-        ("model", model_lines),
-    ])
-    fig.add_layout(legend, 'center')
-    fig.legend.click_policy = 'hide'    #- or 'mute'
-
     for spec in cds_spectra:
         zoomfig.line('plotwave', 'plotflux', source=spec,
             line_color=colors[spec.name], line_width=1, line_alpha=1.0)
 
-    zoomfig.line('plotwave', 'plotflux', source=cds_model, line_color='black')
+    if cds_model is not None:
+        zoomfig.line('plotwave', 'plotflux', source=cds_model, line_color='black')
 
     #- Callback to update zoom window x-range
     zoom_callback = CustomJS(
@@ -272,11 +281,11 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
 
     #-----
     #- Emission and absorption lines
-    line_data, lines, line_labels = add_lines(fig, z=zcatalog['Z'][0])
+    z = zcatalog['Z'][0] if (zcatalog is not None) else 0.0
+    line_data, lines, line_labels = add_lines(fig, z=z)
 
     #-----
     #- Add widgets for controling plots
-    z = zcatalog['Z'][0]
     z1 = np.floor(z*100)/100
     dz = z-z1
     zslider = Slider(start=0.0, end=4.0, value=z1, step=0.01, title='Redshift')
@@ -297,7 +306,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
         args=dict(
             spectra=cds_spectra,
             model=cds_model,
-            zcatalog = cds_zcatalog,
+            targetinfo = cds_targetinfo,
             ifiberslider = ifiberslider,
             zslider=zslider,
             dzslider=dzslider,
@@ -310,7 +319,11 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
         var z = zslider.value + dzslider.value
         var line_restwave = line_data.data['restwave']
         var ifiber = ifiberslider.value
-        var zfit = zcatalog.data['z'][ifiber]
+        var zfit = 0.0
+        if(targetinfo.data['z'] != undefined) {
+            zfit = targetinfo.data['z'][ifiber]
+        }
+
         // Observer Frame
         if(waveframe_buttons.active == 0) {
             var x = 0.0
@@ -330,12 +343,14 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
             }
 
             // Update model wavelength array
-            var origwave = model.data['origwave']
-            var plotwave = model.data['plotwave']
-            for(var i=0; i<plotwave.length; i++) {
-                plotwave[i] = origwave[i] * (1+z) / (1+zfit)
+            if(model) {
+                var origwave = model.data['origwave']
+                var plotwave = model.data['plotwave']
+                for(var i=0; i<plotwave.length; i++) {
+                    plotwave[i] = origwave[i] * (1+z) / (1+zfit)
+                }
+                model.change.emit()
             }
-            model.change.emit()
 
         // Rest Frame
         } else {
@@ -354,12 +369,14 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
             }
 
             // Update model wavelength array
-            var origwave = model.data['origwave']
-            var plotwave = model.data['plotwave']
-            for(var i=0; i<plotwave.length; i++) {
-                plotwave[i] = origwave[i] / (1+zfit)
+            if(model) {
+                var origwave = model.data['origwave']
+                var plotwave = model.data['plotwave']
+                for(var i=0; i<plotwave.length; i++) {
+                    plotwave[i] = origwave[i] / (1+zfit)
+                }
+                model.change.emit()
             }
-            model.change.emit()
         }
         """)
 
@@ -427,24 +444,26 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
         args = dict(
             spectra = cds_spectra,
             model = cds_model,
-            zcatalog = cds_zcatalog,
+            targetinfo = cds_targetinfo,
+            target_info_div = target_info_div,
             ifiberslider = ifiberslider,
             smootherslider = smootherslider,
             zslider=zslider,
             dzslider=dzslider,
             lines_button_group = lines_button_group,
-            target_info = target_info_div,
             fig = fig,
             ),
         code = """
         var ifiber = ifiberslider.value
         var nsmooth = smootherslider.value
-        target_info.text = zcatalog.data['target_info'][ifiber]
+        target_info_div.text = targetinfo.data['target_info'][ifiber]
 
-        var z = zcatalog.data['z'][ifiber]
-        var z1 = Math.floor(z*100) / 100
-        zslider.value = z1
-        dzslider.value = (z - z1)
+        if(targetinfo.data['z'] != undefined) {
+            var z = targetinfo.data['z'][ifiber]
+            var z1 = Math.floor(z*100) / 100
+            zslider.value = z1
+            dzslider.value = (z - z1)
+        }
 
         function get_y_minmax(pmin, pmax, data) {
             // copy before sorting to not impact original, and filter out NaN
@@ -498,29 +517,31 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
         }
 
         // update model
-        var plotflux = model.data['plotflux']
-        var origflux = model.data['origflux'+ifiber]
-        for (var j=0; j<plotflux.length; j++) {
-            if(nsmooth == 0) {
-                plotflux[j] = origflux[j]
-            } else {
-                plotflux[j] = 0.0
-                var weight = 0.0
-                // TODO: speed could be improved by moving `if` out of loop
-                for (var k=0; k<kernel.length; k++) {
-                    var m = j+k-kernel_offset
-                    if((m >= 0) && (m < plotflux.length)) {
-                        var fx = origflux[m]
-                        if(fx == fx) {
-                            plotflux[j] = plotflux[j] + fx * kernel[k]
-                            weight += kernel[k]
+        if(model) {
+            var plotflux = model.data['plotflux']
+            var origflux = model.data['origflux'+ifiber]
+            for (var j=0; j<plotflux.length; j++) {
+                if(nsmooth == 0) {
+                    plotflux[j] = origflux[j]
+                } else {
+                    plotflux[j] = 0.0
+                    var weight = 0.0
+                    // TODO: speed could be improved by moving `if` out of loop
+                    for (var k=0; k<kernel.length; k++) {
+                        var m = j+k-kernel_offset
+                        if((m >= 0) && (m < plotflux.length)) {
+                            var fx = origflux[m]
+                            if(fx == fx) {
+                                plotflux[j] = plotflux[j] + fx * kernel[k]
+                                weight += kernel[k]
+                            }
                         }
                     }
+                    plotflux[j] = plotflux[j] / weight
                 }
-                plotflux[j] = plotflux[j] / weight
             }
+            model.change.emit()
         }
-        model.change.emit()
 
         // update y_range
         if(ymin<0) {
@@ -742,4 +763,6 @@ if __name__ == '__main__':
     spectra = desispec.io.read_spectra(specfile)
     zbest = Table.read(zbfile, 'ZBEST')
     mwave, mflux = create_model(spectra, zbest)
+
     plotspectra(spectra, zcatalog=zbest, model=(mwave, mflux), title=os.path.basename(specfile))
+
