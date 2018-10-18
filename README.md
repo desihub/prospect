@@ -2,7 +2,7 @@
 
 Digging into DESI spectra, looking for stuff
 
-This repo is a rewrite of https://github.com/desihub/inspector, which itself is very much a work in progress.  This repo is intended to provide similar functionality as inspector, but do so without using ipywidgets so that it can be used as standalone code outside of jupyter notebooks.
+This repo is a rewrite of https://github.com/desihub/inspector, which itself is very much a work in progress.  This repo is intended to provide similar functionality as inspector, but do so without using ipywidgets so that it can be used as standalone code outside of jupyter notebooks (while still also working within Jupyter notebooks).
 
 ![Prospect Screenshot](screenshot.png)
 
@@ -27,7 +27,7 @@ This repo is a rewrite of https://github.com/desihub/inspector, which itself is 
 * User-defined redshift
 * Viewing spectra that don't yet have redshift fits
 
-## Currenly missing (but present in the original inspector)
+## Currently missing (but present in the original inspector)
 
 * Imaging survey thumbnails and links.
 * Buttons for navigating previous/next target
