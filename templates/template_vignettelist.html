@@ -1,0 +1,23 @@
+<HTML>
+
+<HEAD>
+<TITLE>DESI spectra - vignettes in {{ expo }}</TITLE>
+</HEAD>
+
+<BODY>
+<p> Vignettes for {{ expo }}.
+<br> Fiberset {{ i_subset }} / {{ n_subsets }}.
+
+<table style="width:100%">
+<tr>
+{% for vignette in imglist %}
+<td><img src="vignettes/{{ vignette }}">
+</td>
+{% if loop.index is divisibleby(4) and not loop.last %}
+</tr><tr>
+{% endif %}
+{% endfor %}
+</tr></table>
+
+</BODY>
+</HTML>
