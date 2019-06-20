@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+
+
 """
 TODO
 * add image cutout
@@ -10,15 +13,17 @@ TODO
 """
 
 import os, sys
+import argparse
 
 import numpy as np
 from astropy.table import Table
-import bokeh.plotting as bk
+import astropy.io.fits
 
+import bokeh.plotting as bk
 from bokeh.models import ColumnDataSource, CDSView, IndexFilter
 from bokeh.models import CustomJS, LabelSet, Label, Span, Legend
 from bokeh.models.widgets import (
-    Slider, Button, Div, CheckboxButtonGroup, RadioButtonGroup)
+    Slider, Button, Div, CheckboxButtonGroup, RadioButtonGroup, TextInput, Select)
 from bokeh.layouts import widgetbox
 import bokeh.events
 # from bokeh.layouts import row, column
@@ -27,6 +32,9 @@ import desispec.io
 from desitarget.targetmask import desi_mask
 import desispec.spectra
 import desispec.frame
+
+import utils_specviewer
+
 
 def frames2spectra(frames):
     '''Convert input list of Frames into Spectra object
@@ -116,13 +124,10 @@ def create_model(spectra, zbest):
     return model_wave, mflux
 
 
-def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
+def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, vidata=None, savedir='.'):
     '''
     TODO: document
     '''
-
-    if notebook:
-        bk.output_notebook()
 
     #- If inputs are frames, convert to a spectra object
     if isinstance(spectra, list) and isinstance(spectra[0], desispec.frame.Frame):
@@ -136,6 +141,13 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
         title = 'Night {} ExpID {} Spectrograph {}'.format(
             meta['NIGHT'], meta['EXPID'], meta['CAMERA'][1],
         )
+
+    if notebook:
+        bk.output_notebook()
+    else :
+        if title is None : title="specviewer"
+        bk.output_file(savedir+"/"+title+".html",title='DESI spectral viewer')
+
 
     #- Gather spectra into ColumnDataSource objects for Bokeh
     nspec = spectra.num_spectra()
@@ -163,22 +175,23 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
 
     #- Reorder zcatalog to match input targets
     #- TODO: allow more than one zcatalog entry with different ZNUM per targetid
-    targetids = spectra.target_ids()
+## EA => changed this part : zcatalog is now by construction matched to spectra ...
+#    targetids = spectra.target_ids()
     if zcatalog is not None:
-        ii = np.argsort(np.argsort(targetids))
-        jj = np.argsort(zcatalog['TARGETID'])
-        kk = jj[ii]
-        zcatalog = zcatalog[kk]
+#        ii = np.argsort(np.argsort(targetids))
+#        jj = np.argsort(zcatalog['TARGETID'])
+#        kk = jj[ii]
+#        zcatalog = zcatalog[kk]
 
         #- That sequence of argsorts may feel like magic,
         #- so make sure we got it right
-        assert np.all(zcatalog['TARGETID'] == targetids)
+#        assert np.all(zcatalog['TARGETID'] == targetids)
         assert np.all(zcatalog['TARGETID'] == spectra.fibermap['TARGETID'])
 
         #- Also need to re-order input model fluxes
-        if model is not None:
-            mwave, mflux = model
-            model = mwave, mflux[kk]
+#        if model is not None:
+#            mwave, mflux = model
+#            model = mwave, mflux[kk]
 
     #- Gather models into ColumnDataSource objects, row matched to spectra
     if model is not None:
@@ -206,12 +219,18 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
         target_bit_names = ' '.join(desi_mask.names(row['DESI_TARGET']))
         txt = 'Target {}: {}'.format(row['TARGETID'], target_bit_names)
         if zcatalog is not None:
-            txt += '<BR/>{} z={:.4f} ± {:.4f}  ZWARN={}'.format(
+            txt += '<BR/>{} z={:.4f} +/- {:.4f}  ZWARN={}'.format(
                 zcatalog['SPECTYPE'][i],
                 zcatalog['Z'][i],
                 zcatalog['ZERR'][i],
                 zcatalog['ZWARN'][i],
             )
+        if vidata is not None :
+            if len(vidata[i]) > 0 :
+                txt += ('<BR/> VI info : EXPID SCANNER FLAG COMMENTS')
+                for the_vi in vidata[i] :
+                    txt += ('<BR/>&nbsp;&nbsp;&nbsp;&nbsp;   {0:6d} {1} {2} {3}'.format(the_vi['expid'], the_vi['scannername'], the_vi['scanflag'], the_vi['VIcomment']))
+            else : txt += ('<BR/> No VI previously recorded for this target')
         target_info.append(txt)
 
     cds_targetinfo = bk.ColumnDataSource(
@@ -219,6 +238,16 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
         name='targetinfo')
     if zcatalog is not None:
         cds_targetinfo.add(zcatalog['Z'], name='z')
+        cds_targetinfo.add(zcatalog['SPECTYPE'], name='spectype')
+    username='-' if "USER" not in os.environ else os.environ['USER']
+    cds_targetinfo.add([username for i in range(nspec)], name='VI_ongoing_scanner')
+    cds_targetinfo.add(['-' for i in range(nspec)], name='VI_ongoing_flag')
+    cds_targetinfo.add(['-' for i in range(nspec)], name='VI_ongoing_comment')
+    cds_targetinfo.add(spectra.fibermap['EXPID'], name='expid')
+    cds_targetinfo.add(spectra.fibermap['FIBER'], name='fiber')
+    cds_targetinfo.add([str(x) for x in spectra.fibermap['TARGETID']], name='targetid') # !! No int64 in js !!
+    cds_targetinfo.add([spectra.meta['DEPVER10'] for i in range(nspec)], name='spec_version')
+    cds_targetinfo.add([spectra.meta['DEPVER13'] for i in range(nspec)], name='redrock_version')
 
     plot_width=800
     plot_height=400
@@ -228,7 +257,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
         tools=tools, toolbar_location='above', y_range=(-10, 20))
     fig.toolbar.active_drag = fig.tools[1]    #- box zoom
     fig.toolbar.active_scroll = fig.tools[2]  #- wheel zoom
-    fig.xaxis.axis_label = 'Wavelength [Å]'
+    fig.xaxis.axis_label = u'Wavelength [Å]'
     fig.yaxis.axis_label = 'Flux'
     fig.xaxis.axis_label_text_font_style = 'normal'
     fig.yaxis.axis_label_text_font_style = 'normal'
@@ -271,7 +300,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
 
     #- Callback to update zoom window x-range
     zoom_callback = CustomJS(
-        args=dict(zoomfig=zoomfig),
+        args=dict(zoomfig=zoomfig,fig=fig),
         code="""
             zoomfig.x_range.start = cb_obj.x - 100;
             zoomfig.x_range.end = cb_obj.x + 100;
@@ -289,7 +318,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
     z1 = np.floor(z*100)/100
     dz = z-z1
     zslider = Slider(start=0.0, end=4.0, value=z1, step=0.01, title='Redshift')
-    dzslider = Slider(start=0.0, end=0.01, value=dz, step=0.0001, title='+ Delta redshift')
+    dzslider = Slider(start=-0.01, end=0.01, value=dz, step=0.0001, title='+ Delta redshift')
     dzslider.format = "0[.]0000"
 
     #- Observer vs. Rest frame wavelengths
@@ -314,7 +343,6 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
             line_data=line_data, lines=lines, line_labels=line_labels,
             fig=fig,
             ),
-        #- TODO: reorder to reduce duplicated code
         code="""
         var z = zslider.value + dzslider.value
         var line_restwave = line_data.data['restwave']
@@ -323,60 +351,30 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
         if(targetinfo.data['z'] != undefined) {
             zfit = targetinfo.data['z'][ifiber]
         }
-
-        // Observer Frame
-        if(waveframe_buttons.active == 0) {
-            var x = 0.0
-            for(var i=0; i<line_restwave.length; i++) {
-                x = line_restwave[i] * (1+z)
-                lines[i].location = x
-                line_labels[i].x = x
+        for(var i=0; i<line_restwave.length; i++) {
+            var waveshift = (waveframe_buttons.active == 0) ? 1+z : 1 ;
+            lines[i].location = line_restwave[i] * waveshift ;
+            line_labels[i].x = line_restwave[i] * waveshift ;
+        }
+        for(var i=0; i<spectra.length; i++) {
+            var waveshift = (waveframe_buttons.active == 0) ? 1 : 1/(1+z) ;
+            var data = spectra[i].data
+            var origwave = data['origwave']
+            var plotwave = data['plotwave']
+            for (var j=0; j<plotwave.length; j++) {
+                plotwave[j] = origwave[j] * waveshift ;
             }
-            for(var i=0; i<spectra.length; i++) {
-                var data = spectra[i].data
-                var origwave = data['origwave']
-                var plotwave = data['plotwave']
-                for (var j=0; j<plotwave.length; j++) {
-                    plotwave[j] = origwave[j]
-                }
-                spectra[i].change.emit()
+            spectra[i].change.emit()
+        }
+        // Update model wavelength array
+        if(model) {
+            var waveshift = (waveframe_buttons.active == 0) ? (1+z)/(1+zfit) : 1/(1+zfit) ;
+            var origwave = model.data['origwave']
+            var plotwave = model.data['plotwave']
+            for(var i=0; i<plotwave.length; i++) {
+                plotwave[i] = origwave[i] * waveshift ;
             }
-
-            // Update model wavelength array
-            if(model) {
-                var origwave = model.data['origwave']
-                var plotwave = model.data['plotwave']
-                for(var i=0; i<plotwave.length; i++) {
-                    plotwave[i] = origwave[i] * (1+z) / (1+zfit)
-                }
-                model.change.emit()
-            }
-
-        // Rest Frame
-        } else {
-            for(i=0; i<line_restwave.length; i++) {
-                lines[i].location = line_restwave[i]
-                line_labels[i].x = line_restwave[i]
-            }
-            for (var i=0; i<spectra.length; i++) {
-                var data = spectra[i].data
-                var origwave = data['origwave']
-                var plotwave = data['plotwave']
-                for (var j=0; j<plotwave.length; j++) {
-                    plotwave[j] = origwave[j] / (1+z)
-                }
-                spectra[i].change.emit()
-            }
-
-            // Update model wavelength array
-            if(model) {
-                var origwave = model.data['origwave']
-                var plotwave = model.data['plotwave']
-                for(var i=0; i<plotwave.length; i++) {
-                    plotwave[i] = origwave[i] / (1+zfit)
-                }
-                model.change.emit()
-            }
+            model.change.emit()
         }
         """)
 
@@ -439,6 +437,54 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
     lines_button_group.js_on_click(lines_callback)
     # lines_button_group.js_on_change('value', lines_callback)
 
+    # edit visual inspection
+    vi_commentinput = TextInput(value='-', title="VI comment :")
+    vi_nameinput = TextInput(value=username, title="Your name :")
+    viflags = ["-","Yes","No","Maybe","LowSNR","Bad"] # To put somewhere else in code
+    vi_flaginput = Select(title="VI flag :", value="-", options=viflags)
+
+    add_vi_callback = CustomJS(args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider,vi_commentinput=vi_commentinput,vi_nameinput=vi_nameinput,vi_flaginput=vi_flaginput), code="""
+        cds_targetinfo.data['VI_ongoing_comment'][ifiberslider.value]=vi_commentinput.value
+        cds_targetinfo.data['VI_ongoing_scanner'][ifiberslider.value]=vi_nameinput.value
+        cds_targetinfo.data['VI_ongoing_flag'][ifiberslider.value]=vi_flaginput.value
+    """)
+    vi_commentinput.js_on_change('value',add_vi_callback)
+    vi_nameinput.js_on_change('value',add_vi_callback)
+    vi_flaginput.js_on_change('value',add_vi_callback)
+
+    # save VI info to ASCII file
+    # tested briefly safari chrome firefox
+    # Warning text output very sensitve for # " \  ... (standard js formatting not ok)
+    save_vi_button = Button(label="Download VI",button_type="success")
+    save_vi_callback = CustomJS(args=dict(cds_targetinfo=cds_targetinfo), code="""
+        function download(filename, text) {
+            var element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+            element.setAttribute('download', filename);
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+        }
+        var thetext="# Prototype VI result file generated by prospect \\n";
+        thetext+= "# TargetID Expid Fiber Spec_version Redrock_version Redrock_spectype Redrock_z VI_Scanner VI_flag VI_comment \\n";
+        var toto = cds_targetinfo.data['VI_ongoing_flag'];
+        var titi = cds_targetinfo.data['VI_ongoing_scanner'];
+        var tutu = cds_targetinfo.data['VI_ongoing_comment'];
+        var fa = cds_targetinfo.data['expid'];
+        var fb = cds_targetinfo.data['fiber'];
+        var fc = cds_targetinfo.data['targetid'];
+        var fd = cds_targetinfo.data['spec_version'];
+        var fe = cds_targetinfo.data['redrock_version'];
+        var za = cds_targetinfo.data['spectype'] ;
+        var zb = cds_targetinfo.data['z'] ;
+        for (var i=0 ; i< toto.length; i++) {
+            if (toto[i] != '-') thetext += (fc[i]+" "+fa[i]+" "+fb[i]+" "+fd[i]+" "+fe[i]+" "+za[i]+" "+zb[i].toFixed(3)+" "+titi[i]+" "+toto[i]+' "'+tutu[i]+'"'+" \\n");
+        }
+        download("vi_result.txt",thetext) ;
+    """)
+    save_vi_button.js_on_event('button_click', save_vi_callback)
+
     #-----
     update_plot = CustomJS(
         args = dict(
@@ -452,13 +498,23 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
             dzslider=dzslider,
             lines_button_group = lines_button_group,
             fig = fig,
+            vi_commentinput=vi_commentinput,
+            vi_nameinput=vi_nameinput,
+            vi_flaginput=vi_flaginput
             ),
         code = """
         var ifiber = ifiberslider.value
         var nsmooth = smootherslider.value
         target_info_div.text = targetinfo.data['target_info'][ifiber]
+    
+        // Added EA : ongoing VI
+        if (cb_obj == ifiberslider) {
+            vi_commentinput.value=targetinfo.data['VI_ongoing_comment'][ifiber] ;
+            vi_nameinput.value=targetinfo.data['VI_ongoing_scanner'][ifiber] ;
+            vi_flaginput.value=targetinfo.data['VI_ongoing_flag'][ifiber] ;
+        }
 
-        if(targetinfo.data['z'] != undefined) {
+        if(targetinfo.data['z'] != undefined && cb_obj == ifiberslider) {
             var z = targetinfo.data['z'][ifiber]
             var z1 = Math.floor(z*100) / 100
             zslider.value = z1
@@ -550,6 +606,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
             fig.y_range.start = ymin * 0.6
         }
         fig.y_range.end = ymax * 1.4
+                
     """)
     smootherslider.js_on_change('value', update_plot)
     ifiberslider.js_on_change('value', update_plot)
@@ -578,13 +635,14 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
     prev_button.js_on_event('button_click', prev_callback)
     next_button.js_on_event('button_click', next_callback)
 
+
     #-----
     slider_width = plot_width - 2*navigation_button_width
     navigator = bk.Row(
         widgetbox(prev_button, width=navigation_button_width),
         widgetbox(next_button, width=navigation_button_width+20),
         widgetbox(ifiberslider, width=slider_width-20))
-    bk.show(bk.Column(
+    bk.save(bk.Column(
         bk.Row(fig, zoomfig),
         widgetbox(target_info_div, width=plot_width),
         navigator,
@@ -593,6 +651,12 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None):
             widgetbox(waveframe_buttons, width=120),
             widgetbox(zslider, width=plot_width//2 - 60),
             widgetbox(dzslider, width=plot_width//2 - 60),
+            ),
+        bk.Row(
+            widgetbox(save_vi_button,width=120),
+            widgetbox(vi_flaginput,width=100),
+            widgetbox(vi_commentinput,width=plot_width-250),
+            widgetbox(vi_nameinput,width=120),
             ),
         widgetbox(lines_button_group),
         ))
@@ -658,10 +722,10 @@ _line_list = [
     # {"name" : "D",    "longname" : "D (Na I doublet)", "lambda": 5892.9,   "emission": False },
     {"name" : "D1",   "longname" : "D1 (Na I 5895)",   "lambda" : 5895.92,  "emission": False },
     {"name" : "Hα",   "longname" : "Balmer α",         "lambda" : 6562.801, "emission": False },
-    ]
+  ]
 
 def _airtovac(w):
-    """Convert air wavelengths to vacuum wavelengths. Don't convert less than 2000 Å.
+    """Convert air wavelengths to vacuum wavelengths. Don't convert less than 200
 
     Parameters
     ----------
@@ -758,11 +822,31 @@ if __name__ == '__main__':
     #
     # plotspectra(frames)
 
-    specfile = 'data/spectra-64-5261.fits'
+    # Outdated :
+
+    parser = argparse.ArgumentParser(description='Create html pages for the spectral viewer')
+    parser.add_argument('healpixel', help='Healpixel (nside64) to process', type=str)
+    parser.add_argument('--basedir', help='Path to spectra reltive to DESI_ROOT', type=str, default="datachallenge/reference_runs/18.6/spectro/redux/mini/spectra-64")
+    args = parser.parse_args()
+    basedir = os.environ['DESI_ROOT']+"/"+args.basedir+"/"+args.healpixel[0:2]+"/"+args.healpixel+"/"
+    
+    specfile = basedir+'spectra-64-'+args.healpixel+'.fits'
     zbfile = specfile.replace('spectra-64-', 'zbest-64-')
     spectra = desispec.io.read_spectra(specfile)
-    zbest = Table.read(zbfile, 'ZBEST')
+    zbest_raw = Table.read(zbfile, 'ZBEST')
+    
+    # EA : all is best is zbest matches spectra row-by-row.
+    zbest=Table(dtype=zbest_raw.dtype)
+    for i in range(spectra.num_spectra()) :
+        ww, = np.where((zbest_raw['TARGETID'] == spectra.fibermap['TARGETID'][i]))
+        if len(ww)!=1 : print("!! Issue with zbest table !!")
+        zbest.add_row(zbest_raw[ww[0]])
+    
     mwave, mflux = create_model(spectra, zbest)
-
-    plotspectra(spectra, zcatalog=zbest, model=(mwave, mflux), title=os.path.basename(specfile))
+    
+    ## VI "catalog" - location to define later
+    vifile = os.environ['HOME']+"/prospect/vilist_prototype.fits"
+    vidata = utils_specviewer.match_vi_targets(vifile, spectra.fibermap['TARGETID'])
+    
+    plotspectra(spectra, zcatalog=zbest, vidata=vidata, model=(mwave, mflux), title=os.path.basename(specfile))
 
