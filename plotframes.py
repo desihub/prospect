@@ -531,12 +531,14 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
         }
 
         // Smoothing kernel
-        var kernel = [];
-        for(var i=-2*nsmooth; i<=2*nsmooth; i++) {
-            kernel.push(Math.exp(-(i**2)/(2*nsmooth)))
+        if (nsmooth > 0) {
+            var kernel = [];
+            for(var i=-2*nsmooth; i<=2*nsmooth; i++) {
+                kernel.push(Math.exp(-(i**2)/(2*nsmooth)))
+            }
+            var kernel_offset = Math.floor(kernel.length/2)
         }
-        var kernel_offset = Math.floor(kernel.length/2)
-
+        
         // Smooth plot and recalculate ymin/ymax
         // TODO: add smoother function to reduce duplicated code
         var ymin = 0.0
