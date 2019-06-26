@@ -873,7 +873,8 @@ if __name__ == '__main__':
 
     specfile = 'data/spectra-64-5261.fits'
     zbfile = specfile.replace('spectra-64-', 'zbest-64-')
-    spectra = desispec.io.read_spectra(specfile)
+    individual_spectra = desispec.io.read_spectra(specfile)
+    spectra = _coadd_targets(individual_spectra)
     zbest = Table.read(zbfile, 'ZBEST')
     mwave, mflux = create_model(spectra, zbest)
 
