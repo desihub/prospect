@@ -219,7 +219,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
         target_bit_names = ' '.join(desi_mask.names(row['DESI_TARGET']))
         txt = 'Target {}: {}'.format(row['TARGETID'], target_bit_names)
         if zcatalog is not None:
-            txt += '<BR/>{} z={:.4f} +/- {:.4f}  ZWARN={}'.format(
+            txt += '<BR/>{} z={:.4f} ± {:.4f}  ZWARN={}'.format(
                 zcatalog['SPECTYPE'][i],
                 zcatalog['Z'][i],
                 zcatalog['ZERR'][i],
@@ -727,7 +727,7 @@ _line_list = [
   ]
 
 def _airtovac(w):
-    """Convert air wavelengths to vacuum wavelengths. Don't convert less than 200
+    """Convert air wavelengths to vacuum wavelengths. Don't convert less than 2000 Å.
 
     Parameters
     ----------
