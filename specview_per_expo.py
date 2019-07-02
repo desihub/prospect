@@ -58,7 +58,7 @@ for exposure,thespecfiles in dict_exposures.items() :
     nbpages = int(np.ceil((spectra.num_spectra()/args.nspecperfile)))
     fiberlist = np.unique(spectra.fibermap["FIBER"])
     if len(fiberlist)!=spectra.num_spectra() : print("!! Several times the same fiber in exposure ??")
-    for i_page in range(nbpages) :
+    for i_page in range(1,1+nbpages) :
         print("** Page "+str(i_page)+" / "+str(nbpages))
         thespec = myspecselect.myspecselect(spectra, fibers=fiberlist[i_page*args.nspecperfile:(i_page+1)*args.nspecperfile])
         thezb = utils_specviewer.match_zbest_to_spectra(zbest,thespec)

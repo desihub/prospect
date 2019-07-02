@@ -41,7 +41,7 @@ for pixel in pixels :
     # Handle several html pages per pixel : sort by RA_TARGET
     nbpages = int(np.ceil((spectra.num_spectra()/args.nspecperfile)))
     sort_indices = np.argsort(spectra.fibermap["RA_TARGET"])
-    for i_page in range(nbpages) :
+    for i_page in range(1,1+nbpages) :
         print("** Page "+str(i_page)+" / "+str(nbpages))
         the_indices = sort_indices[i_page*args.nspecperfile:(i_page+1)*args.nspecperfile]
         thespec = myspecselect.myspecselect(spectra, indices=the_indices)

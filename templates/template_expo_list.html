@@ -5,8 +5,10 @@
 </HEAD>
 
 <BODY>
-<p> {{ expo }} has N spectra.
-<br> Divided here based on fiber.
+<h2> DESI spectra for exposure {{ expo }} </h2>
+<p> Spectra from individual observations.
+<br> {{ expo }} has {{ nspec }} spectra in total.
+<br> Divided into subsets sorted by fiber.
 
 <ul>
 {% for fiber in fiberlist %}
