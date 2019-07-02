@@ -1,0 +1,18 @@
+<HTML>
+
+<HEAD>
+<TITLE>DESI spectra in {{ pixel }} </TITLE>
+</HEAD>
+
+<BODY>
+<p> {{ pixel }} has N spectra.
+<br> Divided into subsets sorted by right ascension.
+
+<ul>
+{% for subset in subsets %}
+<li><a href="specviewer_{{ pixel }}_{{ subset }}.html"> View subset {{ subset }}</a> (vignette overview <a href="vignettelist_{{ pixel }}_{{ subset }}.html">here</a>) </li>
+{% endfor %}
+</ul>
+
+</BODY>
+</HTML>
