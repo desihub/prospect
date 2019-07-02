@@ -26,7 +26,7 @@ datadir = os.environ['DESI_ROOT']+"/"+args.datadir
 pp=glob.glob(datadir+"/*/*")
 pixels=[x[-4:] for x in pp]
 
-pixels=pixels[0:1] # TMP
+pixels=pixels[0:3] # TMP
 
 # todo : select pixels not yet selected
 # Loop on pixels
