@@ -11,6 +11,7 @@ webdir=os.environ['HOME']+"/prospect/website"
 
 env = Environment(loader=FileSystemLoader('templates')) # path to templates
 template_expolist = env.get_template('template_expo_list.html')
+template_pixellist = env.get_template('template_pixel_list.html')
 template_vignettelist = env.get_template('template_vignettelist.html')
 
 exposures=os.listdir(webdir+"/exposures")
@@ -26,10 +27,26 @@ for expo in exposures :
     for fiber in fiberlist :
         pp = glob.glob(webdir+"/exposures/"+expo+"/vignettes/"+expo+"_fiberset"+fiber+"_*.png")
         vignettelist = [os.path.basename(x) for x in pp]
-        pagetext = template_vignettelist.render(expo=expo, i_subset=fiber, n_subsets=len(fiberlist), imglist=vignettelist)
+        pagetext = template_vignettelist.render(set=expo, i_subset=fiber, n_subsets=len(fiberlist), imglist=vignettelist)
         with open(webdir+"/exposures/"+expo+"/vignettelist_"+expo+"_fiberset"+fiber+".html", "w") as fh:
             fh.write(pagetext)
             fh.close()
 
-## TODO similar for pixels (also maybe try a clickable skymap in bokeh)
-    
+pixels = os.listdir(webdir+"/pixels")
+for pix in pixels :
+    pp=glob.glob(webdir+"/pixels/"+pix+"/specviewer_"+pix+"_*.html")
+    subsets = [int(x[x.find(pix)+9:-5]) for x in pp]
+    subsets.sort()
+    subset = [str(x) for x in subset]
+    pagetext=template_pixellist.render(pixel=pix, subsets=subsets)
+    with open(webdir+"/pixels/"+pix+"/index_"+pix+".html", "w") as fh:
+        fh.write(pagetext)
+        fh.close()
+    for subset in subsets :
+        pp = glob.glob(webdir+"/pixels/"+pix+"/vignettes/"+pix+"_"+subset+"_*.png")
+        vignettelist = [os.path.basename(x) for x in pp]
+        pagetext = template_vignettelist.render(set=pix, i_subset=subset, n_subsets=len(subsets), imglist=vignettelist)
+        with open(webdir+"/exposures/"+pix+"/vignettelist_"+pix+"_"+subset+".html", "w") as fh:
+            fh.write(pagetext)
+            fh.close()
+
