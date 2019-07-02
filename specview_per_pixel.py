@@ -34,7 +34,8 @@ for pixel in pixels :
     print("* Working on pixel "+pixel)
     group=str(int(pixel)//100)
     thefile = datadir+"/"+group+"/"+pixel+"/spectra-64-"+pixel+".fits"
-    spectra = desispec.io.read_spectra(thefile)
+    individual_spectra = desispec.io.read_spectra(thefile)
+    spectra = plotframes._coadd_targets(individual_spectra)
     zbfile = thefile.replace('spectra-64-', 'zbest-64-')
     zbest = Table.read(zbfile, 'ZBEST')
     # Handle several html pages per pixel : sort by RA_TARGET
