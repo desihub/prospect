@@ -35,7 +35,7 @@ for expo in exposures :
 pixels = os.listdir(webdir+"/pixels")
 for pix in pixels :
     pp=glob.glob(webdir+"/pixels/"+pix+"/specviewer_"+pix+"_*.html")
-    subsets = [int(x[x.find(pix)+9:-5]) for x in pp]
+    subsets = [int(x[x.find("_",-1):-5]) for x in pp]
     subsets.sort()
     subset = [str(x) for x in subset]
     pagetext=template_pixellist.render(pixel=pix, subsets=subsets)
