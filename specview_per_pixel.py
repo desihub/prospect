@@ -20,13 +20,14 @@ parser = argparse.ArgumentParser(description='Create html pages for the spectral
 parser.add_argument('--datadir', help='Path to spectra relative to DESI_ROOT', type=str, default="datachallenge/reference_runs/18.6/spectro/redux/mini/spectra-64")
 parser.add_argument('--nspecperfile', help='Number of spectra in each html page', type=int, default=50)
 parser.add_argument('--webdir', help='Base directory for webapges', type=str, default=os.environ['HOME']+"/prospect/website")
+parser.add_argument('--vignette_smoothing', help='Smoothing of the vignette images (-1 : no smoothing)', type=float, default=10)
 args = parser.parse_args()
 
 datadir = os.environ['DESI_ROOT']+"/"+args.datadir
 pp=glob.glob(datadir+"/*/*")
 pixels=[x[-4:] for x in pp]
 
-pixels=pixels[0:3] # TMP
+pixels=pixels[0:2] # TMP
 
 # todo : select pixels not yet selected
 # Loop on pixels
@@ -58,7 +59,7 @@ for pixel in pixels :
         plotframes.plotspectra(thespec, zcatalog=thezb, vidata=vidata, model=model, title=titlepage, savedir=savedir)
         for i_spec in range(thespec.num_spectra()) :
             saveplot = savedir+"/vignettes/pix"+pixel+"_"+str(i_page)+"_"+str(i_spec)+".png"
-            utils_specviewer.miniplot_spectrum(thespec,i_spec,model=model,saveplot=saveplot)
+            utils_specviewer.miniplot_spectrum(thespec,i_spec,model=model,saveplot=saveplot, smoothing = args.vignette_smoothing)
 
 
 
