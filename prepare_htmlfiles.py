@@ -1,6 +1,6 @@
 # Script to have html files/index from templates + existing images/pages created by specviewer
 
-import os, glob
+import os, glob, stat
 from jinja2 import Environment, FileSystemLoader
 
 
@@ -14,6 +14,8 @@ template_index = env.get_template('template_index.html')
 template_expolist = env.get_template('template_expo_list.html')
 template_pixellist = env.get_template('template_pixel_list.html')
 template_vignettelist = env.get_template('template_vignettelist.html')
+
+# Could re-write to avoid duplicates
 
 exposures=os.listdir(webdir+"/exposures")
 for expo in exposures :
@@ -35,6 +37,10 @@ for expo in exposures :
         with open(basedir+"/vignettelist_"+expo+"_"+fiber+".html", "w") as fh:
             fh.write(pagetext)
             fh.close()
+    for thedir in [basedir,basedir+"/vignettes"] : os.system("chmod a+rx "+thedir)
+    for x in glob.glob(basedir+"/*.html") : os.system("chmod a+r "+x)
+    for x in glob.glob(basedir+"/vignettes/*.png") : os.system("chmod a+r "+x)
+    
 
 pixels = os.listdir(webdir+"/pixels")
 for pix in pixels :
@@ -56,8 +62,13 @@ for pix in pixels :
         with open(basedir+"/vignettelist_"+pix+"_"+subset+".html", "w") as fh:
             fh.write(pagetext)
             fh.close()
+    for thedir in [basedir,basedir+"/vignettes"] : os.system("chmod a+rx "+thedir)
+    for x in glob.glob(basedir+"/*.html") : os.system("chmod a+r "+x)
+    for x in glob.glob(basedir+"/vignettes/*.png") : os.system("chmod a+r "+x)
+
 
 pagetext = template_index.render(pixels=pixels, exposures=exposures)
 with open(webdir+"/index.html", "w") as fh:
     fh.write(pagetext)
     fh.close()
+    os.system("chmod a+r "+webdir+"/index.html")
