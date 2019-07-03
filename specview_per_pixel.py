@@ -43,7 +43,7 @@ for pixel in pixels :
     sort_indices = np.argsort(spectra.fibermap["RA_TARGET"])
     for i_page in range(1,1+nbpages) :
         print("** Page "+str(i_page)+" / "+str(nbpages))
-        the_indices = sort_indices[i_page*args.nspecperfile:(i_page+1)*args.nspecperfile]
+        the_indices = sort_indices[(i_page-1)*args.nspecperfile:i_page*args.nspecperfile]
         thespec = myspecselect.myspecselect(spectra, indices=the_indices)
         thezb = utils_specviewer.match_zbest_to_spectra(zbest,thespec)
         # VI "catalog" - location to define later ..
