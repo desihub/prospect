@@ -6,6 +6,8 @@
 import numpy as np
 import astropy.io.fits
 from astropy.table import Table, vstack
+import scipy.ndimage.filters
+
 
 import matplotlib
 matplotlib.use('Agg') # No DISPLAY
@@ -76,10 +78,21 @@ def match_zbest_to_spectra(zbest_in,spectra) :
     return zbest_out
 
 
-def miniplot_spectrum(spectra, i_spec, model=None, saveplot=None) :
+def get_y_minmax(pmin, pmax, data) :
+    '''
+    Utility, from plotframe
+    '''
+    dx = np.sort(data)
+    imin = int(np.floor(pmin*len(dx)))
+    imax = int(np.floor(pmax*len(dx)))
+    return (dx[imin],dx[imax])
+
+
+def miniplot_spectrum(spectra, i_spec, model=None, saveplot=None, smoothing=-1) :
     '''
     Matplotlib version of plotspectra, to plot a given spectrum
     Pieces of code were copy-pasted from plotspectra()
+    Smoothing option : simple gaussian filtering
     '''
     data=[]
     for band in spectra.bands :
@@ -89,21 +102,34 @@ def miniplot_spectrum(spectra, i_spec, model=None, saveplot=None) :
         thedat=dict(
             band = band,
             wave = spectra.wave[band].copy(),
-            flux = spectra.flux[band][i_spec]
+            flux = spectra.flux[band][i_spec].copy()
             )
         data.append(thedat)
     if model is not None:
         mwave, mflux = model
-        mflux = mflux[i_spec]
+        mwave = mwave.copy() # in case of
+        mflux = mflux[i_spec].copy()
 
-    # TODO : smoothing
-
+    # Gaussian smoothing
+    if smoothing > 0 :
+        ymin,ymax=0,0
+        for spec in data :
+            spec['wave'] = spec['wave']
+            spec['flux'] = scipy.ndimage.filters.gaussian_filter1d(spec['flux'], sigma=smoothing, mode='nearest')
+            tmpmin,tmpmax=get_y_minmax(0.01, 0.99, spec['flux'])
+            ymin=np.min((tmpmin,ymin))
+            ymax=np.max((tmpmax,ymax))
+        mwave = mwave[int(smoothing):-int(smoothing)]
+        mflux = scipy.ndimage.filters.gaussian_filter1d(mflux, sigma=smoothing, mode='nearest')[int(smoothing):-int(smoothing)]
+    
     colors = dict(b='#1f77b4', r='#d62728', z='maroon')
     for spec in data :
         plt.plot(spec['wave'],spec['flux'],c=colors[spec['band']])
     if model is not None :
         plt.plot(mwave, mflux, c='k')
     # No label to save space
+    if smoothing > 0 :
+        plt.ylim((ymin,ymax))
     # TODO : include some infos on plot
     
     if saveplot is not None : plt.savefig(saveplot, dpi=50) # default dpi=100, TODO tune dpi
