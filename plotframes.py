@@ -439,10 +439,11 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
         labels=["Obs", "Rest"], active=0)
 
     ifiberslider = Slider(start=0, end=nspec-1, value=0, step=1)
-    if frame_input:
-        ifiberslider.title = 'Fiber'
-    else:
-        ifiberslider.title = 'Target'
+    ifiberslider.title = 'Spectrum'
+#     if frame_input:
+#         ifiberslider.title = 'Fiber'
+#     else:
+#         ifiberslider.title = 'Target'
 
     zslider_callback  = CustomJS(
         args=dict(
@@ -556,14 +557,20 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
     viflags = ["-","Yes","No","Maybe","LowSNR","Bad"] # To put somewhere else in code
     vi_flaginput = Select(title="VI flag :", value="-", options=viflags)
 
-    add_vi_callback = CustomJS(args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider,vi_commentinput=vi_commentinput,vi_nameinput=vi_nameinput,vi_flaginput=vi_flaginput), code="""
-        cds_targetinfo.data['VI_ongoing_comment'][ifiberslider.value]=vi_commentinput.value
-        cds_targetinfo.data['VI_ongoing_scanner'][ifiberslider.value]=vi_nameinput.value
+    add_viflag_callback = CustomJS(args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider, vi_flaginput=vi_flaginput), code="""
         cds_targetinfo.data['VI_ongoing_flag'][ifiberslider.value]=vi_flaginput.value
     """)
-    vi_commentinput.js_on_change('value',add_vi_callback)
-    vi_nameinput.js_on_change('value',add_vi_callback)
-    vi_flaginput.js_on_change('value',add_vi_callback)
+    add_vicomment_callback = CustomJS(args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider, vi_commentinput=vi_commentinput), code="""
+        cds_targetinfo.data['VI_ongoing_comment'][ifiberslider.value]=vi_commentinput.value
+    """)
+    change_viname_callback = CustomJS(args=dict(cds_targetinfo=cds_targetinfo,nspec = nspec, vi_nameinput=vi_nameinput), code="""
+        for (var i=0; i<nspec; i++) {
+            cds_targetinfo.data['VI_ongoing_scanner'][i]=vi_nameinput.value
+        }
+    """)
+    vi_commentinput.js_on_change('value',add_vicomment_callback)
+    vi_nameinput.js_on_change('value',change_viname_callback)
+    vi_flaginput.js_on_change('value',add_viflag_callback)
 
     # save VI info to ASCII file
     # tested briefly safari chrome firefox
