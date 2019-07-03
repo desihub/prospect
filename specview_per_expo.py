@@ -60,7 +60,7 @@ for exposure,thespecfiles in dict_exposures.items() :
     if len(fiberlist)!=spectra.num_spectra() : print("!! Several times the same fiber in exposure ??")
     for i_page in range(1,1+nbpages) :
         print("** Page "+str(i_page)+" / "+str(nbpages))
-        thespec = myspecselect.myspecselect(spectra, fibers=fiberlist[i_page*args.nspecperfile:(i_page+1)*args.nspecperfile])
+        thespec = myspecselect.myspecselect(spectra, fibers=fiberlist[(i_page-1)*args.nspecperfile:i_page*args.nspecperfile])
         thezb = utils_specviewer.match_zbest_to_spectra(zbest,thespec)
         # VI "catalog" - location to define later ..
         vifile = os.environ['HOME']+"/prospect/vilist_prototype.fits"
