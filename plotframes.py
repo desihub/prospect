@@ -237,7 +237,7 @@ def create_model(spectra, zbest):
     return model_wave, mflux
 
 
-def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, vidata=None, savedir='.'):
+def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, vidata=None, savedir='.', is_coadded=True):
     '''
     TODO: document
     '''
@@ -328,6 +328,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
 
     #- Subset of zcatalog and fibermap columns into ColumnDataSource
     target_info = list()
+    vi_info = list()
     for i, row in enumerate(spectra.fibermap):
         target_bit_names = ' '.join(desi_mask.names(row['DESI_TARGET']))
         txt = 'Target {}: {}'.format(row['TARGETID'], target_bit_names)
@@ -338,13 +339,13 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
                 zcatalog['ZERR'][i],
                 zcatalog['ZWARN'][i],
             )
+        target_info.append(txt)
         if vidata is not None :
             if len(vidata[i]) > 0 :
                 txt += ('<BR/> VI info : EXPID SCANNER FLAG COMMENTS')
                 for the_vi in vidata[i] :
                     txt += ('<BR/>&nbsp;&nbsp;&nbsp;&nbsp;   {0:6d} {1} {2} {3}'.format(the_vi['expid'], the_vi['scannername'], the_vi['scanflag'], the_vi['VIcomment']))
             else : txt += ('<BR/> No VI previously recorded for this target')
-        target_info.append(txt)
 
     cds_targetinfo = bk.ColumnDataSource(
         dict(target_info=target_info),
@@ -356,8 +357,12 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
     cds_targetinfo.add([username for i in range(nspec)], name='VI_ongoing_scanner')
     cds_targetinfo.add(['-' for i in range(nspec)], name='VI_ongoing_flag')
     cds_targetinfo.add(['-' for i in range(nspec)], name='VI_ongoing_comment')
-    cds_targetinfo.add(spectra.fibermap['EXPID'], name='expid')
-    cds_targetinfo.add(spectra.fibermap['FIBER'], name='fiber')
+    if not is_coadded :
+        cds_targetinfo.add(spectra.fibermap['EXPID'], name='expid')
+        cds_targetinfo.add(spectra.fibermap['FIBER'], name='fiber')
+    else : # If coadd, fill VI accordingly
+        cds_targetinfo.add(['-1' for i in range(nspec)], name='expid')
+        cds_targetinfo.add(['-1' for i in range(nspec)], name='fiber')
     cds_targetinfo.add([str(x) for x in spectra.fibermap['TARGETID']], name='targetid') # !! No int64 in js !!
     cds_targetinfo.add([spectra.meta['DEPVER10'] for i in range(nspec)], name='spec_version')
     cds_targetinfo.add([spectra.meta['DEPVER13'] for i in range(nspec)], name='redrock_version')
@@ -764,25 +769,27 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
         widgetbox(prev_button, width=navigation_button_width),
         widgetbox(next_button, width=navigation_button_width+20),
         widgetbox(ifiberslider, width=slider_width-20))
-    bk.save(bk.Column(
-        bk.Row(fig, zoomfig),
-        widgetbox(target_info_div, width=plot_width),
-        navigator,
-        widgetbox(smootherslider, width=plot_width//2),
-        bk.Row(
-            widgetbox(waveframe_buttons, width=120),
-            widgetbox(zslider, width=plot_width//2 - 60),
-            widgetbox(dzslider, width=plot_width//2 - 60),
-            ),
-        bk.Row(
-            widgetbox(save_vi_button,width=120),
-            widgetbox(vi_flaginput,width=100),
-            widgetbox(vi_commentinput,width=plot_width-250),
-            widgetbox(vi_nameinput,width=120),
-            ),
-        widgetbox(lines_button_group),
-        ))
- 
+    the_bokehsetup = bk.Column(
+            bk.Row(fig, zoomfig),
+            widgetbox(target_info_div, width=plot_width),
+            navigator,
+            widgetbox(smootherslider, width=plot_width//2),
+            bk.Row(
+                widgetbox(waveframe_buttons, width=120),
+                widgetbox(zslider, width=plot_width//2 - 60),
+                widgetbox(dzslider, width=plot_width//2 - 60),
+                ),
+            bk.Row(
+                widgetbox(save_vi_button,width=120),
+                widgetbox(vi_flaginput,width=100),
+                widgetbox(vi_commentinput,width=plot_width-250),
+                widgetbox(vi_nameinput,width=120),
+                ),
+            widgetbox(lines_button_group),
+            )
+    if notebook==False : bk.save(the_bokehsetup)
+    else : bk.show(the_bokehsetup)
+    
     #--- DEBUG ---
     # import IPython
     # IPython.embed()

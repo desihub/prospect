@@ -46,7 +46,6 @@ def match_vi_targets(vifile, targetlist) :
     return vicatalog
 
 
-# useless at this point but who knows
 def convert_vi_tofits(vifile_in,overwrite=True) :
     if vifile_in[-4:] != ".txt" : raise RuntimeError("wrong file extension")
     vi_info = read_vi(vifile_in)

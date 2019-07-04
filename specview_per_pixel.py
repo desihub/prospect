@@ -56,7 +56,7 @@ for pixel in pixels :
         if not os.path.exists(savedir) : 
             os.mkdir(savedir)
             os.mkdir(savedir+"/vignettes")
-        plotframes.plotspectra(thespec, zcatalog=thezb, vidata=vidata, model=model, title=titlepage, savedir=savedir)
+        plotframes.plotspectra(thespec, zcatalog=thezb, vidata=vidata, model=model, title=titlepage, savedir=savedir, is_coadded=True)
         for i_spec in range(thespec.num_spectra()) :
             saveplot = savedir+"/vignettes/pix"+pixel+"_"+str(i_page)+"_"+str(i_spec)+".png"
             utils_specviewer.miniplot_spectrum(thespec,i_spec,model=model,saveplot=saveplot, smoothing = args.vignette_smoothing)
