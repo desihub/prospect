@@ -340,16 +340,17 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
                 zcatalog['ZWARN'][i],
             )
         target_info.append(txt)
-        if vidata is not None :
-            if len(vidata[i]) > 0 :
-                txt += ('<BR/> VI info : EXPID SCANNER FLAG COMMENTS')
-                for the_vi in vidata[i] :
-                    txt += ('<BR/>&nbsp;&nbsp;&nbsp;&nbsp;   {0:6d} {1} {2} {3}'.format(the_vi['expid'], the_vi['scannername'], the_vi['scanflag'], the_vi['VIcomment']))
-            else : txt += ('<BR/> No VI previously recorded for this target')
+        if ( (vidata is not None) and (len(vidata[i])>0) ) :
+            txt_viinfo = ('<BR/> VI info : SCANNER FLAG COMMENTS')
+            for the_vi in vidata[i] :
+                txt_viinfo += ('<BR/>&emsp;&emsp;&emsp;&emsp; {0} {1} {2}'.format(the_vi['scannername'], the_vi['scanflag'], the_vi['VIcomment']))
+        else : txt_viinfo = ('<BR/> No VI previously recorded for this target')
+        vi_info.append(txt_viinfo)
 
     cds_targetinfo = bk.ColumnDataSource(
         dict(target_info=target_info),
         name='targetinfo')
+    cds_targetinfo.add(vi_info, name='vi_info')
     if zcatalog is not None:
         cds_targetinfo.add(zcatalog['Z'], name='z')
         cds_targetinfo.add(zcatalog['SPECTYPE'], name='spectype')
@@ -524,6 +525,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
 
     smootherslider = Slider(start=0, end=31, value=0, step=1.0, title='Gaussian Sigma Smooth')
     target_info_div = Div(text=target_info[0])
+    vi_info_div = Div(text=" ") # consistent with show_prev_vi="No" by default
 
     #-----
     #- Toggle lines
@@ -610,6 +612,18 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
     """)
     save_vi_button.js_on_event('button_click', save_vi_callback)
 
+    # Choose to show or not previous VI
+    show_prev_vi_select = Select(title='Show previous VI', value='No', options=['Yes','No'])
+    show_prev_vi_callback = CustomJS(args=dict(vi_info_div = vi_info_div, show_prev_vi_select=show_prev_vi_select, targetinfo = cds_targetinfo, ifiberslider = ifiberslider), code="""
+        if (show_prev_vi_select.value == "Yes") {
+            vi_info_div.text = targetinfo.data['vi_info'][ifiberslider.value];
+        } else {
+            vi_info_div.text = " ";
+        }
+    """)
+    show_prev_vi_select.js_on_change('value',show_prev_vi_callback)
+
+
     #-----
     update_plot = CustomJS(
         args = dict(
@@ -617,6 +631,8 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
             model = cds_model,
             targetinfo = cds_targetinfo,
             target_info_div = target_info_div,
+            vi_info_div = vi_info_div,
+            show_prev_vi_select = show_prev_vi_select,
             ifiberslider = ifiberslider,
             smootherslider = smootherslider,
             zslider=zslider,
@@ -631,7 +647,11 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
         var ifiber = ifiberslider.value
         var nsmooth = smootherslider.value
         target_info_div.text = targetinfo.data['target_info'][ifiber]
-    
+        if (show_prev_vi_select.value == "Yes") {
+            vi_info_div.text = targetinfo.data['vi_info'][ifiber];
+        } else {
+            vi_info_div.text = " ";
+        }
         // Added EA : ongoing VI
         if (cb_obj == ifiberslider) {
             vi_commentinput.value=targetinfo.data['VI_ongoing_comment'][ifiber] ;
@@ -779,13 +799,17 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
                 widgetbox(zslider, width=plot_width//2 - 60),
                 widgetbox(dzslider, width=plot_width//2 - 60),
                 ),
+            widgetbox(lines_button_group),
             bk.Row(
                 widgetbox(save_vi_button,width=120),
                 widgetbox(vi_flaginput,width=100),
                 widgetbox(vi_commentinput,width=plot_width-250),
-                widgetbox(vi_nameinput,width=120),
+                widgetbox(vi_nameinput,width=120)
                 ),
-            widgetbox(lines_button_group),
+            bk.Row(
+                widgetbox(show_prev_vi_select,width=100),
+                widgetbox(vi_info_div, width=plot_width-130)
+                )
             )
     if notebook==False : bk.save(the_bokehsetup)
     else : bk.show(the_bokehsetup)
