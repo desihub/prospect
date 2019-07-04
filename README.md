@@ -30,7 +30,6 @@ This repo is a rewrite of https://github.com/desihub/inspector, which itself is 
 ## Currently missing (but present in the original inspector)
 
 * Imaging survey thumbnails and links.
-* Buttons for navigating previous/next target
 * Buttons for saving visual inspection results before moving to next target.
 
 ## What it doesn't do (yet)
