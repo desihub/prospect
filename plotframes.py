@@ -33,7 +33,7 @@ from desitarget.targetmask import desi_mask
 import desispec.spectra
 import desispec.frame
 
-import utils_specviewer
+from . import utils_specviewer
 from astropy.table import Table
 
 def _coadd(wave, flux, ivar, rdat):
@@ -166,7 +166,7 @@ def frames2spectra(frames):
         flux[band] = fr.flux
         ivar[band] = fr.ivar
         mask[band] = fr.mask
-    
+
     spectra = desispec.spectra.Spectra(
         bands, wave, flux, ivar, mask, fibermap=fr.fibermap, meta=fr.meta
     )
@@ -811,13 +811,23 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
                 widgetbox(vi_info_div, width=plot_width-130)
                 )
             )
-    if notebook==False : bk.save(the_bokehsetup)
-    else : bk.show(the_bokehsetup)
+    if notebook:
+        bk.show(the_bokehsetup)
+    else:
+        bk.save(the_bokehsetup)
     
-    #--- DEBUG ---
-    # import IPython
-    # IPython.embed()
-    #--- DEBUG ---
+#     bk.show(bk.Column(
+#         bk.Row(fig, zoomfig),
+#         widgetbox(target_info_div, width=plot_width),
+#         navigator,
+#         widgetbox(smootherslider, width=plot_width//2),
+#         bk.Row(
+#             widgetbox(waveframe_buttons, width=120),
+#             widgetbox(zslider, width=plot_width//2 - 60),
+#             widgetbox(dzslider, width=plot_width//2 - 60),
+#             ),
+#         widgetbox(lines_button_group),
+#         ))
 
 #-------------------------------------------------------------------------
 _line_list = [
@@ -985,16 +995,23 @@ if __name__ == '__main__':
     
     specfile = basedir+'spectra-64-'+args.healpixel+'.fits'
     zbfile = specfile.replace('spectra-64-', 'zbest-64-')
-    spectra = desispec.io.read_spectra(specfile)
-    zbest_raw = Table.read(zbfile, 'ZBEST')
+
+    #- Original remapping of individual spectra to zbest
+    # spectra = desispec.io.read_spectra(specfile)
+    # zbest_raw = Table.read(zbfile, 'ZBEST')
     
-    # EA : all is best is zbest matches spectra row-by-row.
-    zbest=Table(dtype=zbest_raw.dtype)
-    for i in range(spectra.num_spectra()) :
-        ww, = np.where((zbest_raw['TARGETID'] == spectra.fibermap['TARGETID'][i]))
-        if len(ww)!=1 : print("!! Issue with zbest table !!")
-        zbest.add_row(zbest_raw[ww[0]])
+    # # EA : all is best is zbest matches spectra row-by-row.
+    # zbest=Table(dtype=zbest_raw.dtype)
+    # for i in range(spectra.num_spectra()) :
+    #     ww, = np.where((zbest_raw['TARGETID'] == spectra.fibermap['TARGETID'][i]))
+    #     if len(ww)!=1 : print("!! Issue with zbest table !!")
+    #     zbest.add_row(zbest_raw[ww[0]])
     
+    #- Coadd on the fly
+    individual_spectra = desispec.io.read_spectra(specfile)
+    spectra = _coadd_targets(individual_spectra)
+    zbest = Table.read(zbfile, 'ZBEST')
+
     mwave, mflux = create_model(spectra, zbest)
     
     ## VI "catalog" - location to define later
