@@ -71,7 +71,7 @@ def _coadd(wave, flux, ivar, rdat):
 
     return wave, outflux, outivar, outrdat
 
-def _coadd_targets(spectra, targetids=None):
+def coadd_targets(spectra, targetids=None):
     '''
     Coadds individual exposures of the same targets; returns new Spectra object
 
@@ -261,7 +261,6 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
         if title is None : title="specviewer"
         bk.output_file(savedir+"/"+title+".html",title='DESI spectral viewer')
 
-
     #- Gather spectra into ColumnDataSource objects for Bokeh
     nspec = spectra.num_spectra()
     cds_spectra = list()
@@ -289,22 +288,22 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
     #- Reorder zcatalog to match input targets
     #- TODO: allow more than one zcatalog entry with different ZNUM per targetid
 ## EA => changed this part : zcatalog is now by construction matched to spectra ...
-#    targetids = spectra.target_ids()
+    targetids = spectra.target_ids()
     if zcatalog is not None:
-#        ii = np.argsort(np.argsort(targetids))
-#        jj = np.argsort(zcatalog['TARGETID'])
-#        kk = jj[ii]
-#        zcatalog = zcatalog[kk]
+        ii = np.argsort(np.argsort(targetids))
+        jj = np.argsort(zcatalog['TARGETID'])
+        kk = jj[ii]
+        zcatalog = zcatalog[kk]
 
         #- That sequence of argsorts may feel like magic,
         #- so make sure we got it right
-#        assert np.all(zcatalog['TARGETID'] == targetids)
+        assert np.all(zcatalog['TARGETID'] == targetids)
         assert np.all(zcatalog['TARGETID'] == spectra.fibermap['TARGETID'])
 
         #- Also need to re-order input model fluxes
-#        if model is not None:
-#            mwave, mflux = model
-#            model = mwave, mflux[kk]
+        if model is not None:
+            mwave, mflux = model
+            model = mwave, mflux[kk]
 
     #- Gather models into ColumnDataSource objects, row matched to spectra
     if model is not None:
@@ -368,12 +367,18 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
     cds_targetinfo.add([spectra.meta['DEPVER10'] for i in range(nspec)], name='spec_version')
     cds_targetinfo.add([spectra.meta['DEPVER13'] for i in range(nspec)], name='redrock_version')
 
+    #- Determine initial ymin, ymax
+    ymin = ymax = 0.0
+    for band in spectra.bands:
+        ymin = min(ymin, np.min(spectra.flux[band][0]))
+        ymax = max(ymax, np.max(spectra.flux[band][0]))
+
     plot_width=800
     plot_height=400
     # tools = 'pan,box_zoom,wheel_zoom,undo,redo,reset,save'
     tools = 'pan,box_zoom,wheel_zoom,reset,save'
     fig = bk.figure(height=plot_height, width=plot_width, title=title,
-        tools=tools, toolbar_location='above', y_range=(-10, 20))
+        tools=tools, toolbar_location='above', y_range=(ymin, ymax))
     fig.toolbar.active_drag = fig.tools[1]    #- box zoom
     fig.toolbar.active_scroll = fig.tools[2]  #- wheel zoom
     fig.xaxis.axis_label = u'Wavelength [Å]'
@@ -774,7 +779,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
     next_callback = CustomJS(
         args=dict(ifiberslider=ifiberslider, nspec=nspec),
         code="""
-        if(ifiberslider.value<nspec+1) {
+        if(ifiberslider.value<nspec-1) {
             ifiberslider.value++
         }
         """)
@@ -1009,7 +1014,7 @@ if __name__ == '__main__':
     
     #- Coadd on the fly
     individual_spectra = desispec.io.read_spectra(specfile)
-    spectra = _coadd_targets(individual_spectra)
+    spectra = coadd_targets(individual_spectra)
     zbest = Table.read(zbfile, 'ZBEST')
 
     mwave, mflux = create_model(spectra, zbest)
