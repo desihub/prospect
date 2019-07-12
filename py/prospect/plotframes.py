@@ -364,8 +364,12 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
         cds_targetinfo.add(['-1' for i in range(nspec)], name='expid')
         cds_targetinfo.add(['-1' for i in range(nspec)], name='fiber')
     cds_targetinfo.add([str(x) for x in spectra.fibermap['TARGETID']], name='targetid') # !! No int64 in js !!
-    cds_targetinfo.add([spectra.meta['DEPVER10'] for i in range(nspec)], name='spec_version')
-    cds_targetinfo.add([spectra.meta['DEPVER13'] for i in range(nspec)], name='redrock_version')
+
+    #- FIXME: should not hardcode which DEPVERnn has which versions
+    ### cds_targetinfo.add([spectra.meta['DEPVER10'] for i in range(nspec)], name='spec_version')
+    ### cds_targetinfo.add([spectra.meta['DEPVER13'] for i in range(nspec)], name='redrock_version')
+    cds_targetinfo.add(np.zeros(nspec), name='spec_version')
+    cds_targetinfo.add(np.zeros(nspec), name='redrock_version')
 
     #- Determine initial ymin, ymax
     ymin = ymax = 0.0
