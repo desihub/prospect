@@ -25,7 +25,7 @@ args = parser.parse_args()
 
 datadir = os.environ['DESI_ROOT']+"/"+args.datadir
 pp=glob.glob(datadir+"/*/*")
-pixels=[x[-4:] for x in pp]
+pixels=[x[x.rfind("/")+1:] for x in pp]
 
 pixels=pixels[0:2] # TMP
 
