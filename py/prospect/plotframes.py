@@ -571,11 +571,16 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
     # edit visual inspection
     vi_commentinput = TextInput(value='-', title="VI comment :")
     vi_nameinput = TextInput(value=username, title="Your name :")
-    viflags = ["-","Yes","No","Maybe","LowSNR","Bad"] # To put somewhere else in code
-    vi_flaginput = Select(title="VI flag :", value="-", options=viflags)
+    viflags = ["Yes","No","Maybe","LowSNR","Bad"] # To put somewhere else in code
+    #vi_flaginput = Select(title="VI flag :", value="-", options=viflags)
+    vi_flaginput = RadioButtonGroup(labels=viflags)
 
-    add_viflag_callback = CustomJS(args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider, vi_flaginput=vi_flaginput), code="""
-        cds_targetinfo.data['VI_ongoing_flag'][ifiberslider.value]=vi_flaginput.value
+    add_viflag_callback = CustomJS(args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider, vi_flaginput=vi_flaginput, viflags=viflags, nspec=nspec), code="""
+        cds_targetinfo.data['VI_ongoing_flag'][ifiberslider.value]=viflags[vi_flaginput.active]
+   //     if(ifiberslider.value<nspec-1) {
+   //        ifiberslider.value += 1 ;
+   //     }
+   //     vi_flaginput.active = -1 // Reset once scan is done
     """)
     add_vicomment_callback = CustomJS(args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider, vi_commentinput=vi_commentinput), code="""
         cds_targetinfo.data['VI_ongoing_comment'][ifiberslider.value]=vi_commentinput.value
@@ -587,7 +592,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
     """)
     vi_commentinput.js_on_change('value',add_vicomment_callback)
     vi_nameinput.js_on_change('value',change_viname_callback)
-    vi_flaginput.js_on_change('value',add_viflag_callback)
+    vi_flaginput.js_on_click(add_viflag_callback)
 
     # save VI info to ASCII file
     # tested briefly safari chrome firefox
@@ -633,6 +638,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
     """)
     show_prev_vi_select.js_on_change('value',show_prev_vi_callback)
 
+    vi_div = Div(text="VI flag :") 
 
     #-----
     update_plot = CustomJS(
@@ -651,7 +657,8 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
             fig = fig,
             vi_commentinput=vi_commentinput,
             vi_nameinput=vi_nameinput,
-            vi_flaginput=vi_flaginput
+            vi_flaginput=vi_flaginput,
+            viflags = viflags
             ),
         code = """
         var ifiber = ifiberslider.value
@@ -666,7 +673,8 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
         if (cb_obj == ifiberslider) {
             vi_commentinput.value=targetinfo.data['VI_ongoing_comment'][ifiber] ;
             vi_nameinput.value=targetinfo.data['VI_ongoing_scanner'][ifiber] ;
-            vi_flaginput.value=targetinfo.data['VI_ongoing_flag'][ifiber] ;
+         //   vi_flaginput.value=targetinfo.data['VI_ongoing_flag'][ifiber] ;
+            vi_flaginput.active = viflags.indexOf(targetinfo.data['VI_ongoing_flag'][ifiber]) ; // -1 if nothing
         }
 
         if(targetinfo.data['z'] != undefined && cb_obj == ifiberslider) {
@@ -811,15 +819,17 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
                 ),
             widgetbox(lines_button_group),
             bk.Row(
-                widgetbox(save_vi_button,width=120),
-                widgetbox(vi_flaginput,width=100),
-                widgetbox(vi_commentinput,width=plot_width-250),
-                widgetbox(vi_nameinput,width=120)
+                widgetbox(vi_div,width=80),
+                widgetbox(vi_flaginput,width=300),
+                widgetbox(vi_commentinput,width=plot_width-500),
+                widgetbox(vi_nameinput,width=120),
                 ),
-            bk.Row(
-                widgetbox(show_prev_vi_select,width=100),
-                widgetbox(vi_info_div, width=plot_width-130)
-                )
+            widgetbox(save_vi_button,width=100)
+            ## Don't want this in principle :
+#            bk.Row(
+#                widgetbox(show_prev_vi_select,width=100),
+#                widgetbox(vi_info_div, width=plot_width-130)
+#                )
             )
     if notebook:
         bk.show(the_bokehsetup)
