@@ -43,7 +43,7 @@ if __name__ == '__main__':
     webdir = args.webdir
     if webdir is None : webdir = os.environ["DESI_WWW"]+"/users/armengau/svdc2019c" # TMP, for test
 
-    # TODO - Selection on pixels (eg. night-based)
+    # TODO - Selection on pixels (eg. only those with new data since last run)
     pixels = glob.glob( os.path.join(specprod_dir,"spectra-64/*/*") )
     pixels = [x[x.rfind("/")+1:] for x in pixels]
 

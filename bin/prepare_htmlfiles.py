@@ -1,10 +1,33 @@
-# Script to have html files/index from templates + existing images/pages created by specviewer
+#!/usr/bin/env python
+#
+# See top-level LICENSE.rst file for Copyright information
+#
+
+"""
+Write html index pages from existing pages/images produced by plotframes
+"""
+
 
 import os, glob, stat
 from jinja2 import Environment, FileSystemLoader
 
+def parse() :
 
-webdir=os.environ['HOME']+"/prospect/website"
+    parser = argparse.ArgumentParser(description="Write html index pages")
+    parser.add_argument('--webdir', help='Base directory for webpages', type=str, default=None)
+    args = parser.parse_args()
+    return args
+
+
+if __name__ == '__main__':
+
+    args = parse()
+    log = get_logger()
+
+    webdir = args.webdir
+    if webdir is None : webdir = os.environ["DESI_WWW"]+"/users/armengau/svdc2019c" # TMP, for test
+
+# UPDATE to be continued
 
 ### Exposure-based : for each expo create an index of fiber subsets, and a vignette webpage for each fiber subset 
 ## Arborescence : webdir/exposures/expoN/ =>  specviewer_expoN_fibersetM.html ; vignettes/*.png
