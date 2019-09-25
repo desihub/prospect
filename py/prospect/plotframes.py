@@ -611,7 +611,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
     # tested briefly safari chrome firefox
     # Warning text output very sensitve for # " \  ... (standard js formatting not ok)
     save_vi_button = Button(label="Download VI",button_type="success")
-    save_vi_callback = CustomJS(args=dict(cds_targetinfo=cds_targetinfo), code="""
+    save_vi_callback = CustomJS(args=dict(cds_targetinfo=cds_targetinfo, viflags=viflags), code="""
         function download(filename, text) {
             var element = document.createElement('a');
             element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
@@ -634,7 +634,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
         var za = cds_targetinfo.data['spectype'] ;
         var zb = cds_targetinfo.data['z'] ;
         for (var i=0 ; i< toto.length; i++) {
-            if (toto[i] != '-') thetext += (fc[i]+" "+fa[i]+" "+fb[i]+" "+fd[i]+" "+fe[i]+" "+za[i]+" "+zb[i].toFixed(3)+" "+titi[i]+" "+toto[i]+' "'+tutu[i]+'"'+" \\n");
+            if (viflags.includes(toto[i])) thetext += (fc[i]+" "+fa[i]+" "+fb[i]+" "+fd[i]+" "+fe[i]+" "+za[i]+" "+zb[i].toFixed(3)+" "+titi[i]+" "+toto[i]+' "'+tutu[i]+'"'+" \\n");
         }
         download("vi_result.txt",thetext) ;
     """)
