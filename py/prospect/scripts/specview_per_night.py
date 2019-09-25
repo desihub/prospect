@@ -72,13 +72,13 @@ def main(args):
                 # vifile = os.environ['HOME']+"/prospect/vilist_prototype.fits"
                 # vidata = utils_specviewer.match_vi_targets(vifile, thespec.fibermap["TARGETID"])
                 titlepage = "specviewer_night"+thenight+"_"+file_label+"_"+str(i_page)
-                savedir=webdir+"/nights/night"+thenight
-                if not os.path.exists(savedir) : 
-                    os.makedirs(savedir)
-                    os.mkdir(savedir+"/vignettes")
+                html_dir=webdir+"/nights/night"+thenight
+                if not os.path.exists(html_dir) : 
+                    os.makedirs(html_dir)
+                    os.mkdir(html_dir+"/vignettes")
             
-                plotframes.plotspectra(thespec, zcatalog=thezb, vidata=None, model=model, title=titlepage, savedir=savedir, is_coadded=False)
+                plotframes.plotspectra(thespec, zcatalog=thezb, vidata=None, model=model, title=titlepage, html_dir=html_dir, is_coadded=False)
                 for i_spec in range(thespec.num_spectra()) :
-                    saveplot = savedir+"/vignettes/night"+thenight+"_"+file_label+"_"+str(i_page)+"_"+str(i_spec)+".png"
+                    saveplot = html_dir+"/vignettes/night"+thenight+"_"+file_label+"_"+str(i_page)+"_"+str(i_spec)+".png"
                     utils_specviewer.miniplot_spectrum(thespec, i_spec, model=model, saveplot=saveplot, smoothing = args.vignette_smoothing)
 

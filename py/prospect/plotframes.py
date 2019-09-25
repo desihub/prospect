@@ -238,9 +238,20 @@ def create_model(spectra, zbest):
     return model_wave, mflux
 
 
-def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, vidata=None, savedir='.', is_coadded=True):
+def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None, savedir='.', is_coadded=True, title=None, html_dir=None):
     '''
-    TODO: document
+    Main prospect routine, creates a bokeh document from a set of spectra and fits
+   
+    Parameter
+    ---------
+    spectra : desi spectra object
+    zcatalog : FITS file of redshifts derived from the spectra. Currently supports only redrock-PCA files.
+    model : (mwave, mflux) matched to zcatalog. See create_models
+    notebook : if True, bokeh outputs the viewer to notebook, else to a (static) html page
+    vidata : VI information to be preloaded and displayed. Currently disabled.
+    is_coadded : set to True if spectra are coadds
+    title : title of produced html page and bokeh figure
+    html_dir : directory to store html page
     '''
 
     #- If inputs are frames, convert to a spectra object
@@ -260,7 +271,8 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
         bk.output_notebook()
     else :
         if title is None : title="specviewer"
-        bk.output_file(savedir+"/"+title+".html",title='DESI spectral viewer')
+        if html_dir is None : raise RuntimeError("Need html_dir")
+        bk.output_file(html_dir+"/"+title+".html", title='DESI spectral viewer')
 
     #- Gather spectra into ColumnDataSource objects for Bokeh
     nspec = spectra.num_spectra()
@@ -354,7 +366,8 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, title=None, 
     if zcatalog is not None:
         cds_targetinfo.add(zcatalog['Z'], name='z')
         cds_targetinfo.add(zcatalog['SPECTYPE'], name='spectype')
-    username='-' if "USER" not in os.environ else os.environ['USER']
+    username = '-'
+    if notebook and ("USER" in os.environ) : username = os.environ['USER']
     cds_targetinfo.add([username for i in range(nspec)], name='VI_ongoing_scanner')
     cds_targetinfo.add(['-' for i in range(nspec)], name='VI_ongoing_flag')
     cds_targetinfo.add(['-' for i in range(nspec)], name='VI_ongoing_comment')
