@@ -8,7 +8,6 @@ TODO
 * redshift model fit
 * better smoothing kernel, e.g. gaussian
 * sky? ivar? (could be useful, but makes data payload larger)
-* scanning buttons
 """
 
 import os, sys
