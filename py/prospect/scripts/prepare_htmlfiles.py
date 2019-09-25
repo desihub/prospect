@@ -1,9 +1,7 @@
-#!/usr/bin/env python
-#
-# See top-level LICENSE.rst file for Copyright information
-#
-
 """
+prospect.scripts.prepare_htmlfiles
+===================================
+
 Write html index pages from existing pages/images produced by plotframes
 """
 
@@ -25,10 +23,8 @@ def parse() :
     args = parser.parse_args()
     return args
 
+def main(args) :
 
-if __name__ == '__main__':
-
-    args = parse()
     log = get_logger()
 
     webdir = args.webdir

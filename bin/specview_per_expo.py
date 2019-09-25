@@ -1,4 +1,6 @@
 # Script to write html files based on exposures
+# It should become useless once specview_per_night works, making use of tiles dir structure
+
 
 import os, sys, glob
 import argparse

@@ -1,10 +1,9 @@
-#!/usr/bin/env python
-#
-# See top-level LICENSE.rst file for Copyright information
-#
-
 """
+prospect.scripts.specview_per_night
+===================================
+
 Write static html files from single-exposure spectra, sorted by night/exposure
+This script uses the prototype tiles datastructure in specprod_dir/tiles
 """
 
 import os, sys, glob
@@ -19,9 +18,9 @@ from desitarget.targetmask import desi_mask
 import desispec.spectra
 import desispec.frame
 
-import myspecselect # special (to be edited)
-import plotframes
-import utils_specviewer
+from prospect import myspecselect # special (to be edited)
+from prospect import plotframes
+from prospect import utils_specviewer
 
 def parse() :
 
@@ -34,9 +33,8 @@ def parse() :
     return args
 
 
-if __name__ == '__main__':
+def main(args):
 
-    args = parse()
     log = get_logger()
     specprod_dir = args.specprod_dir
     if specprod_dir is None : specprod_dir = desispec.io.specprod_root()

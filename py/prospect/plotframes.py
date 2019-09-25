@@ -34,7 +34,7 @@ import desispec.spectra
 import desispec.frame
 
 #from . import utils_specviewer
-import utils_specviewer
+from prospect import utils_specviewer
 from astropy.table import Table
 
 def _coadd(wave, flux, ivar, rdat):

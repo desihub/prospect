@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# EA May 2019
-# Functions for the DESI spectral viewer library
+"""
+Utility functions for prospect
+"""
 
 import numpy as np
 import astropy.io.fits

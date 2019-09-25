@@ -1,9 +1,7 @@
-#!/usr/bin/env python
-#
-# See top-level LICENSE.rst file for Copyright information
-#
-
 """
+prospect.scripts.specview_per_pixel
+===================================
+
 Write static html files from coadded spectra, sorted by healpixels
 """
 
@@ -19,9 +17,9 @@ from desitarget.targetmask import desi_mask
 import desispec.spectra
 import desispec.frame
 
-import myspecselect # special (to be edited)
-import plotframes
-import utils_specviewer
+from prospect import myspecselect # special (to be edited)
+from prospect import plotframes
+from prospect import utils_specviewer
 
 def parse() :
 
@@ -34,9 +32,8 @@ def parse() :
     return args
 
 
-if __name__ == '__main__':
-
-    args = parse()
+def main(args) :
+    
     log = get_logger()
     specprod_dir = args.specprod_dir
     if specprod_dir is None : specprod_dir = desispec.io.specprod_root()

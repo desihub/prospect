@@ -1,0 +1,15 @@
+#!/usr/bin/env python
+#
+# See top-level LICENSE.rst file for Copyright information
+#
+
+"""
+Write html index pages from existing static pages/images produced by other scripts
+"""
+
+import prospect.scripts.prepare_htmlfiles as prepare_htmlfiles 
+
+if __name__ == '__main__':
+    args = prepare_htmlfiles.parse()
+    prepare_htmlfiles.main(args)
+
