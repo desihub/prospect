@@ -1,0 +1,33 @@
+<HTML>
+
+<HEAD>
+<TITLE>DESI spectra - vignettes in {{ set }}</TITLE>
+</HEAD>
+
+<BODY>
+<h4> Overview of DESI spectra for {{ set }} </h4>
+{% set i_sub = i_subset | int %}
+{% set n_sub = n_subsets | int %}
+<br> Subset {{ i_subset }} / {{ n_subsets }}.
+{% if i_sub > 1 %}
+<br> <a href="vignettelist_{{ set }}_{{ i_sub-1 }}.html">prev</a>
+{% endif %}
+{% if i_sub < n_sub %}
+<br> <a href="vignettelist_{{ set }}_{{ i_sub+1 }}.html">next</a>
+{% endif %}
+<br><a href="index_{{ set }}.html">back to index</a>
+
+
+<table style="width:100%">
+<tr>
+{% for vignette in imglist %}
+<td><img src="vignettes/{{ vignette }}">
+</td>
+{% if loop.index is divisibleby(4) and not loop.last %}
+</tr><tr>
+{% endif %}
+{% endfor %}
+</tr></table>
+
+</BODY>
+</HTML>

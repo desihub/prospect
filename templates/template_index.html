@@ -1,0 +1,25 @@
+<HTML>
+
+<HEAD>
+<TITLE>Prototype DESI spectrum viewer - main index </TITLE>
+</HEAD>
+
+<BODY>
+<h1> Prototype DESI spectrum viewer - main index </h1>
+
+<h3> Sets of spectra sorted by exposure </h3>
+<ul>
+{% for expo in exposures %}
+<li><a href="exposures/{{ expo }}/index_{{ expo }}.html">{{ expo }}</a></li>
+{% endfor %}
+</ul>
+ 
+<h3> Sets of spectra sorted by pixels </h3>
+<ul>
+{% for pix in pixels %}
+<li><a href="pixels/{{ pix }}/index_{{ pix }}.html">{{ pix }}</a></li>
+{% endfor %}
+</ul>
+
+</BODY>
+</HTML>

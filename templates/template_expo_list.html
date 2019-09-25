@@ -1,0 +1,21 @@
+<HTML>
+
+<HEAD>
+<TITLE>DESI spectra in {{ expo }} </TITLE>
+</HEAD>
+
+<BODY>
+<h2> DESI spectra for exposure {{ expo }} </h2>
+<p> Spectra from individual observations.
+<br> {{ expo }} has {{ nspec }} spectra in total.
+<br> Divided into subsets sorted by fiber.
+<br><a href="../../index.html">Back to main index</a>
+
+<ul>
+{% for fiber in fiberlist %}
+<li><a href="specviewer_{{ expo }}_fiberset{{ fiber }}.html"> View fiberset {{ fiber }}</a> (vignette overview <a href="vignettelist_{{ expo }}_{{ fiber }}.html">here</a>) </li>
+{% endfor %}
+</ul>
+
+</BODY>
+</HTML>
