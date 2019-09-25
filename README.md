@@ -19,6 +19,8 @@ This repo is a rewrite of https://github.com/desihub/inspector, which itself is 
 * Shows TARGETID and targeting bits from DESI_TARGET, MWS_TARGET,
   and BGS_TARGET.
 * Highlight common emission / absorption lines.
+* Display imaging of target.
+* Buttons for saving visual inspection results before moving to next target.
 
 ## Added here but not in the original inspector
 
@@ -26,11 +28,6 @@ This repo is a rewrite of https://github.com/desihub/inspector, which itself is 
 * User-defined smoothing
 * User-defined redshift
 * Viewing spectra that don't yet have redshift fits
-
-## Currently missing (but present in the original inspector)
-
-* Imaging survey thumbnails and links.
-* Buttons for saving visual inspection results before moving to next target.
 
 ## What it doesn't do (yet)
 
