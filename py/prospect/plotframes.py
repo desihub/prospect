@@ -3,13 +3,11 @@
 
 """
 TODO
-* add image cutout
 * add target details tab
 * add code details tab (version, SPECPROD)
 * redshift model fit
 * better smoothing kernel, e.g. gaussian
 * sky? ivar? (could be useful, but makes data payload larger)
-* scanning buttons
 """
 
 import os, sys
@@ -238,10 +236,28 @@ def create_model(spectra, zbest):
     return model_wave, mflux
 
 
+def _viewer_urls(spectra, zoom=13, layer='dr8'):
+    """Return legacysurvey.org viewer URLs for all spectra.
+    """
+    u = "http://legacysurvey.org/viewer/jpeg-cutout?ra={0:f}&dec={1:f}&zoom={2:d}&layer={3}"
+    v = "http://legacysurvey.org/viewer/?ra={0:f}&dec={1:f}&zoom={2:d}&layer={3}"
+    try:
+        ra = spectra.fibermap['RA_TARGET']
+        dec = spectra.fibermap['DEC_TARGET']
+    except KeyError:
+        ra = spectra.fibermap['TARGET_RA']
+        dec = spectra.fibermap['TARGET_DEC']
+
+    return [(u.format(ra[i], dec[i], zoom, layer),
+             v.format(ra[i], dec[i], zoom, layer),
+             'RA, Dec = {0:.4f}, {1:+.4f}'.format(ra[i], dec[i]))
+            for i in range(len(ra))]
+
+
 def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None, savedir='.', is_coadded=True, title=None, html_dir=None):
     '''
     Main prospect routine, creates a bokeh document from a set of spectra and fits
-   
+
     Parameter
     ---------
     spectra : desi spectra object
@@ -365,7 +381,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
     cds_targetinfo.add(vi_info, name='vi_info')
     if zcatalog is not None:
         cds_targetinfo.add(zcatalog['Z'], name='z')
-        cds_targetinfo.add(zcatalog['SPECTYPE'], name='spectype')
+        cds_targetinfo.add(zcatalog['SPECTYPE'].astype('U{0:d}'.format(zcatalog['SPECTYPE'].dtype.itemsize)), name='spectype')
     username = '-'
     if notebook and ("USER" in os.environ) : username = os.environ['USER']
     cds_targetinfo.add([username for i in range(nspec)], name='VI_ongoing_scanner')
@@ -399,7 +415,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
         tools=tools, toolbar_location='above', y_range=(ymin, ymax))
     fig.toolbar.active_drag = fig.tools[1]    #- box zoom
     fig.toolbar.active_scroll = fig.tools[2]  #- wheel zoom
-    fig.xaxis.axis_label = u'Wavelength [Å]'
+    fig.xaxis.axis_label = 'Wavelength [Å]'
     fig.yaxis.axis_label = 'Flux'
     fig.xaxis.axis_label_text_font_style = 'normal'
     fig.yaxis.axis_label_text_font_style = 'normal'
@@ -449,6 +465,27 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
         """)
 
     fig.js_on_event(bokeh.events.MouseMove, zoom_callback)
+
+    #
+    # Targeting image
+    #
+    imfig = bk.figure(width=200, height=200,
+                      x_range=(0, 256), y_range=(0, 256),
+                      x_axis_location=None, y_axis_location=None,
+                      output_backend="webgl",
+                      toolbar_location=None, tools=[])
+    imfig.min_border_left = 0
+    imfig.min_border_right = 0
+    imfig.min_border_top = 0
+    imfig.min_border_bottom = 0
+
+    imfig_urls = _viewer_urls(spectra)
+    imfig_source = ColumnDataSource(data=dict(url=[imfig_urls[0][0]],
+                                              txt=[imfig_urls[0][2]]))
+
+    imfig_img = imfig.image_url('url', source=imfig_source, x=1, y=1, w=256, h=256, anchor='bottom_left')
+    imfig_txt = imfig.text(10, 256-30, text='txt', source=imfig_source,
+                           text_color='yellow', text_font_size='8pt')
 
     #-----
     #- Emission and absorption lines
@@ -545,6 +582,11 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
         """
     )
     waveframe_buttons.js_on_click(plotrange_callback)
+
+    imfig_callback = CustomJS(args=dict(urls=imfig_urls,
+                                        ifiberslider=ifiberslider),
+                              code='''window.open(urls[ifiberslider.value][1], "_blank");''')
+    imfig.js_on_event('tap', imfig_callback)
 
     smootherslider = Slider(start=0, end=31, value=0, step=1.0, title='Gaussian Sigma Smooth')
     target_info_div = Div(text=target_info[0])
@@ -651,7 +693,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
     """)
     show_prev_vi_select.js_on_change('value',show_prev_vi_callback)
 
-    vi_div = Div(text="VI flag :") 
+    vi_div = Div(text="VI flag :")
 
     #-----
     update_plot = CustomJS(
@@ -668,6 +710,8 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
             dzslider=dzslider,
             lines_button_group = lines_button_group,
             fig = fig,
+            imfig_source=imfig_source,
+            imfig_urls=imfig_urls,
             vi_commentinput=vi_commentinput,
             vi_nameinput=vi_nameinput,
             vi_flaginput=vi_flaginput,
@@ -714,7 +758,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
             }
             var kernel_offset = Math.floor(kernel.length/2)
         }
-        
+
         // Smooth plot and recalculate ymin/ymax
         // TODO: add smoother function to reduce duplicated code
         var ymin = 0.0
@@ -784,7 +828,12 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
             fig.y_range.start = ymin * 0.6
         }
         fig.y_range.end = ymax * 1.4
-                
+        //
+        // update target image
+        //
+        imfig_source.data.url[0] = imfig_urls[ifiber][0]
+        imfig_source.data.txt[0] = imfig_urls[ifiber][2]
+        imfig_source.change.emit()
     """)
     smootherslider.js_on_change('value', update_plot)
     ifiberslider.js_on_change('value', update_plot)
@@ -821,7 +870,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
         widgetbox(next_button, width=navigation_button_width+20),
         widgetbox(ifiberslider, width=slider_width-20))
     the_bokehsetup = bk.Column(
-            bk.Row(fig, zoomfig),
+            bk.Row(fig, bk.Column(imfig, zoomfig)),
             widgetbox(target_info_div, width=plot_width),
             navigator,
             widgetbox(smootherslider, width=plot_width//2),
@@ -848,7 +897,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
         bk.show(the_bokehsetup)
     else:
         bk.save(the_bokehsetup)
-    
+
 #     bk.show(bk.Column(
 #         bk.Row(fig, zoomfig),
 #         widgetbox(target_info_div, width=plot_width),
@@ -1025,31 +1074,30 @@ if __name__ == '__main__':
     parser.add_argument('--basedir', help='Path to spectra reltive to DESI_ROOT', type=str, default="datachallenge/reference_runs/18.6/spectro/redux/mini/spectra-64")
     args = parser.parse_args()
     basedir = os.environ['DESI_ROOT']+"/"+args.basedir+"/"+args.healpixel[0:2]+"/"+args.healpixel+"/"
-    
+
     specfile = basedir+'spectra-64-'+args.healpixel+'.fits'
     zbfile = specfile.replace('spectra-64-', 'zbest-64-')
 
     #- Original remapping of individual spectra to zbest
     # spectra = desispec.io.read_spectra(specfile)
     # zbest_raw = Table.read(zbfile, 'ZBEST')
-    
+
     # # EA : all is best is zbest matches spectra row-by-row.
     # zbest=Table(dtype=zbest_raw.dtype)
     # for i in range(spectra.num_spectra()) :
     #     ww, = np.where((zbest_raw['TARGETID'] == spectra.fibermap['TARGETID'][i]))
     #     if len(ww)!=1 : print("!! Issue with zbest table !!")
     #     zbest.add_row(zbest_raw[ww[0]])
-    
+
     #- Coadd on the fly
     individual_spectra = desispec.io.read_spectra(specfile)
     spectra = coadd_targets(individual_spectra)
     zbest = Table.read(zbfile, 'ZBEST')
 
     mwave, mflux = create_model(spectra, zbest)
-    
+
     ## VI "catalog" - location to define later
     vifile = os.environ['HOME']+"/prospect/vilist_prototype.fits"
     vidata = utils_specviewer.match_vi_targets(vifile, spectra.fibermap['TARGETID'])
-    
-    plotspectra(spectra, zcatalog=zbest, vidata=vidata, model=(mwave, mflux), title=os.path.basename(specfile))
 
+    plotspectra(spectra, zcatalog=zbest, vidata=vidata, model=(mwave, mflux), title=os.path.basename(specfile))
