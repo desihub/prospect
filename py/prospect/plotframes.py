@@ -800,21 +800,19 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
         var ymax = 0.0
         for (var i=0; i<spectra.length; i++) {
             var data = spectra[i].data
-            var plotflux = data['plotflux']
             var origflux = data['origflux'+ifiber]
             if ('plotnoise' in data) {
-                var plotnoise = data['plotnoise']
                 var orignoise = data['orignoise'+ifiber]
             }
             if (nsmooth == 0) {
-                plotflux = origflux.slice()
+                data['plotflux'] = origflux.slice()
                 if ('plotnoise' in data) {
-                    plotnoise = orignoise.slice()
+                    data['plotnoise'] = orignoise.slice()
                 }
             } else {
-                plotflux = smooth_data(origflux, kernel, kernel_offset)
+                data['plotflux'] = smooth_data(origflux, kernel, kernel_offset)
                 if ('plotnoise' in data) {
-                    plotnoise = smooth_data(orignoise, kernel, kernel_offset)
+                    data['plotnoise'] = smooth_data(orignoise, kernel, kernel_offset)
                 }
             }
             spectra[i].change.emit()
@@ -826,12 +824,11 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
 
         // update model
         if(model) {
-            var plotflux = model.data['plotflux']
             var origflux = model.data['origflux'+ifiber]
             if (nsmooth == 0) {
-                plotflux = origflux.slice()
+                model.data['plotflux'] = origflux.slice()
             } else {
-                plotflux = smooth_data(origflux, kernel, kernel_offset)
+                model.data['plotflux'] = smooth_data(origflux, kernel, kernel_offset)
             }
             model.change.emit()
         }
