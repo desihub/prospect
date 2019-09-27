@@ -817,7 +817,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
             }
             spectra[i].change.emit()
 
-            tmp = get_y_minmax(0.01, 0.99, plotflux)
+            tmp = get_y_minmax(0.01, 0.99, data['plotflux'])
             ymin = Math.min(ymin, tmp[0])
             ymax = Math.max(ymax, tmp[1])
         }
