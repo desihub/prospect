@@ -254,7 +254,7 @@ def _viewer_urls(spectra, zoom=13, layer='dr8'):
             for i in range(len(ra))]
 
 
-def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None, savedir='.', is_coadded=True, title=None, html_dir=None):
+def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None, savedir='.', is_coadded=True, title=None, html_dir=None, with_noise=True):
     '''
     Main prospect routine, creates a bokeh document from a set of spectra and fits
 
@@ -268,6 +268,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
     is_coadded : set to True if spectra are coadds
     title : title of produced html page and bokeh figure
     html_dir : directory to store html page
+    with_noise : include noise for each spectrum
     '''
 
     #- If inputs are frames, convert to a spectra object
@@ -307,8 +308,12 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
         for i in range(nspec):
             key = 'origflux'+str(i)
             cdsdata[key] = spectra.flux[band][i]
+            if with_noise :
+                key = 'orignoise'+str(i)
+                cdsdata[key] = 1/np.sqrt(spectra.ivar[band][i])
 
         cdsdata['plotflux'] = cdsdata['origflux0']
+        if with_noise : cdsdata['plotnoise'] = cdsdata['orignoise0'] 
 
         cds_spectra.append(
             bk.ColumnDataSource(cdsdata, name=band)
@@ -420,25 +425,30 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
     fig.xaxis.axis_label_text_font_style = 'normal'
     fig.yaxis.axis_label_text_font_style = 'normal'
     colors = dict(b='#1f77b4', r='#d62728', z='maroon')
+    noise_colors = dict(b='greenyellow', r='green', z='forestgreen') # TODO test several and choose
 
     data_lines = list()
     for spec in cds_spectra:
         lx = fig.line('plotwave', 'plotflux', source=spec, line_color=colors[spec.name])
         data_lines.append(lx)
+    
+    if with_noise :
+        noise_lines = list()
+        for spec in cds_spectra :
+            lx = fig.line('plotwave', 'plotnoise', source=spec, line_color=noise_colors[spec.name])
+            noise_lines.append(lx)
 
     if cds_model is not None:
         model_lines = list()
         lx = fig.line('plotwave', 'plotflux', source=cds_model, line_color='black')
         model_lines.append(lx)
 
-        legend = Legend(items=[
-            ("data",  data_lines[-1::-1]),  #- reversed to get blue as lengend entry
-            ("model", model_lines),
-        ])
-    else:
-        legend = Legend(items=[
-            ("data",  data_lines[-1::-1]),  #- reversed to get blue as lengend entry
-        ])
+    legend_items = [("data",  data_lines[-1::-1])] #- reversed to get blue as lengend entry
+    if cds_model is not None : 
+        legend_items.append(("model", model_lines))
+    if with_noise : 
+        legend_items.append(("noise", noise_lines[-1::-1])) # same as for data_lines
+    legend = Legend(items=legend_items)
 
     fig.add_layout(legend, 'center')
     fig.legend.click_policy = 'hide'    #- or 'mute'
@@ -452,6 +462,8 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
     for spec in cds_spectra:
         zoomfig.line('plotwave', 'plotflux', source=spec,
             line_color=colors[spec.name], line_width=1, line_alpha=1.0)
+        if with_noise :
+            zoomfig.line('plotwave', 'plotnoise', source=spec, line_color=noise_colors[spec.name], line_width=1, line_alpha=1)
 
     if cds_model is not None:
         zoomfig.line('plotwave', 'plotflux', source=cds_model, line_color='black')
@@ -511,7 +523,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
 #     else:
 #         ifiberslider.title = 'Target'
 
-    zslider_callback  = CustomJS(
+    zslider_callback  = CustomJS( # TODO include noise
         args=dict(
             spectra=cds_spectra,
             model=cds_model,
@@ -759,32 +771,47 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
             var kernel_offset = Math.floor(kernel.length/2)
         }
 
+        function smooth_data(data_in, kernel, kernel_offset) {
+            var smoothed_data = data_in.slice()
+            for (var j=0; j<data.length; j++) {
+                smoothed_data[j] = 0.0
+                var weight = 0.0
+                // TODO: speed could be improved by moving `if` out of loop
+                for (var k=0; k<kernel.length; k++) {
+                    var m = j+k-kernel_offset
+                    if((m >= 0) && (m < data.length)) {
+                        var fx = data_in[m]
+                        if(fx == fx) {
+                            smoothed_data[j] = smoothed_data[j] + fx * kernel[k]
+                            weight += kernel[k]
+                        }
+                    }
+                }
+                smoothed_data[j] = smoothed_data[j] / weight
+            }
+            return smoothed_data
+        }
+
         // Smooth plot and recalculate ymin/ymax
-        // TODO: add smoother function to reduce duplicated code
         var ymin = 0.0
         var ymax = 0.0
         for (var i=0; i<spectra.length; i++) {
             var data = spectra[i].data
             var plotflux = data['plotflux']
             var origflux = data['origflux'+ifiber]
-            for (var j=0; j<plotflux.length; j++) {
-                if(nsmooth == 0) {
-                    plotflux[j] = origflux[j]
-                } else {
-                    plotflux[j] = 0.0
-                    var weight = 0.0
-                    // TODO: speed could be improved by moving `if` out of loop
-                    for (var k=0; k<kernel.length; k++) {
-                        var m = j+k-kernel_offset
-                        if((m >= 0) && (m < plotflux.length)) {
-                            var fx = origflux[m]
-                            if(fx == fx) {
-                                plotflux[j] = plotflux[j] + fx * kernel[k]
-                                weight += kernel[k]
-                            }
-                        }
-                    }
-                    plotflux[j] = plotflux[j] / weight
+            if ('plotnoise' in data) {
+                var plotnoise = data['plotnoise']
+                var orignoise = data['orignoise'+ifiber]
+            }
+            if (nsmooth == 0) {
+                plotflux = origflux.slice()
+                if ('plotnoise' in data) {
+                    plotnoise = orignoise.slice()
+                }
+            } else {
+                plotflux = smooth_data(origflux, kernel, kernel_offset)
+                if ('plotnoise' in data) {
+                    plotnoise = smooth_data(orignoise, kernel, kernel_offset)
                 }
             }
             spectra[i].change.emit()
@@ -798,25 +825,10 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
         if(model) {
             var plotflux = model.data['plotflux']
             var origflux = model.data['origflux'+ifiber]
-            for (var j=0; j<plotflux.length; j++) {
-                if(nsmooth == 0) {
-                    plotflux[j] = origflux[j]
-                } else {
-                    plotflux[j] = 0.0
-                    var weight = 0.0
-                    // TODO: speed could be improved by moving `if` out of loop
-                    for (var k=0; k<kernel.length; k++) {
-                        var m = j+k-kernel_offset
-                        if((m >= 0) && (m < plotflux.length)) {
-                            var fx = origflux[m]
-                            if(fx == fx) {
-                                plotflux[j] = plotflux[j] + fx * kernel[k]
-                                weight += kernel[k]
-                            }
-                        }
-                    }
-                    plotflux[j] = plotflux[j] / weight
-                }
+            if (nsmooth == 0) {
+                plotflux = origflux.slice()
+            } else {
+                plotflux = smooth_data(origflux, kernel, kernel_offset)
             }
             model.change.emit()
         }
