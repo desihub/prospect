@@ -310,7 +310,10 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
             cdsdata[key] = spectra.flux[band][i]
             if with_noise :
                 key = 'orignoise'+str(i)
-                cdsdata[key] = 1/np.sqrt(spectra.ivar[band][i])
+                noise = np.zeros(len(spectra.ivar[band][i]))
+                w, = np.where( (spectra.ivar[band][i] > 0))
+                noise[w] = 1/np.sqrt(spectra.ivar[band][i][w])
+                cdsdata[key] = noise
 
         cdsdata['plotflux'] = cdsdata['origflux0']
         if with_noise : cdsdata['plotnoise'] = cdsdata['orignoise0'] 
@@ -773,13 +776,13 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
 
         function smooth_data(data_in, kernel, kernel_offset) {
             var smoothed_data = data_in.slice()
-            for (var j=0; j<data.length; j++) {
+            for (var j=0; j<data_in.length; j++) {
                 smoothed_data[j] = 0.0
                 var weight = 0.0
                 // TODO: speed could be improved by moving `if` out of loop
                 for (var k=0; k<kernel.length; k++) {
                     var m = j+k-kernel_offset
-                    if((m >= 0) && (m < data.length)) {
+                    if((m >= 0) && (m < data_in.length)) {
                         var fx = data_in[m]
                         if(fx == fx) {
                             smoothed_data[j] = smoothed_data[j] + fx * kernel[k]
