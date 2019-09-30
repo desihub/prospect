@@ -110,7 +110,6 @@ def main(args) :
             pixel_dir = os.path.join(webdir,"pixels",pix)
             prepare_subdir(pixel_dir, pix, template_pixellist, template_vignettelist)
             log.info("Subdirectory done : "+pix)
-
     else : pixels = [""]
 
     if args.targets :
@@ -121,9 +120,8 @@ def main(args) :
                 "LRG" : "lrg_targets",
                 "QSO" : "qso_targets"}
         for target_cat, target_dir in target_dict.items() :
-            pixels = os.listdir( os.path.join(webdir,target_dir) )
-            target_pixels[target_cat] = pixels
-            for pix in pixels :
+            target_pixels[target_cat] = os.listdir( os.path.join(webdir,target_dir) )
+            for pix in target_pixels[target_cat] :
                 pixel_dir = os.path.join(webdir,target_dir,pix)
                 prepare_subdir(pixel_dir, pix, template_targetlist, template_vignettelist, target=target_cat )
                 log.info("Subdirectory done : "+pix)

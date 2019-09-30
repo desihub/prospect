@@ -123,8 +123,12 @@ def miniplot_spectrum(spectra, i_spec, model=None, saveplot=None, smoothing=-1) 
         mflux = scipy.ndimage.filters.gaussian_filter1d(mflux, sigma=smoothing, mode='nearest')[int(smoothing):-int(smoothing)]
     
     colors = dict(b='#1f77b4', r='#d62728', z='maroon')
+    # for visibility, do not plot near-edge of band data (noise is high there):
+    waverange = dict(b=[3500,5800], r=[5800,7600], z=[7600,9900])
     for spec in data :
-        plt.plot(spec['wave'],spec['flux'],c=colors[spec['band']])
+        band = spec['band']
+        w, = np.where( (spec['wave']>=waverange[band][0]) & (spec['wave']<=waverange[band][1]) )
+        plt.plot(spec['wave'][w],spec['flux'][w],c=colors[band])
     if model is not None :
         plt.plot(mwave, mflux, c='k')
     # No label to save space
