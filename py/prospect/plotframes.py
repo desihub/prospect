@@ -526,7 +526,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
 #     else:
 #         ifiberslider.title = 'Target'
 
-    zslider_callback  = CustomJS( # TODO include noise
+    zslider_callback  = CustomJS(
         args=dict(
             spectra=cds_spectra,
             model=cds_model,

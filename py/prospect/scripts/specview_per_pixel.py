@@ -25,6 +25,8 @@ def parse() :
 
     parser = argparse.ArgumentParser(description='Create pixel-based static html pages for the spectral viewer')
     parser.add_argument('--specprod_dir', help='overrides $DESI_SPECTRO_REDUX/$SPECPROD/', type=str, default=None)
+    parser.add_argument('--pixel_list', help='ASCII file providing list of pixels', type=str, default=None)
+    parser.add_argument('--mask', help='Select only objects with a given DESI target mask', type=str, default=None)
     parser.add_argument('--nspecperfile', help='Number of spectra in each html page', type=int, default=50)
     parser.add_argument('--webdir', help='Base directory for webpages', type=str, default=None)
     parser.add_argument('--vignette_smoothing', help='Smoothing of the vignette images (-1 : no smoothing)', type=float, default=10)
@@ -39,12 +41,15 @@ def main(args) :
     if specprod_dir is None : specprod_dir = desispec.io.specprod_root()
     webdir = args.webdir
     if webdir is None : webdir = os.environ["DESI_WWW"]+"/users/armengau/svdc2019c" # TMP, for test
+    if args.mask is not None :
+        assert ( args.mask in desi_mask.names() ) 
 
-    # TODO - Selection on pixels (eg. only those with new data since last run)
-    pixels = glob.glob( os.path.join(specprod_dir,"spectra-64/*/*") )
-    pixels = [x[x.rfind("/")+1:] for x in pixels]
-
-    pixels = pixels[0:2] # TMP, for test
+    # TODO - Selection on pixels based on existing specviewer pages
+    if args.pixel_list is None :
+        pixels = glob.glob( os.path.join(specprod_dir,"spectra-64/*/*") )
+        pixels = [x[x.rfind("/")+1:] for x in pixels]
+    else :
+        pixels = np.loadtxt(args.pixel_list, dtype=str)
 
     # Loop on pixels
     for pixel in pixels :
@@ -54,7 +59,22 @@ def main(args) :
         individual_spectra = desispec.io.read_spectra(thefile)
         spectra = plotframes.coadd_targets(individual_spectra)
         zbfile = thefile.replace('spectra-64-', 'zbest-64-')
-        zbest = Table.read(zbfile, 'ZBEST')
+        if os.path.isfile(zbfile) :
+            zbest = Table.read(zbfile, 'ZBEST')
+        else :
+            log.info("No associated zbest file found : skipping pixel")
+            continue
+
+        # Mask selection
+        if args.mask is not None :
+            w, = np.where( (spectra.fibermap['DESI_TARGET'] & desi_mask[args.mask]) )
+            if len(w) == 0 :
+                log.info(" * No "+args.mask+" target in this pixel")
+                continue
+            else :
+                targetids = spectra.fibermap['TARGETID'][w]
+                spectra = spectra.select(targets=targetids)
+
         # Handle several html pages per pixel : sort by TARGETID
         # TODO - Find a more useful sort ?
         nbpages = int(np.ceil((spectra.num_spectra()/args.nspecperfile)))
@@ -72,7 +92,7 @@ def main(args) :
             # vidata = utils_specviewer.match_vi_targets(vifile, thespec.fibermap["TARGETID"])
             titlepage = "specviewer_pix"+pixel+"_"+str(i_page)
             model = plotframes.create_model(thespec, thezb)
-            html_dir=webdir+"/pixels/pix"+pixel
+            html_dir = os.path.join(webdir,"pix"+pixel)
             if not os.path.exists(html_dir) : 
                 os.makedirs(html_dir)
                 os.mkdir(html_dir+"/vignettes")

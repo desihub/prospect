@@ -19,9 +19,41 @@ def parse() :
     parser.add_argument('--webdir', help='Base directory for webpages', type=str, default=None)
     parser.add_argument('--template_dir', help='Template directory', type=str, default=None)
     parser.add_argument('--pixels', help='Pixel-based arborescence', action='store_true')
+    parser.add_argument('--targets', help='Target-based arborescence', action='store_true')
     parser.add_argument('--nights', help='Night-based arborescence', action='store_true')
     args = parser.parse_args()
     return args
+
+
+def prepare_subdir(subdir, pix, template_pixellist, template_vignettelist) :
+    # In progress. To edit => avoid duplicate
+
+    spec_pages = glob.glob( subdir+"/specviewer_"+pix+"_*.html" )
+    subsets = [ x[len(subdir+"/specviewer_"+pix)+1:-5] for x in spec_pages ]
+    subsets.sort(key=int)
+    img_list = glob.glob( subdir+"/vignettes/*.png" )
+    nspec = len(img_list)
+    pagetext = template_pixellist.render(pixel=pix, subsets=subsets, nspec=nspec)
+    with open( os.path.join(subdir,"index_"+pix+".html"), "w") as fh:
+        fh.write(pagetext)
+        fh.close()
+    for subset in subsets :
+        img_sublist = [ os.path.basename(x) for x in img_list if pix+"_"+subset in x ]
+        pagetext = template_vignettelist.render(set=pix, i_subset=subset, n_subsets=len(subsets), imglist=img_sublist)
+        with open( os.path.join(subdir,"vignettelist_"+pix+"_"+subset+".html"), "w") as fh:
+            fh.write(pagetext)
+            fh.close()
+    for thedir in [subdir, os.path.join(subdir,"vignettes") ] :
+        st = os.stat(thedir)
+        os.chmod(thedir, st.st_mode | stat.S_IROTH | stat.S_IXOTH) # "chmod a+rx "
+    for x in glob.glob(subdir+"/*.html") :
+        st = os.stat(x)
+        os.chmod(x, st.st_mode | stat.S_IROTH) # "chmod a+r "
+    for x in glob.glob(subdir+"/vignettes/*.png") :
+        st = os.stat(x)
+        os.chmod(x, st.st_mode | stat.S_IROTH) # "chmod a+r "
+    log.info("Subdirectory done : "+pix)
+
 
 def main(args) :
 
@@ -66,43 +98,38 @@ def main(args) :
             for thedir in [basedir,basedir+"/vignettes"] : os.system("chmod a+rx "+thedir)
             for x in glob.glob(basedir+"/*.html") : os.system("chmod a+r "+x)
             for x in glob.glob(basedir+"/vignettes/*.png") : os.system("chmod a+r "+x)
+    else : exposures = [""]
 
     if args.pixels :
-    
         pixels = os.listdir( os.path.join(webdir,"pixels") )
         for pix in pixels :
             pixel_dir = os.path.join(webdir,"pixels",pix)
-            spec_pages = glob.glob( pixel_dir+"/specviewer_"+pix+"_*.html" )
-            subsets = [ x[len(pixel_dir+"/specviewer_"+pix)+1:-5] for x in spec_pages ]
-            subsets.sort(key=int)
-            img_list = glob.glob( pixel_dir+"/vignettes/*.png" )
-            nspec = len(img_list)
-            pagetext = template_pixellist.render(pixel=pix, subsets=subsets, nspec=nspec)
-            with open( os.path.join(pixel_dir,"index_"+pix+".html"), "w") as fh:
-                fh.write(pagetext)
-                fh.close()
-            for subset in subsets :
-                img_sublist = [ os.path.basename(x) for x in img_list if pix+"_"+subset in x ]
-                pagetext = template_vignettelist.render(set=pix, i_subset=subset, n_subsets=len(subsets), imglist=img_sublist)
-                with open( os.path.join(pixel_dir,"vignettelist_"+pix+"_"+subset+".html"), "w") as fh:
-                    fh.write(pagetext)
-                    fh.close()
-            for thedir in [pixel_dir, os.path.join(pixel_dir,"vignettes") ] : 
-                st = os.stat(thedir)
-                os.chmod(thedir, st.st_mode | stat.S_IROTH | stat.S_IXOTH) # "chmod a+rx "
-            for x in glob.glob(pixel_dir+"/*.html") : 
-                st = os.stat(x)
-                os.chmod(x, st.st_mode | stat.S_IROTH) # "chmod a+r "
-            for x in glob.glob(pixel_dir+"/vignettes/*.png") : 
-                st = os.stat(x)
-                os.chmod(x, st.st_mode | stat.S_IROTH) # "chmod a+r "
-            log.info("pixel done : "+pix)
+            prepare_subdir(pixel_dir, pix, template_pixellist, template_vignettelist)
+    else : pixels = [""]
 
-        pagetext = template_index.render(pixels=pixels, exposures=[""]) # TODO complete exposures 
-        indexfile = os.path.join(webdir,"index.html")
-        with open(indexfile, "w") as fh:
-            fh.write(pagetext)
-            fh.close()
-            st = os.stat(indexfile)
-            os.chmod(indexfile, st.st_mode | stat.S_IROTH) # "chmod a+r"
+    if args.targets :
+        target_pixels = dict()
+        target_dict = dict( # TODO locate elsewhere - no hardcode
+                {"BGS_ANY" : "bgs_targets"},
+                {"ELG" : "elg_targets"},
+                {"LRG" : "lrg_targets"},
+                {"QSO" : "qso_targets"})
+        for target_cat, target_dir in target_dict.items() :
+            pixels = os.listdir( os.path.join(webdir,target_dir,"pixels") )
+            target_pixels[target_cat] = pixels
+            for pix in pixels :
+                pixel_dir = os.path.join(webdir,target_dir,"pixels",pix)
+                prepare_subdir(pixel_dir, pix, template_pixellist, template_vignettelist)
+    else : target_pixels={'BGS_ANY':[''],'ELG':[''],'LRG':[''],'QSO':['']}
+
+
+    # Main index # TODO improve template handling target-based pages
+    pagetext = template_index.render(pixels=pixels, exposures=exposures, bgs_pixels=target_pixels['BGS_ANY'], 
+            elg_pixels=target_pixels['ELG'], lrg_pixels=target_pixels['LRG'], qso_pixels=target_pixels['QSO']) 
+    indexfile = os.path.join(webdir,"index.html")
+    with open(indexfile, "w") as fh:
+        fh.write(pagetext)
+        fh.close()
+        st = os.stat(indexfile)
+        os.chmod(indexfile, st.st_mode | stat.S_IROTH) # "chmod a+r"
 
