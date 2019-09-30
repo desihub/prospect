@@ -25,7 +25,7 @@ def parse() :
     return args
 
 
-def prepare_subdir(subdir, pix, template_pixellist, template_vignettelist) :
+def prepare_subdir(subdir, pix, template_index, template_vignette, target=None) :
     # In progress. To edit => avoid duplicate
 
     spec_pages = glob.glob( subdir+"/specviewer_"+pix+"_*.html" )
@@ -33,13 +33,17 @@ def prepare_subdir(subdir, pix, template_pixellist, template_vignettelist) :
     subsets.sort(key=int)
     img_list = glob.glob( subdir+"/vignettes/*.png" )
     nspec = len(img_list)
-    pagetext = template_pixellist.render(pixel=pix, subsets=subsets, nspec=nspec)
+    if target is None :
+        pagetext = template_index.render(pixel=pix, subsets=subsets, nspec=nspec)
+    else :
+        pagetext = template_index.render(pixel=pix, subsets=subsets, nspec=nspec, target=target)
+
     with open( os.path.join(subdir,"index_"+pix+".html"), "w") as fh:
         fh.write(pagetext)
         fh.close()
     for subset in subsets :
         img_sublist = [ os.path.basename(x) for x in img_list if pix+"_"+subset in x ]
-        pagetext = template_vignettelist.render(set=pix, i_subset=subset, n_subsets=len(subsets), imglist=img_sublist)
+        pagetext = template_vignette.render(set=pix, i_subset=subset, n_subsets=len(subsets), imglist=img_sublist)
         with open( os.path.join(subdir,"vignettelist_"+pix+"_"+subset+".html"), "w") as fh:
             fh.write(pagetext)
             fh.close()
@@ -52,7 +56,6 @@ def prepare_subdir(subdir, pix, template_pixellist, template_vignettelist) :
     for x in glob.glob(subdir+"/vignettes/*.png") :
         st = os.stat(x)
         os.chmod(x, st.st_mode | stat.S_IROTH) # "chmod a+r "
-    log.info("Subdirectory done : "+pix)
 
 
 def main(args) :
@@ -68,6 +71,7 @@ def main(args) :
     template_index = env.get_template('template_index.html')
     template_expolist = env.get_template('template_expo_list.html')
     template_pixellist = env.get_template('template_pixel_list.html')
+    template_targetlist = env.get_template('template_target_list.html')
     template_vignettelist = env.get_template('template_vignettelist.html')
 
     if args.nights :
@@ -105,21 +109,24 @@ def main(args) :
         for pix in pixels :
             pixel_dir = os.path.join(webdir,"pixels",pix)
             prepare_subdir(pixel_dir, pix, template_pixellist, template_vignettelist)
+            log.info("Subdirectory done : "+pix)
+
     else : pixels = [""]
 
     if args.targets :
         target_pixels = dict()
-        target_dict = dict( # TODO locate elsewhere - no hardcode
-                {"BGS_ANY" : "bgs_targets"},
-                {"ELG" : "elg_targets"},
-                {"LRG" : "lrg_targets"},
-                {"QSO" : "qso_targets"})
+        target_dict = { # TODO locate elsewhere - no hardcode
+                "BGS_ANY" : "bgs_targets",
+                "ELG" : "elg_targets",
+                "LRG" : "lrg_targets",
+                "QSO" : "qso_targets"}
         for target_cat, target_dir in target_dict.items() :
-            pixels = os.listdir( os.path.join(webdir,target_dir,"pixels") )
+            pixels = os.listdir( os.path.join(webdir,target_dir) )
             target_pixels[target_cat] = pixels
             for pix in pixels :
-                pixel_dir = os.path.join(webdir,target_dir,"pixels",pix)
-                prepare_subdir(pixel_dir, pix, template_pixellist, template_vignettelist)
+                pixel_dir = os.path.join(webdir,target_dir,pix)
+                prepare_subdir(pixel_dir, pix, template_targetlist, template_vignettelist, target=target_cat )
+                log.info("Subdirectory done : "+pix)
     else : target_pixels={'BGS_ANY':[''],'ELG':[''],'LRG':[''],'QSO':['']}
 
 
