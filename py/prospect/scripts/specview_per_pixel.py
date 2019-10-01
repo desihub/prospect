@@ -75,7 +75,7 @@ def main(args) :
         # Mask selection
         if args.mask is not None :
             if args.sv :
-                w, = np.where( (spectra.fibermap['SV1_DESI_TARGET'] & desi_mask_sv1[args.mask] )
+                w, = np.where( (spectra.fibermap['SV1_DESI_TARGET'] & desi_mask_sv1[args.mask]) )
             else :
                 w, = np.where( (spectra.fibermap['DESI_TARGET'] & desi_mask[args.mask]) )
             if len(w) == 0 :

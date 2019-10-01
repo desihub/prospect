@@ -102,7 +102,7 @@ def main(args) :
             for thedir in [basedir,basedir+"/vignettes"] : os.system("chmod a+rx "+thedir)
             for x in glob.glob(basedir+"/*.html") : os.system("chmod a+r "+x)
             for x in glob.glob(basedir+"/vignettes/*.png") : os.system("chmod a+r "+x)
-    else : exposures = [""]
+    else : exposures = None
 
     if args.pixels :
         pixels = os.listdir( os.path.join(webdir,"pixels") )
@@ -110,7 +110,7 @@ def main(args) :
             pixel_dir = os.path.join(webdir,"pixels",pix)
             prepare_subdir(pixel_dir, pix, template_pixellist, template_vignettelist)
             log.info("Subdirectory done : "+pix)
-    else : pixels = [""]
+    else : pixels = None
 
     if args.targets :
         target_pixels = dict()
@@ -125,7 +125,7 @@ def main(args) :
                 pixel_dir = os.path.join(webdir,target_dir,pix)
                 prepare_subdir(pixel_dir, pix, template_targetlist, template_vignettelist, target=target_cat )
                 log.info("Subdirectory done : "+pix)
-    else : target_pixels={'BGS_ANY':[''],'ELG':[''],'LRG':[''],'QSO':['']}
+    else : target_pixels={'BGS_ANY':None,'ELG':None,'LRG':None,'QSO':None}
 
 
     # Main index # TODO improve template handling target-based pages
