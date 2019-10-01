@@ -28,6 +28,7 @@ import bokeh.events
 
 import desispec.io
 from desitarget.targetmask import desi_mask
+from desitarget.sv1.sv1_targetmask import desi_mask as desi_mask_sv1
 import desispec.spectra
 import desispec.frame
 
@@ -254,7 +255,7 @@ def _viewer_urls(spectra, zoom=13, layer='dr8'):
             for i in range(len(ra))]
 
 
-def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None, savedir='.', is_coadded=True, title=None, html_dir=None, with_noise=True):
+def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None, savedir='.', is_coadded=True, title=None, html_dir=None, with_noise=True, sv=False):
     '''
     Main prospect routine, creates a bokeh document from a set of spectra and fits
 
@@ -269,6 +270,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
     title : title of produced html page and bokeh figure
     html_dir : directory to store html page
     with_noise : include noise for each spectrum
+    sv : if True, will use SV1_DESI_TARGET instead of DESI_TARGET
     '''
 
     #- If inputs are frames, convert to a spectra object
@@ -366,7 +368,10 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
     target_info = list()
     vi_info = list()
     for i, row in enumerate(spectra.fibermap):
-        target_bit_names = ' '.join(desi_mask.names(row['DESI_TARGET']))
+        if sv :
+            target_bit_names = ' '.join(desi_mask_sv1.names(row['SV1_DESI_TARGET']))
+        else :
+            target_bit_names = ' '.join(desi_mask.names(row['DESI_TARGET']))
         txt = 'Target {}: {}'.format(row['TARGETID'], target_bit_names)
         if zcatalog is not None:
             txt += '<BR/>{} z={:.4f} ± {:.4f}  ZWARN={}'.format(
