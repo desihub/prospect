@@ -32,6 +32,7 @@ def parse() :
     parser.add_argument('--webdir', help='Base directory for webpages', type=str, default=None)
     parser.add_argument('--vignette_smoothing', help='Smoothing of the vignette images (-1 : no smoothing)', type=float, default=10)
     parser.add_argument('--sv', help='SV targets', action='store_true')
+    parser.add_argument('--nmax_spectra', help='Stop the production of HTML pages once a given number of spectra are done', type=int, default=None)
     args = parser.parse_args()
     return args
 
@@ -57,6 +58,7 @@ def main(args) :
         pixels = np.loadtxt(args.pixel_list, dtype=str)
 
     # Loop on pixels
+    nspec_done = 0
     for pixel in pixels :
         
         log.info("Working on pixel "+pixel)
@@ -109,6 +111,12 @@ def main(args) :
             for i_spec in range(thespec.num_spectra()) :
                 saveplot = html_dir+"/vignettes/pix"+pixel+"_"+str(i_page)+"_"+str(i_spec)+".png"
                 utils_specviewer.miniplot_spectrum(thespec, i_spec, model=model, saveplot=saveplot, smoothing = args.vignette_smoothing)
-
+            nspec_done += thespec.num_spectra()
+        
+        # Stop running if needed, only once a full pixel is completed
+        if args.nmax_spectra is not None :
+            if nspec_done >= args.nmax_spectra :
+                log.info(str(nspec_done)+" spectra done : no other pixel will be processed")
+                break
 
 
