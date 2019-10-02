@@ -8,18 +8,73 @@
 <h1> Prototype DESI spectrum viewer - main index </h1>
 
 <h3> Sets of spectra sorted by exposure </h3>
-<ul>
-{% for expo in exposures %}
-<li><a href="exposures/{{ expo }}/index_{{ expo }}.html">{{ expo }}</a></li>
-{% endfor %}
-</ul>
- 
+{% if exposures is not none %}
+  <ul>
+  {% for expo in exposures %}
+  <li><a href="exposures/{{ expo }}/index_{{ expo }}.html">{{ expo }}</a></li>
+  {% endfor %}
+  </ul>
+{% else %}
+  <p> Not available
+{% endif %}
+
 <h3> Sets of spectra sorted by pixels </h3>
-<ul>
-{% for pix in pixels %}
-<li><a href="pixels/{{ pix }}/index_{{ pix }}.html">{{ pix }}</a></li>
-{% endfor %}
-</ul>
+{% if pixels is not none %}
+  <ul>
+  {% for pix in pixels %}
+  <li><a href="pixels/{{ pix }}/index_{{ pix }}.html">{{ pix }}</a></li>
+  {% endfor %}
+  </ul>
+{% else %}
+  <p> Not available
+{% endif %}
+
+<h2> Spectra sorted by some target categories </h2>
+
+<h3> BGS_ANY targets </h3>
+{% if bgs_pixels is not none %}
+  <ul>
+  {% for pix in bgs_pixels %}
+  <li><a href="bgs_targets/{{ pix }}/index_{{ pix }}.html">{{ pix }}</a></li>
+  {% endfor %}
+  </ul>
+{% else %}
+  <p> Not available
+{% endif %}
+
+<h3> ELG targets </h3>
+{% if elg_pixels is not none %}
+  <ul>
+  {% for pix in elg_pixels %}
+  <li><a href="elg_targets/{{ pix }}/index_{{ pix }}.html">{{ pix }}</a></li>
+  {% endfor %}
+  </ul>
+{% else %}
+  <p> Not available
+{% endif %}
+
+<h3> LRG targets </h3>
+{% if lrg_pixels is not none %}
+  <ul>
+  {% for pix in lrg_pixels %}
+  <li><a href="lrg_targets/{{ pix }}/index_{{ pix }}.html">{{ pix }}</a></li>
+  {% endfor %}
+  </ul>
+{% else %}
+  <p> Not available
+{% endif %}
+
+<h3> QSO targets </h3>
+{% if qso_pixels is not none %}
+  <ul>
+  {% for pix in qso_pixels %}
+  <li><a href="qso_targets/{{ pix }}/index_{{ pix }}.html">{{ pix }}</a></li>
+  {% endfor %}
+  </ul>
+{% else %}
+  <p> Not available
+{% endif %}
 
 </BODY>
 </HTML>
+
