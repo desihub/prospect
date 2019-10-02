@@ -11,6 +11,7 @@ This repo is a rewrite of https://github.com/desihub/inspector, which itself is 
 * Provides an interactive spectral viewer for DESI data at NERSC without
   needing to download or install anything locally.
 * Interative zoom and pan
+* Shows noise estimated for each spectrum.
 * Shows redrock results including the redshift, ZWARN flags, and the
   best fit model.
 * Mouse over a region of the spectrum to get a real-time zoom in a sub-window;
@@ -35,7 +36,7 @@ Any of these could be added later but don't yet exist.
 If you really want a feature, please consider contributing it.
 
 * Show individual exposures (multiple exposures are coadded prior to display)
-* Show errors and masks
+* Show masks
 * Show the Nth best fit instead of just the best fit
 * More target info like mags and shapes
 * Displaying model of 2D sky-subtracted raw data
