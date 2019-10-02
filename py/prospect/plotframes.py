@@ -21,7 +21,7 @@ import bokeh.plotting as bk
 from bokeh.models import ColumnDataSource, CDSView, IndexFilter
 from bokeh.models import CustomJS, LabelSet, Label, Span, Legend
 from bokeh.models.widgets import (
-    Slider, Button, Div, CheckboxButtonGroup, RadioButtonGroup, TextInput, Select)
+    Slider, Button, Div, CheckboxGroup, CheckboxButtonGroup, RadioButtonGroup, TextInput, Select)
 from bokeh.layouts import widgetbox
 import bokeh.events
 # from bokeh.layouts import row, column
@@ -439,9 +439,9 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
     for spec in cds_spectra:
         lx = fig.line('plotwave', 'plotflux', source=spec, line_color=colors[spec.name])
         data_lines.append(lx)
-    
+   
+    noise_lines = list()
     if with_noise :
-        noise_lines = list()
         for spec in cds_spectra :
             lx = fig.line('plotwave', 'plotnoise', source=spec, line_color=noise_colors[spec.name])
             noise_lines.append(lx)
@@ -609,6 +609,31 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
     imfig.js_on_event('tap', imfig_callback)
 
     smootherslider = Slider(start=0, end=31, value=0, step=1.0, title='Gaussian Sigma Smooth')
+   
+    if with_noise : 
+        display_options_group = CheckboxGroup(labels=['Show model', 'Show noise spectra'], active=[0,1])
+    else :
+        display_options_group = CheckboxGroup(labels=['Show model'], active=[0])
+    disp_opt_callback = CustomJS(
+        args = dict(noise_lines=noise_lines, model_lines=model_lines), code="""
+        for (var i=0; i<noise_lines.length; i++) {
+            if (cb_obj.active.indexOf(1) >= 0) {
+                noise_lines[i].visible = true
+            } else {
+                noise_lines[i].visible = false
+            }
+        }
+        for (var i=0; i<model_lines.length; i++) {
+            if (cb_obj.active.indexOf(0) >= 0) {
+                model_lines[i].visible = true
+            } else {
+                model_lines[i].visible = false
+            }
+        }
+        """
+    )
+    display_options_group.js_on_click(disp_opt_callback)
+
     target_info_div = Div(text=target_info[0])
     vi_info_div = Div(text=" ") # consistent with show_prev_vi="No" by default
 
@@ -890,7 +915,10 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
             bk.Row(fig, bk.Column(imfig, zoomfig)),
             widgetbox(target_info_div, width=plot_width),
             navigator,
-            widgetbox(smootherslider, width=plot_width//2),
+            bk.Row(
+                widgetbox(smootherslider, width=plot_width//2),
+                widgetbox(display_options_group,width=120)
+                ),
             bk.Row(
                 widgetbox(waveframe_buttons, width=120),
                 widgetbox(zslider, width=plot_width//2 - 60),
