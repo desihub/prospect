@@ -462,10 +462,11 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
     fig.legend.click_policy = 'hide'    #- or 'mute'
 
     #- Zoom figure around mouse hover of main plot
+    tooltips_zoomfig = [("wave","$x"),("flux","$y")]
     zoomfig = bk.figure(height=plot_height//2, width=plot_height//2,
         y_range=fig.y_range, x_range=(5000,5100),
         # output_backend="webgl",
-        toolbar_location=None, tools=[])
+        toolbar_location=None, tooltips=tooltips_zoomfig, tools=[])
 
     for spec in cds_spectra:
         zoomfig.line('plotwave', 'plotflux', source=spec,
@@ -806,7 +807,7 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
 
         function smooth_data(data_in, kernel, kernel_offset, quadrature=false) {
             // by default : out_j ~ (sum K_i in_i) / (sum K_i)
-            // if quatrature is true (for noise) : out_j^2 ~ (sum K_i^2 in_i^2) / (sum K_i)^2
+            // if quadrature is true (for noise) : out_j^2 ~ (sum K_i^2 in_i^2) / (sum K_i)^2
             var smoothed_data = data_in.slice()
             for (var j=0; j<data_in.length; j++) {
                 smoothed_data[j] = 0.0
