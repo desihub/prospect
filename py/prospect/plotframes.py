@@ -446,8 +446,8 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
             lx = fig.line('plotwave', 'plotnoise', source=spec, line_color=noise_colors[spec.name])
             noise_lines.append(lx)
 
+    model_lines = list()
     if cds_model is not None:
-        model_lines = list()
         lx = fig.line('plotwave', 'plotflux', source=cds_model, line_color='black')
         model_lines.append(lx)
 
@@ -468,14 +468,18 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
         # output_backend="webgl",
         toolbar_location=None, tooltips=tooltips_zoomfig, tools=[])
 
+    zoom_data_lines = list()
+    zoom_noise_lines = list()
     for spec in cds_spectra:
-        zoomfig.line('plotwave', 'plotflux', source=spec,
-            line_color=colors[spec.name], line_width=1, line_alpha=1.0)
+        zoom_data_lines.append(zoomfig.line('plotwave', 'plotflux', source=spec,
+            line_color=colors[spec.name], line_width=1, line_alpha=1.0))
         if with_noise :
-            zoomfig.line('plotwave', 'plotnoise', source=spec, line_color=noise_colors[spec.name], line_width=1, line_alpha=1)
+            zoom_noise_lines.append(zoomfig.line('plotwave', 'plotnoise', source=spec,
+                            line_color=noise_colors[spec.name], line_width=1, line_alpha=1))
 
+    zoom_model_lines = list()
     if cds_model is not None:
-        zoomfig.line('plotwave', 'plotflux', source=cds_model, line_color='black')
+        zoom_model_lines.append(zoomfig.line('plotwave', 'plotflux', source=cds_model, line_color='black'))
 
     #- Callback to update zoom window x-range
     zoom_callback = CustomJS(
@@ -611,24 +615,30 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
 
     smootherslider = Slider(start=0, end=31, value=0, step=1.0, title='Gaussian Sigma Smooth')
    
+    #-----
+    #- Checkboxes to display or not noise and model
     if with_noise : 
         display_options_group = CheckboxGroup(labels=['Show model', 'Show noise spectra'], active=[0,1])
     else :
         display_options_group = CheckboxGroup(labels=['Show model'], active=[0])
     disp_opt_callback = CustomJS(
-        args = dict(noise_lines=noise_lines, model_lines=model_lines), code="""
+        args = dict(noise_lines=noise_lines, model_lines=model_lines, zoom_noise_lines=zoom_noise_lines, zoom_model_lines=zoom_model_lines), code="""
         for (var i=0; i<noise_lines.length; i++) {
             if (cb_obj.active.indexOf(1) >= 0) {
                 noise_lines[i].visible = true
+                zoom_noise_lines[i].visible = true
             } else {
                 noise_lines[i].visible = false
+                zoom_noise_lines[i].visible = false
             }
         }
         for (var i=0; i<model_lines.length; i++) {
             if (cb_obj.active.indexOf(0) >= 0) {
                 model_lines[i].visible = true
+                zoom_model_lines[i].visible = true
             } else {
                 model_lines[i].visible = false
+                zoom_model_lines[i].visible = false
             }
         }
         """
