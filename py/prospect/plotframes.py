@@ -804,7 +804,9 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
             var kernel_offset = Math.floor(kernel.length/2)
         }
 
-        function smooth_data(data_in, kernel, kernel_offset) {
+        function smooth_data(data_in, kernel, kernel_offset, quadrature=false) {
+            // by default : out_j ~ (sum K_i in_i) / (sum K_i)
+            // if quatrature is true (for noise) : out_j^2 ~ (sum K_i^2 in_i^2) / (sum K_i)^2
             var smoothed_data = data_in.slice()
             for (var j=0; j<data_in.length; j++) {
                 smoothed_data[j] = 0.0
@@ -815,12 +817,20 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
                     if((m >= 0) && (m < data_in.length)) {
                         var fx = data_in[m]
                         if(fx == fx) {
-                            smoothed_data[j] = smoothed_data[j] + fx * kernel[k]
+                            if (quadrature==true) {
+                                smoothed_data[j] = smoothed_data[j] + (fx * kernel[k])**2
+                            } else {
+                                smoothed_data[j] = smoothed_data[j] + fx * kernel[k]
+                            }
                             weight += kernel[k]
                         }
                     }
                 }
-                smoothed_data[j] = smoothed_data[j] / weight
+                if (quadrature==true) {
+                    smoothed_data[j] = Math.sqrt(smoothed_data[j]) / weight
+                } else {
+                    smoothed_data[j] = smoothed_data[j] / weight
+                }
             }
             return smoothed_data
         }
@@ -842,7 +852,8 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
             } else {
                 data['plotflux'] = smooth_data(origflux, kernel, kernel_offset)
                 if ('plotnoise' in data) {
-                    data['plotnoise'] = smooth_data(orignoise, kernel, kernel_offset)
+                    // Add noise in quadrature
+                    data['plotnoise'] = smooth_data(orignoise, kernel, kernel_offset, quadrature=true)
                 }
             }
             spectra[i].change.emit()
