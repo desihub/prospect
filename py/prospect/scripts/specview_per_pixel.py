@@ -95,7 +95,7 @@ def main(args) :
             log.info(" * Page "+str(i_page)+" / "+str(nbpages))
             the_indices = sort_indices[(i_page-1)*args.nspecperfile:i_page*args.nspecperfile]
             thespec = myspecselect.myspecselect(spectra, indices=the_indices)
-            thezb = utils_specviewer.match_zbest_to_spectra(zbest,thespec)
+            thezb, kk = utils_specviewer.match_zcat_to_spectra(zbest,thespec)
             ### No VI results to display by default
             # VI "catalog" - location to define later ..
             # vifile = os.environ['HOME']+"/prospect/vilist_prototype.fits"

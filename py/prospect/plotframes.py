@@ -176,6 +176,7 @@ def create_model(spectra, zbest):
     '''
     Returns model_wave[nwave], model_flux[nspec, nwave], row matched to zbest,
     which can be in a different order than spectra.
+    NB currently, zbest must have the same size as spectra.
     '''
     import redrock.templates
     from desispec.interpolation import resample_flux
@@ -255,15 +256,17 @@ def _viewer_urls(spectra, zoom=13, layer='dr8'):
             for i in range(len(ra))]
 
 
-def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None, savedir='.', is_coadded=True, title=None, html_dir=None, with_noise=True, sv=False):
+def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, savedir='.', is_coadded=True, title=None, html_dir=None, with_noise=True, sv=False):
     '''
     Main prospect routine, creates a bokeh document from a set of spectra and fits
 
     Parameter
     ---------
-    spectra : desi spectra object
-    zcatalog : FITS file of redshifts derived from the spectra. Currently supports only redrock-PCA files.
-    model : (mwave, mflux) matched to zcatalog. See create_models
+    spectra : desi spectra object, or a list of frames
+    zcatalog : FITS file of pipeline redshifts for the spectra. Currently supports only redrock-PCA files.
+    model_from_zcat : if True, model spectra will be computed from the input zcatalog
+    model : if set, use this input set of model spectra (instead of computing it from zcat)
+        model format (mwave, mflux); model must be entry-matched to zcatalog.
     notebook : if True, bokeh outputs the viewer to notebook, else to a (static) html page
     vidata : VI information to be preloaded and displayed. Currently disabled.
     is_coadded : set to True if spectra are coadds
@@ -326,24 +329,28 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
 
     #- Reorder zcatalog to match input targets
     #- TODO: allow more than one zcatalog entry with different ZNUM per targetid
-## EA => changed this part : zcatalog is now by construction matched to spectra ...
-    targetids = spectra.target_ids()
     if zcatalog is not None:
-        ii = np.argsort(np.argsort(targetids))
-        jj = np.argsort(zcatalog['TARGETID'])
-        kk = jj[ii]
-        zcatalog = zcatalog[kk]
-
-        #- That sequence of argsorts may feel like magic,
-        #- so make sure we got it right
-        assert np.all(zcatalog['TARGETID'] == targetids)
-        assert np.all(zcatalog['TARGETID'] == spectra.fibermap['TARGETID'])
-
+        ## (at the moment, keep argsorts-based code for record)
+        #targetids = spectra.target_ids()
+        #ii = np.argsort(np.argsort(targetids))
+        #jj = np.argsort(zcatalog['TARGETID'])
+        #kk = jj[ii]
+        #zcatalog = zcatalog[kk]
+        ##- That sequence of argsorts may feel like magic,
+        ##- so make sure we got it right
+        #assert np.all(zcatalog['TARGETID'] == targetids)
+        #assert np.all(zcatalog['TARGETID'] == spectra.fibermap['TARGETID'])
+        zcatalog, kk = utils_specviewer.match_zcat_to_spectra(zcatalog, spectra)
+        
         #- Also need to re-order input model fluxes
-        if model is not None:
+        if model is not None :
+            assert(model_from_zcat == False)
             mwave, mflux = model
             model = mwave, mflux[kk]
 
+        if model_from_zcat == True :
+            model = create_model(spectra, zcatalog)
+            
     #- Gather models into ColumnDataSource objects, row matched to spectra
     if model is not None:
         mwave, mflux = model
@@ -446,8 +453,8 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
             lx = fig.line('plotwave', 'plotnoise', source=spec, line_color=noise_colors[spec.name])
             noise_lines.append(lx)
 
+    model_lines = list()
     if cds_model is not None:
-        model_lines = list()
         lx = fig.line('plotwave', 'plotflux', source=cds_model, line_color='black')
         model_lines.append(lx)
 
@@ -462,19 +469,24 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
     fig.legend.click_policy = 'hide'    #- or 'mute'
 
     #- Zoom figure around mouse hover of main plot
+    tooltips_zoomfig = [("wave","$x"),("flux","$y")]
     zoomfig = bk.figure(height=plot_height//2, width=plot_height//2,
         y_range=fig.y_range, x_range=(5000,5100),
         # output_backend="webgl",
-        toolbar_location=None, tools=[])
+        toolbar_location=None, tooltips=tooltips_zoomfig, tools=[])
 
+    zoom_data_lines = list()
+    zoom_noise_lines = list()
     for spec in cds_spectra:
-        zoomfig.line('plotwave', 'plotflux', source=spec,
-            line_color=colors[spec.name], line_width=1, line_alpha=1.0)
+        zoom_data_lines.append(zoomfig.line('plotwave', 'plotflux', source=spec,
+            line_color=colors[spec.name], line_width=1, line_alpha=1.0))
         if with_noise :
-            zoomfig.line('plotwave', 'plotnoise', source=spec, line_color=noise_colors[spec.name], line_width=1, line_alpha=1)
+            zoom_noise_lines.append(zoomfig.line('plotwave', 'plotnoise', source=spec,
+                            line_color=noise_colors[spec.name], line_width=1, line_alpha=1))
 
+    zoom_model_lines = list()
     if cds_model is not None:
-        zoomfig.line('plotwave', 'plotflux', source=cds_model, line_color='black')
+        zoom_model_lines.append(zoomfig.line('plotwave', 'plotflux', source=cds_model, line_color='black'))
 
     #- Callback to update zoom window x-range
     zoom_callback = CustomJS(
@@ -610,24 +622,30 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
 
     smootherslider = Slider(start=0, end=31, value=0, step=1.0, title='Gaussian Sigma Smooth')
    
+    #-----
+    #- Checkboxes to display or not noise and model
     if with_noise : 
         display_options_group = CheckboxGroup(labels=['Show model', 'Show noise spectra'], active=[0,1])
     else :
         display_options_group = CheckboxGroup(labels=['Show model'], active=[0])
     disp_opt_callback = CustomJS(
-        args = dict(noise_lines=noise_lines, model_lines=model_lines), code="""
+        args = dict(noise_lines=noise_lines, model_lines=model_lines, zoom_noise_lines=zoom_noise_lines, zoom_model_lines=zoom_model_lines), code="""
         for (var i=0; i<noise_lines.length; i++) {
             if (cb_obj.active.indexOf(1) >= 0) {
                 noise_lines[i].visible = true
+                zoom_noise_lines[i].visible = true
             } else {
                 noise_lines[i].visible = false
+                zoom_noise_lines[i].visible = false
             }
         }
         for (var i=0; i<model_lines.length; i++) {
             if (cb_obj.active.indexOf(0) >= 0) {
                 model_lines[i].visible = true
+                zoom_model_lines[i].visible = true
             } else {
                 model_lines[i].visible = false
+                zoom_model_lines[i].visible = false
             }
         }
         """
@@ -804,7 +822,9 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
             var kernel_offset = Math.floor(kernel.length/2)
         }
 
-        function smooth_data(data_in, kernel, kernel_offset) {
+        function smooth_data(data_in, kernel, kernel_offset, quadrature=false) {
+            // by default : out_j ~ (sum K_i in_i) / (sum K_i)
+            // if quadrature is true (for noise) : out_j^2 ~ (sum K_i^2 in_i^2) / (sum K_i)^2
             var smoothed_data = data_in.slice()
             for (var j=0; j<data_in.length; j++) {
                 smoothed_data[j] = 0.0
@@ -815,12 +835,20 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
                     if((m >= 0) && (m < data_in.length)) {
                         var fx = data_in[m]
                         if(fx == fx) {
-                            smoothed_data[j] = smoothed_data[j] + fx * kernel[k]
+                            if (quadrature==true) {
+                                smoothed_data[j] = smoothed_data[j] + (fx * kernel[k])**2
+                            } else {
+                                smoothed_data[j] = smoothed_data[j] + fx * kernel[k]
+                            }
                             weight += kernel[k]
                         }
                     }
                 }
-                smoothed_data[j] = smoothed_data[j] / weight
+                if (quadrature==true) {
+                    smoothed_data[j] = Math.sqrt(smoothed_data[j]) / weight
+                } else {
+                    smoothed_data[j] = smoothed_data[j] / weight
+                }
             }
             return smoothed_data
         }
@@ -842,7 +870,8 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
             } else {
                 data['plotflux'] = smooth_data(origflux, kernel, kernel_offset)
                 if ('plotnoise' in data) {
-                    data['plotnoise'] = smooth_data(orignoise, kernel, kernel_offset)
+                    // Add noise in quadrature
+                    data['plotnoise'] = smooth_data(orignoise, kernel, kernel_offset, quadrature=true)
                 }
             }
             spectra[i].change.emit()
@@ -965,6 +994,7 @@ _line_list = [
     # TODO: convert to vacuum wavelengths
     #
     {"name" : "Lyα",      "longname" : "Lyman α",        "lambda" : 1215.67,  "emission": True },
+    {"name" : "Lyβ",      "longname" : "Lyman β",        "lambda" : 1025.18,  "emission": True },
     {"name" : "N V",      "longname" : "N V 1240",       "lambda" : 1240.81,  "emission": True },
     {"name" : "C IV",     "longname" : "C IV 1549",      "lambda" : 1549.48,  "emission": True },
     {"name" : "He II",    "longname" : "He II 1640",     "lambda" : 1640.42,  "emission": True },
