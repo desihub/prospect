@@ -176,6 +176,7 @@ def create_model(spectra, zbest):
     '''
     Returns model_wave[nwave], model_flux[nspec, nwave], row matched to zbest,
     which can be in a different order than spectra.
+    NB currently, zbest must have the same size as spectra.
     '''
     import redrock.templates
     from desispec.interpolation import resample_flux
@@ -255,15 +256,17 @@ def _viewer_urls(spectra, zoom=13, layer='dr8'):
             for i in range(len(ra))]
 
 
-def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None, savedir='.', is_coadded=True, title=None, html_dir=None, with_noise=True, sv=False):
+def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, savedir='.', is_coadded=True, title=None, html_dir=None, with_noise=True, sv=False):
     '''
     Main prospect routine, creates a bokeh document from a set of spectra and fits
 
     Parameter
     ---------
-    spectra : desi spectra object
-    zcatalog : FITS file of redshifts derived from the spectra. Currently supports only redrock-PCA files.
-    model : (mwave, mflux) matched to zcatalog. See create_models
+    spectra : desi spectra object, or a list of frames
+    zcatalog : FITS file of pipeline redshifts for the spectra. Currently supports only redrock-PCA files.
+    model_from_zcat : if True, model spectra will be computed from the input zcatalog
+    model : if set, use this input set of model spectra (instead of computing it from zcat)
+        model format (mwave, mflux); model must be entry-matched to zcatalog.
     notebook : if True, bokeh outputs the viewer to notebook, else to a (static) html page
     vidata : VI information to be preloaded and displayed. Currently disabled.
     is_coadded : set to True if spectra are coadds
@@ -326,24 +329,28 @@ def plotspectra(spectra, zcatalog=None, model=None, notebook=False, vidata=None,
 
     #- Reorder zcatalog to match input targets
     #- TODO: allow more than one zcatalog entry with different ZNUM per targetid
-## EA => changed this part : zcatalog is now by construction matched to spectra ...
-    targetids = spectra.target_ids()
     if zcatalog is not None:
-        ii = np.argsort(np.argsort(targetids))
-        jj = np.argsort(zcatalog['TARGETID'])
-        kk = jj[ii]
-        zcatalog = zcatalog[kk]
-
-        #- That sequence of argsorts may feel like magic,
-        #- so make sure we got it right
-        assert np.all(zcatalog['TARGETID'] == targetids)
-        assert np.all(zcatalog['TARGETID'] == spectra.fibermap['TARGETID'])
-
+        ## (at the moment, keep argsorts-based code for record)
+        #targetids = spectra.target_ids()
+        #ii = np.argsort(np.argsort(targetids))
+        #jj = np.argsort(zcatalog['TARGETID'])
+        #kk = jj[ii]
+        #zcatalog = zcatalog[kk]
+        ##- That sequence of argsorts may feel like magic,
+        ##- so make sure we got it right
+        #assert np.all(zcatalog['TARGETID'] == targetids)
+        #assert np.all(zcatalog['TARGETID'] == spectra.fibermap['TARGETID'])
+        zcatalog, kk = utils_specviewer.match_zcat_to_spectra(zcatalog, spectra)
+        
         #- Also need to re-order input model fluxes
-        if model is not None:
+        if model is not None :
+            assert(model_from_zcat == False)
             mwave, mflux = model
             model = mwave, mflux[kk]
 
+        if model_from_zcat == True :
+            model = create_model(spectra, zcatalog)
+            
     #- Gather models into ColumnDataSource objects, row matched to spectra
     if model is not None:
         mwave, mflux = model

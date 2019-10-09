@@ -65,17 +65,20 @@ def merge_vi(mastervifile, newvifile) :
     mergedvi.write(mastervifile, format='fits', overwrite=True)
 
 
-def match_zbest_to_spectra(zbest_in,spectra) :
+def match_zcat_to_spectra(zcat_in,spectra) :
     '''
-    zbest_in : Table from redshift fitter
-    creates a new Table with rows matched to the targetids of input spectra
+    zcat_in : astropy Table from redshift fitter
+    creates a new astropy Table whose rows match the targetids of input spectra
+    also returns the corresponding list of indices
     '''
-    zbest_out = Table(dtype=zbest_in.dtype)
+    zcat_out = Table(dtype=zcat_in.dtype)
+    index_list = list()
     for i_spec in range(spectra.num_spectra()) :
-        ww, = np.where((zbest_in['TARGETID'] == spectra.fibermap['TARGETID'][i_spec]))
-        if len(ww)!=1 : raise RuntimeError("issue with zbest table!")
-        zbest_out.add_row(zbest_in[ww[0]])
-    return zbest_out
+        ww, = np.where((zcat_in['TARGETID'] == spectra.fibermap['TARGETID'][i_spec]))
+        if len(ww)<1 : raise RuntimeError("zcat table cannot match spectra.")
+        zcat_out.add_row(zcat_in[ww[0]])
+        index_list.append(ww[0])
+    return (zcat_out, index_list)
 
 
 def get_y_minmax(pmin, pmax, data) :
