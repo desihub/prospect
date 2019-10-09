@@ -118,19 +118,21 @@ def main(args) :
                 "BGS_ANY" : "bgs_targets",
                 "ELG" : "elg_targets",
                 "LRG" : "lrg_targets",
-                "QSO" : "qso_targets"}
+                "QSO" : "qso_targets",
+                "MWS_ANY" : "mws_targets"}
         for target_cat, target_dir in target_dict.items() :
             target_pixels[target_cat] = os.listdir( os.path.join(webdir,target_dir) )
             for pix in target_pixels[target_cat] :
                 pixel_dir = os.path.join(webdir,target_dir,pix)
                 prepare_subdir(pixel_dir, pix, template_targetlist, template_vignettelist, target=target_cat )
                 log.info("Subdirectory done : "+pix)
-    else : target_pixels={'BGS_ANY':None,'ELG':None,'LRG':None,'QSO':None}
+    else : target_pixels={'BGS_ANY':None,'ELG':None,'LRG':None,'QSO':None,'MWS_ANY':None}
 
 
     # Main index # TODO improve template handling target-based pages
     pagetext = template_index.render(pixels=pixels, exposures=exposures, bgs_pixels=target_pixels['BGS_ANY'], 
-            elg_pixels=target_pixels['ELG'], lrg_pixels=target_pixels['LRG'], qso_pixels=target_pixels['QSO']) 
+            elg_pixels=target_pixels['ELG'], lrg_pixels=target_pixels['LRG'], qso_pixels=target_pixels['QSO'],
+            mws_pixels=target_pixels['MWS_ANY']) 
     indexfile = os.path.join(webdir,"index.html")
     with open(indexfile, "w") as fh:
         fh.write(pagetext)
