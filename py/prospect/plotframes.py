@@ -853,6 +853,95 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             return smoothed_data
         }
 
+        //
+        // TEST : coadd-cam within js
+        //
+        
+        // Find nearest index in grid, left from point; use dichotomy method
+        function index_dichotomy(point, grid) {
+            if ( point < grid[0] ) return 0
+            if ( point > grid[grid.length-1] return grid.length-2
+            var i_left, i_center = 0
+            var i_right = grid.length-1
+            while ( i_right - i_left !== 1) {
+                i_center = i_left + Math.floor((i_right-i_left)/2)
+                if ( point >= grid[i_center] ) {
+                    i_left = i_center
+                } else {
+                    i_right = i_center
+                }
+            }
+            return i_left
+        }
+
+        // Basic linear interpolation at on point (could do better if needed, eg see :
+        // https://github.com/BorisChumichev/everpolate/blob/master/lib/polynomial.js
+        function interp_grid(xval, xarr, yarr) {
+            var index = index_dichotomy(xval, xarr)
+            var a = (yarr[index+1] - yarr[index])/(xarr[index+1] - xarr[index])
+            var b = yarr[index]-a*xarr[index]
+            var yval = a*xval+b
+            return yval
+        }
+
+        // Coadd brz spectra. Similar to the python code mycoaddcam()
+        function coadd_brz_cams(wave_in, flux_in, noise_in) {
+            // each "_in" is [arr_b, arr_r, arr_z]
+            // TODO handle case of no noise
+            var wave_out = []
+            var flux_out = []
+            var noise_out = []
+            var margin = 20
+            for (var i=0; i<wave_in[0].length; i++) { // b
+                if (wave_in[0][i] < wave_in[0][wave_in[0].length-1] - margin) {
+                    wave_out.push(wave_in[0][i])
+                    flux_out.push(flux_in[0][i])
+                    noise_out.push(noise_in[0][i])
+                }
+            }
+            var the_lim = wave_out[wave_out.length-1]
+            for (var i=0; i<wave_in[1].length; i++) { // r
+                if ( (wave_in[1][i] < wave_in[1][wave_in[1].length-1] - margin) && (wave_in[1][i] > the_lim)) {
+                    wave_out.push(wave_in[1][i])
+                    flux_out.push(flux_in[1][i])
+                    noise_out.push(noise_in[1][i])
+                }
+            }
+            the_lim = wave_out[wave_out.length-1]
+            for (var i=0; i<wave_in[2].length; i++) { // z
+                if (wave_in[2][i] > the_lim) {
+                    wave_out.push(wave_in[2][i])
+                    flux_out.push(flux_in[2][i])
+                    noise_out.push(noise_in[2][i])
+                }
+            }
+            for (var i=0; i<wave_out.length; i++) { // combine in overlapping regions
+                var b1,b2 = -1
+                if ( (wave_out[i] > wave_in[1][0]) && (wave_out[i] < wave_in[0][wave_in.length-1]) ) { // br
+                    b1 = 0
+                    b2 = 1
+                }
+                if ( (wave_out[i] > wave_in[2][0]) && (wave_out[i] < wave_in[1][wave_in.length-1]) ) {  // rz
+                    b1 = 1
+                    b2 = 2
+                }
+                if (b1 != -1) {
+                    var phi1 = interp_grid(wave_out[i], wave_in[b1], flux_in[b1])
+                    var noise1 = interp_grid(wave_out[i], wave_in[b1], noise_in[b1])
+                    var phi2 = interp_grid(wave_out[i], wave_in[b2], flux_in[b2])
+                    var noise2 = interp_grid(wave_out[i], wave_in[b2], noise_in[b2])
+                    if ( noise1 > 0 && noise2 > 0 ) {
+                        var iv1 = 1/(noise1*noise1)
+                        var iv2 = 1/(noise2*noise2)
+                        var iv = iv1+iv2
+                        noise_out[i] = 1/Math.sqrt(iv)
+                        flux_out[i] = (iv1*phi1+iv2*phi2)/iv
+                    }
+                }
+            }
+        }
+        
+        
         // Smooth plot and recalculate ymin/ymax
         var ymin = 0.0
         var ymax = 0.0
