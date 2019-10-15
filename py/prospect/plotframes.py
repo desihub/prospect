@@ -34,6 +34,7 @@ import desispec.frame
 
 #from . import utils_specviewer
 from prospect import utils_specviewer
+from prospect import mycoaddcam
 from astropy.table import Table
 
 def _coadd(wave, flux, ivar, rdat):
@@ -326,6 +327,21 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
         cds_spectra.append(
             bk.ColumnDataSource(cdsdata, name=band)
             )
+    
+    # CDS object for camera-merged spectrum
+    # Do NOT store all coadded spectra in CDS obj, to reduce size of html files
+    # Except for the first spectrum, coaddition is done later in javascript
+    coadd_wave, coadd_flux, coadd_ivar = mycoaddcam.mycoaddcam(spectra)
+    cds_coaddcam_data = dict(
+        origwave = coadd_wave.copy(),
+        plotwave = coadd_wave.copy(),
+        plotflux = coadd_flux[0,:].copy(),
+        plotnoise = np.ones(len(coadd_wave))
+    )
+    if with_noise :
+        w, = np.where( (coadd_ivar[0,:] > 0) )
+        cds_coaddcam_data['plotnoise'][w] = 1/np.sqrt(coadd_ivar[0,:][w])
+    cds_coaddcam_spec = bk.ColumnDataSource(cds_coaddcam_data)
 
     #- Reorder zcatalog to match input targets
     #- TODO: allow more than one zcatalog entry with different ZNUM per targetid
@@ -439,19 +455,22 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     fig.yaxis.axis_label = 'Flux'
     fig.xaxis.axis_label_text_font_style = 'normal'
     fig.yaxis.axis_label_text_font_style = 'normal'
-    colors = dict(b='#1f77b4', r='#d62728', z='maroon')
-    noise_colors = dict(b='greenyellow', r='green', z='forestgreen') # TODO test several and choose
+    colors = dict(b='#1f77b4', r='#d62728', z='maroon', coadd='fuchsia')
+    noise_colors = dict(b='greenyellow', r='green', z='forestgreen', coadd='yellow') # TODO test several and choose
 
     data_lines = list()
     for spec in cds_spectra:
         lx = fig.line('plotwave', 'plotflux', source=spec, line_color=colors[spec.name])
         data_lines.append(lx)
-   
+    fig.line('plotwave', 'plotflux', source=cds_coaddcam_spec, line_color=colors['coadd'])
+
     noise_lines = list()
     if with_noise :
         for spec in cds_spectra :
             lx = fig.line('plotwave', 'plotnoise', source=spec, line_color=noise_colors[spec.name])
             noise_lines.append(lx)
+        lx = fig.line('plotwave', 'plotnoise', source=cds_coaddcam_spec, line_color=noise_colors['coadd'])
+        noise_lines.append(lx)
 
     model_lines = list()
     if cds_model is not None:
@@ -483,7 +502,11 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
         if with_noise :
             zoom_noise_lines.append(zoomfig.line('plotwave', 'plotnoise', source=spec,
                             line_color=noise_colors[spec.name], line_width=1, line_alpha=1))
-
+    zoomfig.line('plotwave', 'plotflux', source=cds_coaddcam_spec, line_color=colors['coadd'])
+    if with_noise :
+        lx = zoomfig.line('plotwave', 'plotnoise', source=cds_coaddcam_spec, line_color=noise_colors['coadd'])
+        zoom_noise_lines.append(lx)
+            
     zoom_model_lines = list()
     if cds_model is not None:
         zoom_model_lines.append(zoomfig.line('plotwave', 'plotflux', source=cds_model, line_color='black'))
@@ -545,8 +568,9 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
 
     zslider_callback  = CustomJS(
         args=dict(
-            spectra=cds_spectra,
-            model=cds_model,
+            spectra = cds_spectra,
+            coaddcam_spec = cds_coaddcam_spec,
+            model = cds_model,
             targetinfo = cds_targetinfo,
             ifiberslider = ifiberslider,
             zslider=zslider,
@@ -578,6 +602,17 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             }
             spectra[i].change.emit()
         }
+        
+        // TODO : make function to reduce duplicate code
+        // Update coaddcam wavelength array
+        var data = coaddcam_spec.data
+        var origwave = data['origwave']
+        var plotwave = data['plotwave']
+        for (var j=0; j<plotwave.length; j++) {
+            plotwave[j] = origwave[j] * waveshift ;
+        }
+        coaddcam_spec.change.emit()
+
         // Update model wavelength array
         if(model) {
             var waveshift = (waveframe_buttons.active == 0) ? (1+z)/(1+zfit) : 1/(1+zfit) ;
@@ -762,6 +797,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     update_plot = CustomJS(
         args = dict(
             spectra = cds_spectra,
+            coaddcam_spec = cds_coaddcam_spec,
             model = cds_model,
             targetinfo = cds_targetinfo,
             target_info_div = target_info_div,
@@ -852,18 +888,15 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             }
             return smoothed_data
         }
-
-        //
-        // TEST : coadd-cam within js
-        //
         
         // Find nearest index in grid, left from point; use dichotomy method
         function index_dichotomy(point, grid) {
             if ( point < grid[0] ) return 0
-            if ( point > grid[grid.length-1] return grid.length-2
-            var i_left, i_center = 0
+            if ( point > grid[grid.length-1] ) return grid.length-2
+            var i_left = 0
+            var i_center = 0
             var i_right = grid.length-1
-            while ( i_right - i_left !== 1) {
+            while ( i_right - i_left != 1) {
                 i_center = i_left + Math.floor((i_right-i_left)/2)
                 if ( point >= grid[i_center] ) {
                     i_left = i_center
@@ -886,42 +919,53 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
 
         // Coadd brz spectra. Similar to the python code mycoaddcam()
         function coadd_brz_cams(wave_in, flux_in, noise_in) {
-            // each "_in" is [arr_b, arr_r, arr_z]
+            // each "_in" must have 3 entries (brz)
             // TODO handle case of no noise
+
+            // Find b,r,z ordering in input arrays
+            var wave_start = [wave_in[0][0], wave_in[1][0], wave_in[2][0]]
+            var i_b = wave_start.indexOf(Math.min.apply(Math, wave_start))
+            var i_z = wave_start.indexOf(Math.max.apply(Math, wave_start))
+            var i_r = 1
+            for (var i=0; i<3; i++) {
+                if ( (i_b != i) && (i_z != i) ) i_r = i
+            }
+
             var wave_out = []
             var flux_out = []
             var noise_out = []
             var margin = 20
-            for (var i=0; i<wave_in[0].length; i++) { // b
-                if (wave_in[0][i] < wave_in[0][wave_in[0].length-1] - margin) {
-                    wave_out.push(wave_in[0][i])
-                    flux_out.push(flux_in[0][i])
-                    noise_out.push(noise_in[0][i])
+            for (var i=0; i<wave_in[i_b].length; i++) { // b
+                if (wave_in[i_b][i] < wave_in[i_b][wave_in[i_b].length-1] - margin) {
+                    wave_out.push(wave_in[i_b][i])
+                    flux_out.push(flux_in[i_b][i])
+                    noise_out.push(noise_in[i_b][i])
                 }
             }
             var the_lim = wave_out[wave_out.length-1]
-            for (var i=0; i<wave_in[1].length; i++) { // r
-                if ( (wave_in[1][i] < wave_in[1][wave_in[1].length-1] - margin) && (wave_in[1][i] > the_lim)) {
-                    wave_out.push(wave_in[1][i])
-                    flux_out.push(flux_in[1][i])
-                    noise_out.push(noise_in[1][i])
+            for (var i=0; i<wave_in[i_r].length; i++) { // r
+                if ( (wave_in[i_r][i] < wave_in[i_r][wave_in[i_r].length-1] - margin) && (wave_in[i_r][i] > the_lim)) {
+                    wave_out.push(wave_in[i_r][i])
+                    flux_out.push(flux_in[i_r][i])
+                    noise_out.push(noise_in[i_r][i])
                 }
             }
             the_lim = wave_out[wave_out.length-1]
-            for (var i=0; i<wave_in[2].length; i++) { // z
-                if (wave_in[2][i] > the_lim) {
-                    wave_out.push(wave_in[2][i])
-                    flux_out.push(flux_in[2][i])
-                    noise_out.push(noise_in[2][i])
+            for (var i=0; i<wave_in[i_z].length; i++) { // z
+                if (wave_in[i_z][i] > the_lim) {
+                    wave_out.push(wave_in[i_z][i])
+                    flux_out.push(flux_in[i_z][i])
+                    noise_out.push(noise_in[i_z][i])
                 }
             }
             for (var i=0; i<wave_out.length; i++) { // combine in overlapping regions
-                var b1,b2 = -1
-                if ( (wave_out[i] > wave_in[1][0]) && (wave_out[i] < wave_in[0][wave_in.length-1]) ) { // br
+                var b1 = -1
+                var b2 = -1
+                if ( (wave_out[i] > wave_in[i_r][0]) && (wave_out[i] < wave_in[i_b][wave_in[i_b].length-1]) ) { // br
                     b1 = 0
                     b2 = 1
                 }
-                if ( (wave_out[i] > wave_in[2][0]) && (wave_out[i] < wave_in[1][wave_in.length-1]) ) {  // rz
+                if ( (wave_out[i] > wave_in[i_z][0]) && (wave_out[i] < wave_in[i_r][wave_in[i_r].length-1]) ) {  // rz
                     b1 = 1
                     b2 = 2
                 }
@@ -939,8 +983,8 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
                     }
                 }
             }
+            return [wave_out, flux_out, noise_out]
         }
-        
         
         // Smooth plot and recalculate ymin/ymax
         var ymin = 0.0
@@ -969,6 +1013,29 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             ymin = Math.min(ymin, tmp[0])
             ymax = Math.max(ymax, tmp[1])
         }
+
+        // update camera-coadd
+        // Here I choose to do coaddition on the smoothed spectra (should be ok?)
+        var wave_in = []
+        var flux_in = []
+        var noise_in = []
+        for (var i=0; i<3; i++) {
+            var data = spectra[i].data
+            wave_in.push(data['plotwave'].slice())
+            flux_in.push(data['plotflux'].slice())
+            if ('plotnoise' in data) {
+                noise_in.push(data['plotnoise'].slice())
+            } else {
+                var dummy_noise = []
+                for (var j=0; j<data['plotflux'].length; j++) dummy_noise.push(1)
+                noise_in.push(dummy_noise)
+            }
+        }
+        var coadd_infos = coadd_brz_cams(wave_in, flux_in, noise_in)
+        coaddcam_spec.data['plotwave'] = coadd_infos[0].slice()
+        coaddcam_spec.data['plotflux'] = coadd_infos[1].slice()
+        coaddcam_spec.data['plotnoise'] = coadd_infos[2].slice()
+        coaddcam_spec.change.emit()
 
         // update model
         if(model) {
