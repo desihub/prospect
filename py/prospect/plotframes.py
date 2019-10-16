@@ -455,15 +455,16 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     fig.yaxis.axis_label = 'Flux'
     fig.xaxis.axis_label_text_font_style = 'normal'
     fig.yaxis.axis_label_text_font_style = 'normal'
-    colors = dict(b='#1f77b4', r='#d62728', z='maroon', coadd='fuchsia')
-    noise_colors = dict(b='greenyellow', r='green', z='forestgreen', coadd='yellow') # TODO test several and choose
+    colors = dict(b='#1f77b4', r='#d62728', z='maroon', coadd='#d62728')
+    noise_colors = dict(b='greenyellow', r='green', z='forestgreen', coadd='green') # TODO test several and choose
 
     data_lines = list()
     for spec in cds_spectra:
         lx = fig.line('plotwave', 'plotflux', source=spec, line_color=colors[spec.name])
         data_lines.append(lx)
-    fig.line('plotwave', 'plotflux', source=cds_coaddcam_spec, line_color=colors['coadd'])
-
+    lx = fig.line('plotwave', 'plotflux', source=cds_coaddcam_spec, line_color=colors['coadd'])
+    data_lines.append(lx)
+    
     noise_lines = list()
     if with_noise :
         for spec in cds_spectra :
@@ -502,7 +503,8 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
         if with_noise :
             zoom_noise_lines.append(zoomfig.line('plotwave', 'plotnoise', source=spec,
                             line_color=noise_colors[spec.name], line_width=1, line_alpha=1))
-    zoomfig.line('plotwave', 'plotflux', source=cds_coaddcam_spec, line_color=colors['coadd'])
+    zoom_data_lines.append(zoomfig.line('plotwave', 'plotflux', source=cds_coaddcam_spec, line_color=colors['coadd']))
+    
     if with_noise :
         lx = zoomfig.line('plotwave', 'plotnoise', source=cds_coaddcam_spec, line_color=noise_colors['coadd'])
         zoom_noise_lines.append(lx)
@@ -592,36 +594,27 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             lines[i].location = line_restwave[i] * waveshift ;
             line_labels[i].x = line_restwave[i] * waveshift ;
         }
-        for(var i=0; i<spectra.length; i++) {
-            var waveshift = (waveframe_buttons.active == 0) ? 1 : 1/(1+z) ;
-            var data = spectra[i].data
+        
+        function shift_plotwave(cds_spec, waveshift) {
+            var data = cds_spec.data
             var origwave = data['origwave']
             var plotwave = data['plotwave']
             for (var j=0; j<plotwave.length; j++) {
                 plotwave[j] = origwave[j] * waveshift ;
             }
-            spectra[i].change.emit()
+            cds_spec.change.emit()
         }
         
-        // TODO : make function to reduce duplicate code
-        // Update coaddcam wavelength array
-        var data = coaddcam_spec.data
-        var origwave = data['origwave']
-        var plotwave = data['plotwave']
-        for (var j=0; j<plotwave.length; j++) {
-            plotwave[j] = origwave[j] * waveshift ;
+        var waveshift_spec = (waveframe_buttons.active == 0) ? 1 : 1/(1+z) ;
+        for(var i=0; i<spectra.length; i++) {
+            shift_plotwave(spectra[i], waveshift_spec)
         }
-        coaddcam_spec.change.emit()
-
+        shift_plotwave(coaddcam_spec, waveshift_spec)
+        
         // Update model wavelength array
         if(model) {
-            var waveshift = (waveframe_buttons.active == 0) ? (1+z)/(1+zfit) : 1/(1+zfit) ;
-            var origwave = model.data['origwave']
-            var plotwave = model.data['plotwave']
-            for(var i=0; i<plotwave.length; i++) {
-                plotwave[i] = origwave[i] * waveshift ;
-            }
-            model.change.emit()
+            var waveshift_model = (waveframe_buttons.active == 0) ? (1+z)/(1+zfit) : 1/(1+zfit) ;
+            shift_plotwave(model, waveshift_model)
         }
         """)
 
@@ -686,6 +679,20 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
         """
     )
     display_options_group.js_on_click(disp_opt_callback)
+    
+    #-----
+    #- Highlight individual-arm or camera-coadded spectra
+    coaddcam_buttons = RadioButtonGroup( labels=["Camera-coadded spectrum", "Single-arm spectra"], active=0 )
+    coaddcam_callback = CustomJS(
+        args = dict(coaddcam_buttons=coaddcam_buttons, data_lines=data_lines, noise_lines=noise_lines, zoom_data_lines=zoom_data_lines, zoom_noise_lines=zoom_noise_lines), code=""""
+        if (coaddcam_buttons.active == 0) {
+            // TODO
+        } else {
+            // TODO
+        }
+        """
+    )
+    coaddcam_buttons.js_on_click(coaddcam_callback)
 
     target_info_div = Div(text=target_info[0])
     vi_info_div = Div(text=" ") # consistent with show_prev_vi="No" by default
@@ -907,8 +914,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             return i_left
         }
 
-        // Basic linear interpolation at on point (could do better if needed, eg see :
-        // https://github.com/BorisChumichev/everpolate/blob/master/lib/polynomial.js
+        // Basic linear interpolation at on point
         function interp_grid(xval, xarr, yarr) {
             var index = index_dichotomy(xval, xarr)
             var a = (yarr[index+1] - yarr[index])/(xarr[index+1] - xarr[index])
