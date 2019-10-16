@@ -457,20 +457,21 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     fig.yaxis.axis_label_text_font_style = 'normal'
     colors = dict(b='#1f77b4', r='#d62728', z='maroon', coadd='#d62728')
     noise_colors = dict(b='greenyellow', r='green', z='forestgreen', coadd='green') # TODO test several and choose
-
+    alpha_discrete = 0.2 # alpha for "almost-hidden" curves (single-arm spectra and noise by default)
+    
     data_lines = list()
     for spec in cds_spectra:
-        lx = fig.line('plotwave', 'plotflux', source=spec, line_color=colors[spec.name])
+        lx = fig.line('plotwave', 'plotflux', source=spec, line_color=colors[spec.name], line_alpha=alpha_discrete)
         data_lines.append(lx)
-    lx = fig.line('plotwave', 'plotflux', source=cds_coaddcam_spec, line_color=colors['coadd'])
+    lx = fig.line('plotwave', 'plotflux', source=cds_coaddcam_spec, line_color=colors['coadd'], line_alpha=1)
     data_lines.append(lx)
     
     noise_lines = list()
     if with_noise :
         for spec in cds_spectra :
-            lx = fig.line('plotwave', 'plotnoise', source=spec, line_color=noise_colors[spec.name])
+            lx = fig.line('plotwave', 'plotnoise', source=spec, line_color=noise_colors[spec.name], line_alpha=alpha_discrete)
             noise_lines.append(lx)
-        lx = fig.line('plotwave', 'plotnoise', source=cds_coaddcam_spec, line_color=noise_colors['coadd'])
+        lx = fig.line('plotwave', 'plotnoise', source=cds_coaddcam_spec, line_color=noise_colors['coadd'], line_alpha=1)
         noise_lines.append(lx)
 
     model_lines = list()
@@ -499,14 +500,14 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     zoom_noise_lines = list()
     for spec in cds_spectra:
         zoom_data_lines.append(zoomfig.line('plotwave', 'plotflux', source=spec,
-            line_color=colors[spec.name], line_width=1, line_alpha=1.0))
+            line_color=colors[spec.name], line_width=1, line_alpha=alpha_discrete))
         if with_noise :
             zoom_noise_lines.append(zoomfig.line('plotwave', 'plotnoise', source=spec,
-                            line_color=noise_colors[spec.name], line_width=1, line_alpha=1))
-    zoom_data_lines.append(zoomfig.line('plotwave', 'plotflux', source=cds_coaddcam_spec, line_color=colors['coadd']))
+                            line_color=noise_colors[spec.name], line_width=1, line_alpha=alpha_discrete))
+    zoom_data_lines.append(zoomfig.line('plotwave', 'plotflux', source=cds_coaddcam_spec, line_color=colors['coadd'], line_alpha=1))
     
     if with_noise :
-        lx = zoomfig.line('plotwave', 'plotnoise', source=cds_coaddcam_spec, line_color=noise_colors['coadd'])
+        lx = zoomfig.line('plotwave', 'plotnoise', source=cds_coaddcam_spec, line_color=noise_colors['coadd'], line_alpha=1)
         zoom_noise_lines.append(lx)
             
     zoom_model_lines = list()
@@ -684,11 +685,15 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     #- Highlight individual-arm or camera-coadded spectra
     coaddcam_buttons = RadioButtonGroup( labels=["Camera-coadded spectrum", "Single-arm spectra"], active=0 )
     coaddcam_callback = CustomJS(
-        args = dict(coaddcam_buttons=coaddcam_buttons, data_lines=data_lines, noise_lines=noise_lines, zoom_data_lines=zoom_data_lines, zoom_noise_lines=zoom_noise_lines), code=""""
-        if (coaddcam_buttons.active == 0) {
-            // TODO
-        } else {
-            // TODO
+        args = dict(coaddcam_buttons=coaddcam_buttons, list_lines=[data_lines, noise_lines, zoom_data_lines, zoom_noise_lines], alpha_discrete=alpha_discrete), code="""
+        var n_lines = list_lines[0].length
+        for (var i=0; i<n_lines; i++) {
+            var new_alpha = 1
+            if (coaddcam_buttons.active == 0 && i<n_lines-1) new_alpha = alpha_discrete
+            if (coaddcam_buttons.active == 1 && i==n_lines-1) new_alpha = alpha_discrete
+            for (var j=0; j<list_lines.length; j++) {
+                list_lines[j][i].glyph.line_alpha = new_alpha
+            }
         }
         """
     )
@@ -1108,27 +1113,30 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             navigator,
             bk.Row(
                 widgetbox(smootherslider, width=plot_width//2),
-                widgetbox(display_options_group,width=120)
-                ),
+                widgetbox(display_options_group,width=120),
+            ),
             bk.Row(
                 widgetbox(waveframe_buttons, width=120),
                 widgetbox(zslider, width=plot_width//2 - 60),
                 widgetbox(dzslider, width=plot_width//2 - 60),
-                ),
-            widgetbox(lines_button_group),
+            ),
+            bk.Row(
+                widgetbox(lines_button_group),
+                widgetbox(coaddcam_buttons, width=120)
+            ),
             bk.Row(
                 widgetbox(vi_div,width=80),
                 widgetbox(vi_flaginput,width=300),
                 widgetbox(vi_commentinput,width=plot_width-500),
                 widgetbox(vi_nameinput,width=120),
-                ),
+            ),
             widgetbox(save_vi_button,width=100)
             ## Don't want this in principle :
 #            bk.Row(
 #                widgetbox(show_prev_vi_select,width=100),
 #                widgetbox(vi_info_div, width=plot_width-130)
 #                )
-            )
+        )
     if notebook:
         bk.show(the_bokehsetup)
     else:
