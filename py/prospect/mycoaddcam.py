@@ -16,7 +16,7 @@ def mycoaddcam(spectra) :
     
     # Define (arbitrarily) wavelength grid
     margin = 20 # Angstrom. Avoids using edge-of-band at overlap regions
-    wave = spectra.wave['b']
+    wave = spectra.wave['b'].copy()
     wave = wave[ (wave<np.max(wave)-margin) ]
     tolerance = 0.0001
     length_bands = {'b' : wave.size}

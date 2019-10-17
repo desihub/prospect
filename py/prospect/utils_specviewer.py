@@ -14,6 +14,8 @@ import matplotlib
 matplotlib.use('Agg') # No DISPLAY
 import matplotlib.pyplot as plt
 
+from prospect import mycoaddcam
+
 def read_vi(vifile) :
     '''
     Read visual inspection file (ASCII or FITS according to file extension)
@@ -91,23 +93,35 @@ def get_y_minmax(pmin, pmax, data) :
     return (dx[imin],dx[imax])
 
 
-def miniplot_spectrum(spectra, i_spec, model=None, saveplot=None, smoothing=-1) :
+def miniplot_spectrum(spectra, i_spec, model=None, saveplot=None, smoothing=-1, coaddcam=True) :
     '''
     Matplotlib version of plotspectra, to plot a given spectrum
     Pieces of code were copy-pasted from plotspectra()
     Smoothing option : simple gaussian filtering
     '''
     data=[]
-    for band in spectra.bands :
-        #- Set masked bins to NaN so that Bokeh won't plot them
-        bad = (spectra.ivar[band] == 0.0) | (spectra.mask[band] != 0)
-        spectra.flux[band][bad] = np.nan
-        thedat=dict(
-            band = band,
-            wave = spectra.wave[band].copy(),
-            flux = spectra.flux[band][i_spec].copy()
-            )
+    if coaddcam is True :
+        wave, flux, ivar = mycoaddcam.mycoaddcam(spectra)
+        bad = ( ivar == 0.0 )
+        flux[bad] = np.nan
+        thedat = dict(
+                band = 'coadd',
+                wave = wave
+                flux = flux[i_spec]
+                )
         data.append(thedat)
+    else :
+        for band in spectra.bands :
+            #- Set masked bins to NaN so that Bokeh won't plot them
+            bad = (spectra.ivar[band] == 0.0) | (spectra.mask[band] != 0)
+            spectra.flux[band][bad] = np.nan
+            thedat=dict(
+                band = band,
+                wave = spectra.wave[band].copy(),
+                flux = spectra.flux[band][i_spec].copy()
+                )
+            data.append(thedat)
+    
     if model is not None:
         mwave, mflux = model
         mwave = mwave.copy() # in case of
@@ -125,9 +139,9 @@ def miniplot_spectrum(spectra, i_spec, model=None, saveplot=None, smoothing=-1) 
         mwave = mwave[int(smoothing):-int(smoothing)]
         mflux = scipy.ndimage.filters.gaussian_filter1d(mflux, sigma=smoothing, mode='nearest')[int(smoothing):-int(smoothing)]
     
-    colors = dict(b='#1f77b4', r='#d62728', z='maroon')
+    colors = dict(b='#1f77b4', r='#d62728', z='maroon', coadd='#d62728')
     # for visibility, do not plot near-edge of band data (noise is high there):
-    waverange = dict(b=[3500,5800], r=[5800,7600], z=[7600,9900])
+    waverange = dict(b=[3500,5800], r=[5800,7600], z=[7600,9900], coadd=[3500,9900])
     for spec in data :
         band = spec['band']
         w, = np.where( (spec['wave']>=waverange[band][0]) & (spec['wave']<=waverange[band][1]) )
