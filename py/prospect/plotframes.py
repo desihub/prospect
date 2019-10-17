@@ -527,7 +527,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     #
     # Targeting image
     #
-    imfig = bk.figure(width=200, height=200,
+    imfig = bk.figure(width=plot_height//2, height=plot_height//2,
                       x_range=(0, 256), y_range=(0, 256),
                       x_axis_location=None, y_axis_location=None,
                       output_backend="webgl",
@@ -549,6 +549,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     #- Emission and absorption lines
     z = zcatalog['Z'][0] if (zcatalog is not None) else 0.0
     line_data, lines, line_labels = add_lines(fig, z=z)
+    zoom_line_data, zoom_lines, zoom_line_labels = add_lines(zoomfig, z=z)
 
     #-----
     #- Add widgets for controling plots
@@ -580,6 +581,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             dzslider=dzslider,
             waveframe_buttons=waveframe_buttons,
             line_data=line_data, lines=lines, line_labels=line_labels,
+            zlines=zoom_lines, zline_labels=zoom_line_labels,
             fig=fig,
             ),
         code="""
@@ -594,6 +596,8 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             var waveshift = (waveframe_buttons.active == 0) ? 1+z : 1 ;
             lines[i].location = line_restwave[i] * waveshift ;
             line_labels[i].x = line_restwave[i] * waveshift ;
+            zlines[i].location = line_restwave[i] * waveshift ;
+            zline_labels[i].x = line_restwave[i] * waveshift ;
         }
         
         function shift_plotwave(cds_spec, waveshift) {
@@ -708,7 +712,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             labels=["Emission", "Absorption"], active=[])
 
     lines_callback = CustomJS(
-        args = dict(line_data=line_data, lines=lines, line_labels=line_labels),
+        args = dict(line_data=line_data, lines=lines, line_labels=line_labels, zlines=zoom_lines, zline_labels=zoom_line_labels),
         code="""
         var show_emission = false
         var show_absorption = false
@@ -723,9 +727,13 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             if(line_data.data['emission'][i]) {
                 lines[i].visible = show_emission
                 line_labels[i].visible = show_emission
+                zlines[i].visible = show_emission
+                zline_labels[i].visible = show_emission
             } else {
                 lines[i].visible = show_absorption
                 line_labels[i].visible = show_absorption
+                zlines[i].visible = show_absorption
+                zline_labels[i].visible = show_absorption
             }
         }
         """
@@ -819,7 +827,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             smootherslider = smootherslider,
             zslider=zslider,
             dzslider=dzslider,
-            lines_button_group = lines_button_group,
+  #          lines_button_group = lines_button_group,
             fig = fig,
             imfig_source=imfig_source,
             imfig_urls=imfig_urls,
@@ -1236,7 +1244,10 @@ def _airtovac(w):
         vac = w*fact
     return vac
 
-def add_lines(fig, z, emission=True, fig_height=350):
+def add_lines(fig, z=0 , emission=True, fig_height=None):
+
+    if fig_height is None : fig_height = fig.plot_height
+
     line_data = dict()
     line_data['restwave'] = np.array([_airtovac(row['lambda']) for row in _line_list])
     line_data['plotwave'] = line_data['restwave'] * (1+z)
