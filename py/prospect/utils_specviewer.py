@@ -106,7 +106,7 @@ def miniplot_spectrum(spectra, i_spec, model=None, saveplot=None, smoothing=-1, 
         flux[bad] = np.nan
         thedat = dict(
                 band = 'coadd',
-                wave = wave
+                wave = wave,
                 flux = flux[i_spec]
                 )
         data.append(thedat)
@@ -136,8 +136,9 @@ def miniplot_spectrum(spectra, i_spec, model=None, saveplot=None, smoothing=-1, 
             tmpmin,tmpmax=get_y_minmax(0.01, 0.99, spec['flux'])
             ymin=np.min((tmpmin,ymin))
             ymax=np.max((tmpmax,ymax))
-        mwave = mwave[int(smoothing):-int(smoothing)]
-        mflux = scipy.ndimage.filters.gaussian_filter1d(mflux, sigma=smoothing, mode='nearest')[int(smoothing):-int(smoothing)]
+        if model is not None :
+            mwave = mwave[int(smoothing):-int(smoothing)]
+            mflux = scipy.ndimage.filters.gaussian_filter1d(mflux, sigma=smoothing, mode='nearest')[int(smoothing):-int(smoothing)]
     
     colors = dict(b='#1f77b4', r='#d62728', z='maroon', coadd='#d62728')
     # for visibility, do not plot near-edge of band data (noise is high there):
