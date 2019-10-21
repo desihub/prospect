@@ -22,7 +22,7 @@ from bokeh.models import ColumnDataSource, CDSView, IndexFilter
 from bokeh.models import CustomJS, LabelSet, Label, Span, Legend
 from bokeh.models.widgets import (
     Slider, Button, Div, CheckboxGroup, CheckboxButtonGroup, RadioButtonGroup, TextInput, Select)
-from bokeh.layouts import widgetbox
+from bokeh.layouts import widgetbox, Spacer
 import bokeh.events
 # from bokeh.layouts import row, column
 
@@ -564,7 +564,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     zslider = Slider(start=0.0, end=4.0, value=z1, step=0.01, title='Redshift')
     dzslider = Slider(start=-0.01, end=0.01, value=dz, step=0.0001, title='+ Delta redshift')
     dzslider.format = "0[.]0000"
-    z_display = Div(text="<br><b>z<sub>disp</sub> = "+("{:.4f}").format(z+dz)+"</b>")
+    z_display = Div(text="<b>z<sub>disp</sub> = "+("{:.4f}").format(z+dz)+"</b>")
 
     #- Observer vs. Rest frame wavelengths
     waveframe_buttons = RadioButtonGroup(
@@ -594,7 +594,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             ),
         code="""
         var z = zslider.value + dzslider.value
-        z_display.text = "<br><b>z<sub>disp</sub> = " + z.toFixed(4) + "</b>"
+        z_display.text = "<b>z<sub>disp</sub> = " + z.toFixed(4) + "</b>"
         var line_restwave = line_data.data['restwave']
         var ifiber = ifiberslider.value
         var zfit = 0.0
@@ -708,7 +708,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     
     #-----
     #- Highlight individual-arm or camera-coadded spectra
-    coaddcam_buttons = RadioButtonGroup( labels=["Camera-coadded spectrum", "Single-arm spectra"], active=0 )
+    coaddcam_buttons = RadioButtonGroup( labels=["Camera-coadded", "Single-arm"], active=0 )
     coaddcam_callback = CustomJS(
         args = dict(coaddcam_buttons=coaddcam_buttons, list_lines=[data_lines, noise_lines, zoom_data_lines, zoom_noise_lines], alpha_discrete=alpha_discrete), code="""
         var n_lines = list_lines[0].length
@@ -1177,22 +1177,26 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             navigator,
             bk.Row(
                 widgetbox(smootherslider, width=plot_width//2),
+                widgetbox(Spacer(width=plot_width//2-120)),
                 widgetbox(display_options_group,width=120),
             ),
             bk.Row(
-                widgetbox(waveframe_buttons, width=120),
-                widgetbox(zslider, width=plot_width//2 - 120),
-                widgetbox(dzslider, width=plot_width//2 - 120),
                 widgetbox(z_display, width=120),
+                widgetbox(zslider, width=plot_width//2 - 110),
+                widgetbox(dzslider, width=plot_width//2 - 110),
                 widgetbox(zreset_button, width=100)
             ),
             bk.Row(
-                widgetbox(lines_button_group),
-                widgetbox(coaddcam_buttons, width=120)
+                widgetbox(waveframe_buttons, width=120),
+                widgetbox(lines_button_group, width=120),
+                widgetbox(Spacer(width=plot_width-440)),
+                widgetbox(coaddcam_buttons, width=200)
             ),
+            bk.Row(Spacer(height=30)),
             bk.Row(
                 widgetbox(vi_commentinput,width=plot_width-500),
                 widgetbox(vi_nameinput,width=120),
+                widgetbox(Spacer(width=50)),
                 widgetbox(save_vi_button,width=100,sizing_mode="scale_height")
             ),
 #            widgetbox(save_vi_button,width=100)
