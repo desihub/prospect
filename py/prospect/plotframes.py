@@ -452,10 +452,10 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     plot_width=800
     plot_height=400
     # tools = 'pan,box_zoom,wheel_zoom,undo,redo,reset,save'
-    tools = 'pan,box_zoom,wheel_zoom,reset,save'
+    tools = 'pan,box_zoom,wheel_zoom,save' # reset
     fig = bk.figure(height=plot_height, width=plot_width, title=title,
         tools=tools, toolbar_location='above', y_range=(ymin, ymax), x_range=(xmin, xmax))
-    fig.toolbar.active_drag = fig.tools[1]    #- box zoom
+    fig.toolbar.active_drag = fig.tools[0]    #- pan zoom (previously box)
     fig.toolbar.active_scroll = fig.tools[2]  #- wheel zoom
     fig.xaxis.axis_label = 'Wavelength [Å]'
     fig.yaxis.axis_label = 'Flux'
@@ -832,6 +832,40 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     """)
     show_prev_vi_select.js_on_change('value',show_prev_vi_callback)
 
+    
+    #-----
+    reset_plotrange_button = Button(label="Reset X-Y range",button_type="default")
+    reset_plotrange_callback = CustomJS(args = dict(fig=fig, xmin=xmin, xmax=xmax, spectra=cds_spectra), code="""
+        // x-range : use fixed x-range determined once for all
+        fig.x_range.start = xmin
+        fig.x_range.end = xmax
+        
+        // y-range : same function as in update_plot()
+        function get_y_minmax(pmin, pmax, data) {
+            var dx = data.slice().filter(Boolean)
+            dx.sort()
+            var imin = Math.floor(pmin * dx.length)
+            var imax = Math.floor(pmax * dx.length)
+            return [dx[imin], dx[imax]]
+        }
+        var ymin = 0.0
+        var ymax = 0.0
+        for (var i=0; i<spectra.length; i++) {
+            var data = spectra[i].data
+            tmp = get_y_minmax(0.01, 0.99, data['plotflux'])
+            ymin = Math.min(ymin, tmp[0])
+            ymax = Math.max(ymax, tmp[1])
+        }
+        if(ymin<0) {
+            fig.y_range.start = ymin * 1.4
+        } else {
+            fig.y_range.start = ymin * 0.6
+        }
+        fig.y_range.end = ymax * 1.4
+
+    """)
+    reset_plotrange_button.js_on_event('button_click', reset_plotrange_callback)
+    
     #-----
     update_plot = CustomJS(
         args = dict(
@@ -1136,7 +1170,10 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
         widgetbox(ifiberslider, width=plot_width-(60*len(viflags)+2*navigation_button_width+40)))
     the_bokehsetup = bk.Column(
             bk.Row(fig, bk.Column(imfig, zoomfig)),
-            widgetbox(target_info_div, width=plot_width),
+            bk.Row(
+                widgetbox(target_info_div, width=plot_width - 120),
+                widgetbox(reset_plotrange_button, width = 100)
+            ),
             navigator,
             bk.Row(
                 widgetbox(smootherslider, width=plot_width//2),
@@ -1170,8 +1207,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     else:
         bk.save(the_bokehsetup)
     
-    return fig
-    
+
 #-------------------------------------------------------------------------
 _line_list = [
     #
