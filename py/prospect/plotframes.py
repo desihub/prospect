@@ -437,18 +437,24 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     cds_targetinfo.add(np.zeros(nspec), name='spec_version')
     cds_targetinfo.add(np.zeros(nspec), name='redrock_version')
 
-    #- Determine initial ymin, ymax
-    ymin = ymax = 0.0
+    #- Determine initial ymin, ymax, xmin, xmax
+    ymin = ymax = xmax = 0.0
+    xmin = 100000.
+    xmargin = 300.
     for band in spectra.bands:
         ymin = min(ymin, np.min(spectra.flux[band][0]))
         ymax = max(ymax, np.max(spectra.flux[band][0]))
-
+        xmin = min(xmin, np.min(spectra.wave[band]))
+        xmax = max(xmax, np.max(spectra.wave[band]))        
+    xmin -= xmargin
+    xmax += xmargin
+        
     plot_width=800
     plot_height=400
     # tools = 'pan,box_zoom,wheel_zoom,undo,redo,reset,save'
     tools = 'pan,box_zoom,wheel_zoom,reset,save'
     fig = bk.figure(height=plot_height, width=plot_width, title=title,
-        tools=tools, toolbar_location='above', y_range=(ymin, ymax))
+        tools=tools, toolbar_location='above', y_range=(ymin, ymax), x_range=(xmin, xmax))
     fig.toolbar.active_drag = fig.tools[1]    #- box zoom
     fig.toolbar.active_scroll = fig.tools[2]  #- wheel zoom
     fig.xaxis.axis_label = 'Wavelength [Å]'
@@ -558,6 +564,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     zslider = Slider(start=0.0, end=4.0, value=z1, step=0.01, title='Redshift')
     dzslider = Slider(start=-0.01, end=0.01, value=dz, step=0.0001, title='+ Delta redshift')
     dzslider.format = "0[.]0000"
+    z_display = Div(text="<br><b>z<sub>disp</sub> = "+("{:.4f}").format(z+dz)+"</b>")
 
     #- Observer vs. Rest frame wavelengths
     waveframe_buttons = RadioButtonGroup(
@@ -579,6 +586,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             ifiberslider = ifiberslider,
             zslider=zslider,
             dzslider=dzslider,
+            z_display = z_display,
             waveframe_buttons=waveframe_buttons,
             line_data=line_data, lines=lines, line_labels=line_labels,
             zlines=zoom_lines, zline_labels=zoom_line_labels,
@@ -586,6 +594,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             ),
         code="""
         var z = zslider.value + dzslider.value
+        z_display.text = "<br><b>z<sub>disp</sub> = " + z.toFixed(4) + "</b>"
         var line_restwave = line_data.data['restwave']
         var ifiber = ifiberslider.value
         var zfit = 0.0
@@ -626,6 +635,18 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     zslider.js_on_change('value', zslider_callback)
     dzslider.js_on_change('value', zslider_callback)
     waveframe_buttons.js_on_click(zslider_callback)
+
+    zreset_button = Button(label='Reset redshift')
+    zreset_callback = CustomJS(
+        args=dict(zslider=zslider, dzslider=dzslider, targetinfo=cds_targetinfo, ifiberslider=ifiberslider),
+        code="""
+            var ifiber = ifiberslider.value
+            var z = targetinfo.data['z'][ifiber]
+            var z1 = Math.floor(z*100) / 100
+            zslider.value = z1
+            dzslider.value = (z - z1)
+        """)
+    zreset_button.js_on_event('button_click', zreset_callback)
 
     plotrange_callback = CustomJS(
         args = dict(
@@ -770,7 +791,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     # save VI info to ASCII file
     # tested briefly safari chrome firefox
     # Warning text output very sensitve for # " \  ... (standard js formatting not ok)
-    save_vi_button = Button(label="Download VI",button_type="success")
+    save_vi_button = Button(label="Download VI",button_type="default")
     save_vi_callback = CustomJS(args=dict(cds_targetinfo=cds_targetinfo, viflags=viflags), code="""
         function download(filename, text) {
             var element = document.createElement('a');
@@ -810,8 +831,6 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
         }
     """)
     show_prev_vi_select.js_on_change('value',show_prev_vi_callback)
-
-    vi_div = Div(text="VI flag :")
 
     #-----
     update_plot = CustomJS(
@@ -1089,7 +1108,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     navigation_button_width = 30
     prev_button = Button(label="<", width=navigation_button_width)
     next_button = Button(label=">", width=navigation_button_width)
-
+    
     prev_callback = CustomJS(
         args=dict(ifiberslider=ifiberslider),
         code="""
@@ -1107,14 +1126,14 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
 
     prev_button.js_on_event('button_click', prev_callback)
     next_button.js_on_event('button_click', next_callback)
-
-
+    
     #-----
     slider_width = plot_width - 2*navigation_button_width
     navigator = bk.Row(
-        widgetbox(prev_button, width=navigation_button_width),
+        widgetbox(prev_button, width=navigation_button_width+15),
+        widgetbox(vi_flaginput, width=60*len(viflags)),
         widgetbox(next_button, width=navigation_button_width+20),
-        widgetbox(ifiberslider, width=slider_width-20))
+        widgetbox(ifiberslider, width=plot_width-(60*len(viflags)+2*navigation_button_width+40)))
     the_bokehsetup = bk.Column(
             bk.Row(fig, bk.Column(imfig, zoomfig)),
             widgetbox(target_info_div, width=plot_width),
@@ -1125,20 +1144,21 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             ),
             bk.Row(
                 widgetbox(waveframe_buttons, width=120),
-                widgetbox(zslider, width=plot_width//2 - 60),
-                widgetbox(dzslider, width=plot_width//2 - 60),
+                widgetbox(zslider, width=plot_width//2 - 120),
+                widgetbox(dzslider, width=plot_width//2 - 120),
+                widgetbox(z_display, width=120),
+                widgetbox(zreset_button, width=100)
             ),
             bk.Row(
                 widgetbox(lines_button_group),
                 widgetbox(coaddcam_buttons, width=120)
             ),
             bk.Row(
-                widgetbox(vi_div,width=80),
-                widgetbox(vi_flaginput,width=300),
                 widgetbox(vi_commentinput,width=plot_width-500),
                 widgetbox(vi_nameinput,width=120),
+                widgetbox(save_vi_button,width=100,sizing_mode="scale_height")
             ),
-            widgetbox(save_vi_button,width=100)
+#            widgetbox(save_vi_button,width=100)
             ## Don't want this in principle :
 #            bk.Row(
 #                widgetbox(show_prev_vi_select,width=100),
@@ -1149,20 +1169,9 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
         bk.show(the_bokehsetup)
     else:
         bk.save(the_bokehsetup)
-
-#     bk.show(bk.Column(
-#         bk.Row(fig, zoomfig),
-#         widgetbox(target_info_div, width=plot_width),
-#         navigator,
-#         widgetbox(smootherslider, width=plot_width//2),
-#         bk.Row(
-#             widgetbox(waveframe_buttons, width=120),
-#             widgetbox(zslider, width=plot_width//2 - 60),
-#             widgetbox(dzslider, width=plot_width//2 - 60),
-#             ),
-#         widgetbox(lines_button_group),
-#         ))
-
+    
+    return fig
+    
 #-------------------------------------------------------------------------
 _line_list = [
     #
