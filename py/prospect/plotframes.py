@@ -561,8 +561,8 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     #- Add widgets for controling plots
     z1 = np.floor(z*100)/100
     dz = z-z1
-    zslider = Slider(start=0.0, end=4.0, value=z1, step=0.01, title='Redshift')
-    dzslider = Slider(start=-0.01, end=0.01, value=dz, step=0.0001, title='+ Delta redshift')
+    zslider = Slider(start=0.0, end=4.0, value=z1, step=0.01, title='Redshift rough tuning')
+    dzslider = Slider(start=-0.01, end=0.01, value=dz, step=0.0001, title='Redshift fine-tuning')
     dzslider.format = "0[.]0000"
     z_display = Div(text="<b>z<sub>disp</sub> = "+("{:.4f}").format(z+dz)+"</b>")
 
