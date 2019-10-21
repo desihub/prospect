@@ -64,6 +64,18 @@
   <p> Not available
 {% endif %}
 
+<h3> MWS targets </h3>
+{% if mws_pixels is not none %}
+  <ul>
+  {% for pix in mws_pixels %}
+  <li><a href="mws_targets/{{ pix }}/index_{{ pix }}.html">{{ pix }}</a></li>
+  {% endfor %}
+  </ul>
+{% else %}
+  <p> Not available
+{% endif %}
+
+
 <h3> QSO targets </h3>
 {% if qso_pixels is not none %}
   <ul>

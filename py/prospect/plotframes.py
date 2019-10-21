@@ -22,7 +22,7 @@ from bokeh.models import ColumnDataSource, CDSView, IndexFilter
 from bokeh.models import CustomJS, LabelSet, Label, Span, Legend
 from bokeh.models.widgets import (
     Slider, Button, Div, CheckboxGroup, CheckboxButtonGroup, RadioButtonGroup, TextInput, Select)
-from bokeh.layouts import widgetbox
+from bokeh.layouts import widgetbox, Spacer
 import bokeh.events
 # from bokeh.layouts import row, column
 
@@ -34,6 +34,7 @@ import desispec.frame
 
 #from . import utils_specviewer
 from prospect import utils_specviewer
+from prospect import mycoaddcam
 from astropy.table import Table
 
 def _coadd(wave, flux, ivar, rdat):
@@ -326,6 +327,21 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
         cds_spectra.append(
             bk.ColumnDataSource(cdsdata, name=band)
             )
+    
+    # CDS object for camera-merged spectrum
+    # Do NOT store all coadded spectra in CDS obj, to reduce size of html files
+    # Except for the first spectrum, coaddition is done later in javascript
+    coadd_wave, coadd_flux, coadd_ivar = mycoaddcam.mycoaddcam(spectra)
+    cds_coaddcam_data = dict(
+        origwave = coadd_wave.copy(),
+        plotwave = coadd_wave.copy(),
+        plotflux = coadd_flux[0,:].copy(),
+        plotnoise = np.ones(len(coadd_wave))
+    )
+    if with_noise :
+        w, = np.where( (coadd_ivar[0,:] > 0) )
+        cds_coaddcam_data['plotnoise'][w] = 1/np.sqrt(coadd_ivar[0,:][w])
+    cds_coaddcam_spec = bk.ColumnDataSource(cds_coaddcam_data)
 
     #- Reorder zcatalog to match input targets
     #- TODO: allow more than one zcatalog entry with different ZNUM per targetid
@@ -421,37 +437,48 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     cds_targetinfo.add(np.zeros(nspec), name='spec_version')
     cds_targetinfo.add(np.zeros(nspec), name='redrock_version')
 
-    #- Determine initial ymin, ymax
-    ymin = ymax = 0.0
+    #- Determine initial ymin, ymax, xmin, xmax
+    ymin = ymax = xmax = 0.0
+    xmin = 100000.
+    xmargin = 300.
     for band in spectra.bands:
         ymin = min(ymin, np.min(spectra.flux[band][0]))
         ymax = max(ymax, np.max(spectra.flux[band][0]))
-
+        xmin = min(xmin, np.min(spectra.wave[band]))
+        xmax = max(xmax, np.max(spectra.wave[band]))        
+    xmin -= xmargin
+    xmax += xmargin
+        
     plot_width=800
     plot_height=400
     # tools = 'pan,box_zoom,wheel_zoom,undo,redo,reset,save'
-    tools = 'pan,box_zoom,wheel_zoom,reset,save'
+    tools = 'pan,box_zoom,wheel_zoom,save' # reset
     fig = bk.figure(height=plot_height, width=plot_width, title=title,
-        tools=tools, toolbar_location='above', y_range=(ymin, ymax))
-    fig.toolbar.active_drag = fig.tools[1]    #- box zoom
+        tools=tools, toolbar_location='above', y_range=(ymin, ymax), x_range=(xmin, xmax))
+    fig.toolbar.active_drag = fig.tools[0]    #- pan zoom (previously box)
     fig.toolbar.active_scroll = fig.tools[2]  #- wheel zoom
     fig.xaxis.axis_label = 'Wavelength [Å]'
     fig.yaxis.axis_label = 'Flux'
     fig.xaxis.axis_label_text_font_style = 'normal'
     fig.yaxis.axis_label_text_font_style = 'normal'
-    colors = dict(b='#1f77b4', r='#d62728', z='maroon')
-    noise_colors = dict(b='greenyellow', r='green', z='forestgreen') # TODO test several and choose
-
+    colors = dict(b='#1f77b4', r='#d62728', z='maroon', coadd='#d62728')
+    noise_colors = dict(b='greenyellow', r='green', z='forestgreen', coadd='green') # TODO test several and choose
+    alpha_discrete = 0.2 # alpha for "almost-hidden" curves (single-arm spectra and noise by default)
+    
     data_lines = list()
     for spec in cds_spectra:
-        lx = fig.line('plotwave', 'plotflux', source=spec, line_color=colors[spec.name])
+        lx = fig.line('plotwave', 'plotflux', source=spec, line_color=colors[spec.name], line_alpha=alpha_discrete)
         data_lines.append(lx)
-   
+    lx = fig.line('plotwave', 'plotflux', source=cds_coaddcam_spec, line_color=colors['coadd'], line_alpha=1)
+    data_lines.append(lx)
+    
     noise_lines = list()
     if with_noise :
         for spec in cds_spectra :
-            lx = fig.line('plotwave', 'plotnoise', source=spec, line_color=noise_colors[spec.name])
+            lx = fig.line('plotwave', 'plotnoise', source=spec, line_color=noise_colors[spec.name], line_alpha=alpha_discrete)
             noise_lines.append(lx)
+        lx = fig.line('plotwave', 'plotnoise', source=cds_coaddcam_spec, line_color=noise_colors['coadd'], line_alpha=1)
+        noise_lines.append(lx)
 
     model_lines = list()
     if cds_model is not None:
@@ -479,11 +506,16 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     zoom_noise_lines = list()
     for spec in cds_spectra:
         zoom_data_lines.append(zoomfig.line('plotwave', 'plotflux', source=spec,
-            line_color=colors[spec.name], line_width=1, line_alpha=1.0))
+            line_color=colors[spec.name], line_width=1, line_alpha=alpha_discrete))
         if with_noise :
             zoom_noise_lines.append(zoomfig.line('plotwave', 'plotnoise', source=spec,
-                            line_color=noise_colors[spec.name], line_width=1, line_alpha=1))
-
+                            line_color=noise_colors[spec.name], line_width=1, line_alpha=alpha_discrete))
+    zoom_data_lines.append(zoomfig.line('plotwave', 'plotflux', source=cds_coaddcam_spec, line_color=colors['coadd'], line_alpha=1))
+    
+    if with_noise :
+        lx = zoomfig.line('plotwave', 'plotnoise', source=cds_coaddcam_spec, line_color=noise_colors['coadd'], line_alpha=1)
+        zoom_noise_lines.append(lx)
+            
     zoom_model_lines = list()
     if cds_model is not None:
         zoom_model_lines.append(zoomfig.line('plotwave', 'plotflux', source=cds_model, line_color='black'))
@@ -501,7 +533,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     #
     # Targeting image
     #
-    imfig = bk.figure(width=200, height=200,
+    imfig = bk.figure(width=plot_height//2, height=plot_height//2,
                       x_range=(0, 256), y_range=(0, 256),
                       x_axis_location=None, y_axis_location=None,
                       output_backend="webgl",
@@ -523,14 +555,16 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     #- Emission and absorption lines
     z = zcatalog['Z'][0] if (zcatalog is not None) else 0.0
     line_data, lines, line_labels = add_lines(fig, z=z)
+    zoom_line_data, zoom_lines, zoom_line_labels = add_lines(zoomfig, z=z, label_offsets=[50, 5])
 
     #-----
     #- Add widgets for controling plots
     z1 = np.floor(z*100)/100
     dz = z-z1
-    zslider = Slider(start=0.0, end=4.0, value=z1, step=0.01, title='Redshift')
-    dzslider = Slider(start=-0.01, end=0.01, value=dz, step=0.0001, title='+ Delta redshift')
+    zslider = Slider(start=0.0, end=4.0, value=z1, step=0.01, title='Redshift rough tuning')
+    dzslider = Slider(start=-0.01, end=0.01, value=dz, step=0.0001, title='Redshift fine-tuning')
     dzslider.format = "0[.]0000"
+    z_display = Div(text="<b>z<sub>disp</sub> = "+("{:.4f}").format(z+dz)+"</b>")
 
     #- Observer vs. Rest frame wavelengths
     waveframe_buttons = RadioButtonGroup(
@@ -545,18 +579,22 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
 
     zslider_callback  = CustomJS(
         args=dict(
-            spectra=cds_spectra,
-            model=cds_model,
+            spectra = cds_spectra,
+            coaddcam_spec = cds_coaddcam_spec,
+            model = cds_model,
             targetinfo = cds_targetinfo,
             ifiberslider = ifiberslider,
             zslider=zslider,
             dzslider=dzslider,
+            z_display = z_display,
             waveframe_buttons=waveframe_buttons,
             line_data=line_data, lines=lines, line_labels=line_labels,
+            zlines=zoom_lines, zline_labels=zoom_line_labels,
             fig=fig,
             ),
         code="""
         var z = zslider.value + dzslider.value
+        z_display.text = "<b>z<sub>disp</sub> = " + z.toFixed(4) + "</b>"
         var line_restwave = line_data.data['restwave']
         var ifiber = ifiberslider.value
         var zfit = 0.0
@@ -567,32 +605,48 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             var waveshift = (waveframe_buttons.active == 0) ? 1+z : 1 ;
             lines[i].location = line_restwave[i] * waveshift ;
             line_labels[i].x = line_restwave[i] * waveshift ;
+            zlines[i].location = line_restwave[i] * waveshift ;
+            zline_labels[i].x = line_restwave[i] * waveshift ;
         }
-        for(var i=0; i<spectra.length; i++) {
-            var waveshift = (waveframe_buttons.active == 0) ? 1 : 1/(1+z) ;
-            var data = spectra[i].data
+        
+        function shift_plotwave(cds_spec, waveshift) {
+            var data = cds_spec.data
             var origwave = data['origwave']
             var plotwave = data['plotwave']
             for (var j=0; j<plotwave.length; j++) {
                 plotwave[j] = origwave[j] * waveshift ;
             }
-            spectra[i].change.emit()
+            cds_spec.change.emit()
         }
+        
+        var waveshift_spec = (waveframe_buttons.active == 0) ? 1 : 1/(1+z) ;
+        for(var i=0; i<spectra.length; i++) {
+            shift_plotwave(spectra[i], waveshift_spec)
+        }
+        shift_plotwave(coaddcam_spec, waveshift_spec)
+        
         // Update model wavelength array
         if(model) {
-            var waveshift = (waveframe_buttons.active == 0) ? (1+z)/(1+zfit) : 1/(1+zfit) ;
-            var origwave = model.data['origwave']
-            var plotwave = model.data['plotwave']
-            for(var i=0; i<plotwave.length; i++) {
-                plotwave[i] = origwave[i] * waveshift ;
-            }
-            model.change.emit()
+            var waveshift_model = (waveframe_buttons.active == 0) ? (1+z)/(1+zfit) : 1/(1+zfit) ;
+            shift_plotwave(model, waveshift_model)
         }
         """)
 
     zslider.js_on_change('value', zslider_callback)
     dzslider.js_on_change('value', zslider_callback)
     waveframe_buttons.js_on_click(zslider_callback)
+
+    zreset_button = Button(label='Reset redshift')
+    zreset_callback = CustomJS(
+        args=dict(zslider=zslider, dzslider=dzslider, targetinfo=cds_targetinfo, ifiberslider=ifiberslider),
+        code="""
+            var ifiber = ifiberslider.value
+            var z = targetinfo.data['z'][ifiber]
+            var z1 = Math.floor(z*100) / 100
+            zslider.value = z1
+            dzslider.value = (z - z1)
+        """)
+    zreset_button.js_on_event('button_click', zreset_callback)
 
     plotrange_callback = CustomJS(
         args = dict(
@@ -651,6 +705,24 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
         """
     )
     display_options_group.js_on_click(disp_opt_callback)
+    
+    #-----
+    #- Highlight individual-arm or camera-coadded spectra
+    coaddcam_buttons = RadioButtonGroup( labels=["Camera-coadded", "Single-arm"], active=0 )
+    coaddcam_callback = CustomJS(
+        args = dict(coaddcam_buttons=coaddcam_buttons, list_lines=[data_lines, noise_lines, zoom_data_lines, zoom_noise_lines], alpha_discrete=alpha_discrete), code="""
+        var n_lines = list_lines[0].length
+        for (var i=0; i<n_lines; i++) {
+            var new_alpha = 1
+            if (coaddcam_buttons.active == 0 && i<n_lines-1) new_alpha = alpha_discrete
+            if (coaddcam_buttons.active == 1 && i==n_lines-1) new_alpha = alpha_discrete
+            for (var j=0; j<list_lines.length; j++) {
+                list_lines[j][i].glyph.line_alpha = new_alpha
+            }
+        }
+        """
+    )
+    coaddcam_buttons.js_on_click(coaddcam_callback)
 
     target_info_div = Div(text=target_info[0])
     vi_info_div = Div(text=" ") # consistent with show_prev_vi="No" by default
@@ -661,7 +733,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             labels=["Emission", "Absorption"], active=[])
 
     lines_callback = CustomJS(
-        args = dict(line_data=line_data, lines=lines, line_labels=line_labels),
+        args = dict(line_data=line_data, lines=lines, line_labels=line_labels, zlines=zoom_lines, zline_labels=zoom_line_labels),
         code="""
         var show_emission = false
         var show_absorption = false
@@ -676,9 +748,13 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             if(line_data.data['emission'][i]) {
                 lines[i].visible = show_emission
                 line_labels[i].visible = show_emission
+                zlines[i].visible = show_emission
+                zline_labels[i].visible = show_emission
             } else {
                 lines[i].visible = show_absorption
                 line_labels[i].visible = show_absorption
+                zlines[i].visible = show_absorption
+                zline_labels[i].visible = show_absorption
             }
         }
         """
@@ -715,7 +791,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     # save VI info to ASCII file
     # tested briefly safari chrome firefox
     # Warning text output very sensitve for # " \  ... (standard js formatting not ok)
-    save_vi_button = Button(label="Download VI",button_type="success")
+    save_vi_button = Button(label="Download VI",button_type="default")
     save_vi_callback = CustomJS(args=dict(cds_targetinfo=cds_targetinfo, viflags=viflags), code="""
         function download(filename, text) {
             var element = document.createElement('a');
@@ -756,12 +832,45 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     """)
     show_prev_vi_select.js_on_change('value',show_prev_vi_callback)
 
-    vi_div = Div(text="VI flag :")
+    
+    #-----
+    reset_plotrange_button = Button(label="Reset X-Y range",button_type="default")
+    reset_plotrange_callback = CustomJS(args = dict(fig=fig, xmin=xmin, xmax=xmax, spectra=cds_spectra), code="""
+        // x-range : use fixed x-range determined once for all
+        fig.x_range.start = xmin
+        fig.x_range.end = xmax
+        
+        // y-range : same function as in update_plot()
+        function get_y_minmax(pmin, pmax, data) {
+            var dx = data.slice().filter(Boolean)
+            dx.sort()
+            var imin = Math.floor(pmin * dx.length)
+            var imax = Math.floor(pmax * dx.length)
+            return [dx[imin], dx[imax]]
+        }
+        var ymin = 0.0
+        var ymax = 0.0
+        for (var i=0; i<spectra.length; i++) {
+            var data = spectra[i].data
+            tmp = get_y_minmax(0.01, 0.99, data['plotflux'])
+            ymin = Math.min(ymin, tmp[0])
+            ymax = Math.max(ymax, tmp[1])
+        }
+        if(ymin<0) {
+            fig.y_range.start = ymin * 1.4
+        } else {
+            fig.y_range.start = ymin * 0.6
+        }
+        fig.y_range.end = ymax * 1.4
 
+    """)
+    reset_plotrange_button.js_on_event('button_click', reset_plotrange_callback)
+    
     #-----
     update_plot = CustomJS(
         args = dict(
             spectra = cds_spectra,
+            coaddcam_spec = cds_coaddcam_spec,
             model = cds_model,
             targetinfo = cds_targetinfo,
             target_info_div = target_info_div,
@@ -771,7 +880,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             smootherslider = smootherslider,
             zslider=zslider,
             dzslider=dzslider,
-            lines_button_group = lines_button_group,
+  #          lines_button_group = lines_button_group,
             fig = fig,
             imfig_source=imfig_source,
             imfig_urls=imfig_urls,
@@ -852,7 +961,103 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             }
             return smoothed_data
         }
+        
+        // Find nearest index in grid, left from point; use dichotomy method
+        function index_dichotomy(point, grid) {
+            if ( point < grid[0] ) return 0
+            if ( point > grid[grid.length-1] ) return grid.length-2
+            var i_left = 0
+            var i_center = 0
+            var i_right = grid.length-1
+            while ( i_right - i_left != 1) {
+                i_center = i_left + Math.floor((i_right-i_left)/2)
+                if ( point >= grid[i_center] ) {
+                    i_left = i_center
+                } else {
+                    i_right = i_center
+                }
+            }
+            return i_left
+        }
 
+        // Basic linear interpolation at on point
+        function interp_grid(xval, xarr, yarr) {
+            var index = index_dichotomy(xval, xarr)
+            var a = (yarr[index+1] - yarr[index])/(xarr[index+1] - xarr[index])
+            var b = yarr[index]-a*xarr[index]
+            var yval = a*xval+b
+            return yval
+        }
+
+        // Coadd brz spectra. Similar to the python code mycoaddcam()
+        function coadd_brz_cams(wave_in, flux_in, noise_in) {
+            // each "_in" must have 3 entries (brz)
+            // TODO handle case of no noise
+
+            // Find b,r,z ordering in input arrays
+            var wave_start = [wave_in[0][0], wave_in[1][0], wave_in[2][0]]
+            var i_b = wave_start.indexOf(Math.min.apply(Math, wave_start))
+            var i_z = wave_start.indexOf(Math.max.apply(Math, wave_start))
+            var i_r = 1
+            for (var i=0; i<3; i++) {
+                if ( (i_b != i) && (i_z != i) ) i_r = i
+            }
+
+            var wave_out = []
+            var flux_out = []
+            var noise_out = []
+            var margin = 20
+            for (var i=0; i<wave_in[i_b].length; i++) { // b
+                if (wave_in[i_b][i] < wave_in[i_b][wave_in[i_b].length-1] - margin) {
+                    wave_out.push(wave_in[i_b][i])
+                    flux_out.push(flux_in[i_b][i])
+                    noise_out.push(noise_in[i_b][i])
+                }
+            }
+            var the_lim = wave_out[wave_out.length-1]
+            for (var i=0; i<wave_in[i_r].length; i++) { // r
+                if ( (wave_in[i_r][i] < wave_in[i_r][wave_in[i_r].length-1] - margin) && (wave_in[i_r][i] > the_lim)) {
+                    wave_out.push(wave_in[i_r][i])
+                    flux_out.push(flux_in[i_r][i])
+                    noise_out.push(noise_in[i_r][i])
+                }
+            }
+            the_lim = wave_out[wave_out.length-1]
+            for (var i=0; i<wave_in[i_z].length; i++) { // z
+                if (wave_in[i_z][i] > the_lim) {
+                    wave_out.push(wave_in[i_z][i])
+                    flux_out.push(flux_in[i_z][i])
+                    noise_out.push(noise_in[i_z][i])
+                }
+            }
+            for (var i=0; i<wave_out.length; i++) { // combine in overlapping regions
+                var b1 = -1
+                var b2 = -1
+                if ( (wave_out[i] > wave_in[i_r][0]) && (wave_out[i] < wave_in[i_b][wave_in[i_b].length-1]) ) { // br
+                    b1 = 0
+                    b2 = 1
+                }
+                if ( (wave_out[i] > wave_in[i_z][0]) && (wave_out[i] < wave_in[i_r][wave_in[i_r].length-1]) ) {  // rz
+                    b1 = 1
+                    b2 = 2
+                }
+                if (b1 != -1) {
+                    var phi1 = interp_grid(wave_out[i], wave_in[b1], flux_in[b1])
+                    var noise1 = interp_grid(wave_out[i], wave_in[b1], noise_in[b1])
+                    var phi2 = interp_grid(wave_out[i], wave_in[b2], flux_in[b2])
+                    var noise2 = interp_grid(wave_out[i], wave_in[b2], noise_in[b2])
+                    if ( noise1 > 0 && noise2 > 0 ) {
+                        var iv1 = 1/(noise1*noise1)
+                        var iv2 = 1/(noise2*noise2)
+                        var iv = iv1+iv2
+                        noise_out[i] = 1/Math.sqrt(iv)
+                        flux_out[i] = (iv1*phi1+iv2*phi2)/iv
+                    }
+                }
+            }
+            return [wave_out, flux_out, noise_out]
+        }
+        
         // Smooth plot and recalculate ymin/ymax
         var ymin = 0.0
         var ymax = 0.0
@@ -880,6 +1085,29 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             ymin = Math.min(ymin, tmp[0])
             ymax = Math.max(ymax, tmp[1])
         }
+
+        // update camera-coadd
+        // Here I choose to do coaddition on the smoothed spectra (should be ok?)
+        var wave_in = []
+        var flux_in = []
+        var noise_in = []
+        for (var i=0; i<3; i++) {
+            var data = spectra[i].data
+            wave_in.push(data['plotwave'].slice())
+            flux_in.push(data['plotflux'].slice())
+            if ('plotnoise' in data) {
+                noise_in.push(data['plotnoise'].slice())
+            } else {
+                var dummy_noise = []
+                for (var j=0; j<data['plotflux'].length; j++) dummy_noise.push(1)
+                noise_in.push(dummy_noise)
+            }
+        }
+        var coadd_infos = coadd_brz_cams(wave_in, flux_in, noise_in)
+        coaddcam_spec.data['plotwave'] = coadd_infos[0].slice()
+        coaddcam_spec.data['plotflux'] = coadd_infos[1].slice()
+        coaddcam_spec.data['plotnoise'] = coadd_infos[2].slice()
+        coaddcam_spec.change.emit()
 
         // update model
         if(model) {
@@ -914,7 +1142,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     navigation_button_width = 30
     prev_button = Button(label="<", width=navigation_button_width)
     next_button = Button(label=">", width=navigation_button_width)
-
+    
     prev_callback = CustomJS(
         args=dict(ifiberslider=ifiberslider),
         code="""
@@ -932,58 +1160,57 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
 
     prev_button.js_on_event('button_click', prev_callback)
     next_button.js_on_event('button_click', next_callback)
-
-
+    
     #-----
     slider_width = plot_width - 2*navigation_button_width
     navigator = bk.Row(
-        widgetbox(prev_button, width=navigation_button_width),
+        widgetbox(prev_button, width=navigation_button_width+15),
+        widgetbox(vi_flaginput, width=60*len(viflags)),
         widgetbox(next_button, width=navigation_button_width+20),
-        widgetbox(ifiberslider, width=slider_width-20))
+        widgetbox(ifiberslider, width=plot_width-(60*len(viflags)+2*navigation_button_width+40)))
     the_bokehsetup = bk.Column(
             bk.Row(fig, bk.Column(imfig, zoomfig)),
-            widgetbox(target_info_div, width=plot_width),
+            bk.Row(
+                widgetbox(target_info_div, width=plot_width - 120),
+                widgetbox(reset_plotrange_button, width = 100)
+            ),
             navigator,
             bk.Row(
                 widgetbox(smootherslider, width=plot_width//2),
-                widgetbox(display_options_group,width=120)
-                ),
+                widgetbox(Spacer(width=plot_width//2-120)),
+                widgetbox(display_options_group,width=120),
+            ),
+            bk.Row(
+                widgetbox(z_display, width=120),
+                widgetbox(zslider, width=plot_width//2 - 110),
+                widgetbox(dzslider, width=plot_width//2 - 110),
+                widgetbox(zreset_button, width=100)
+            ),
             bk.Row(
                 widgetbox(waveframe_buttons, width=120),
-                widgetbox(zslider, width=plot_width//2 - 60),
-                widgetbox(dzslider, width=plot_width//2 - 60),
-                ),
-            widgetbox(lines_button_group),
+                widgetbox(lines_button_group, width=120),
+                widgetbox(Spacer(width=plot_width-440)),
+                widgetbox(coaddcam_buttons, width=200)
+            ),
+            bk.Row(Spacer(height=30)),
             bk.Row(
-                widgetbox(vi_div,width=80),
-                widgetbox(vi_flaginput,width=300),
                 widgetbox(vi_commentinput,width=plot_width-500),
                 widgetbox(vi_nameinput,width=120),
-                ),
-            widgetbox(save_vi_button,width=100)
+                widgetbox(Spacer(width=50)),
+                widgetbox(save_vi_button,width=100,sizing_mode="scale_height")
+            ),
+#            widgetbox(save_vi_button,width=100)
             ## Don't want this in principle :
 #            bk.Row(
 #                widgetbox(show_prev_vi_select,width=100),
 #                widgetbox(vi_info_div, width=plot_width-130)
 #                )
-            )
+        )
     if notebook:
         bk.show(the_bokehsetup)
     else:
         bk.save(the_bokehsetup)
-
-#     bk.show(bk.Column(
-#         bk.Row(fig, zoomfig),
-#         widgetbox(target_info_div, width=plot_width),
-#         navigator,
-#         widgetbox(smootherslider, width=plot_width//2),
-#         bk.Row(
-#             widgetbox(waveframe_buttons, width=120),
-#             widgetbox(zslider, width=plot_width//2 - 60),
-#             widgetbox(dzslider, width=plot_width//2 - 60),
-#             ),
-#         widgetbox(lines_button_group),
-#         ))
+    
 
 #-------------------------------------------------------------------------
 _line_list = [
@@ -1066,7 +1293,14 @@ def _airtovac(w):
         vac = w*fact
     return vac
 
-def add_lines(fig, z, emission=True, fig_height=350):
+def add_lines(fig, z=0 , emission=True, fig_height=None, label_offsets=[100, 5]):
+    """
+    label_offsets = [offset_absorption_lines, offset_emission_lines] : offsets in y-position 
+                    for line labels wrt top (resp. bottom) of the figure
+    """
+    
+    if fig_height is None : fig_height = fig.plot_height
+
     line_data = dict()
     line_data['restwave'] = np.array([_airtovac(row['lambda']) for row in _line_list])
     line_data['plotwave'] = line_data['restwave'] * (1+z)
@@ -1079,11 +1313,11 @@ def add_lines(fig, z, emission=True, fig_height=350):
     for i in range(len(line_data['restwave'])):
         if i == 0:
             if _line_list[i]['emission']:
-                y.append(fig_height - 100)
+                y.append(fig_height - label_offsets[0])
             else:
-                y.append(5)
+                y.append(label_offsets[1])
         else:
-            if (line_data['restwave'][i] < line_data['restwave'][i-1]+100) and \
+            if (line_data['restwave'][i] < line_data['restwave'][i-1]+label_offsets[0]) and \
                (line_data['emission'][i] == line_data['emission'][i-1]):
                 if line_data['emission'][i]:
                     y.append(y[-1] - 15)
@@ -1091,9 +1325,9 @@ def add_lines(fig, z, emission=True, fig_height=350):
                     y.append(y[-1] + 15)
             else:
                 if line_data['emission'][i]:
-                    y.append(fig_height-100)
+                    y.append(fig_height-label_offsets[0])
                 else:
-                    y.append(5)
+                    y.append(label_offsets[1])
 
     line_data['y'] = y
 
