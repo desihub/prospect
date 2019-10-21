@@ -549,7 +549,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     #- Emission and absorption lines
     z = zcatalog['Z'][0] if (zcatalog is not None) else 0.0
     line_data, lines, line_labels = add_lines(fig, z=z)
-    zoom_line_data, zoom_lines, zoom_line_labels = add_lines(zoomfig, z=z)
+    zoom_line_data, zoom_lines, zoom_line_labels = add_lines(zoomfig, z=z, label_offsets=[50, 5])
 
     #-----
     #- Add widgets for controling plots
@@ -1244,8 +1244,12 @@ def _airtovac(w):
         vac = w*fact
     return vac
 
-def add_lines(fig, z=0 , emission=True, fig_height=None):
-
+def add_lines(fig, z=0 , emission=True, fig_height=None, label_offsets=[100, 5]):
+    """
+    label_offsets = [offset_absorption_lines, offset_emission_lines] : offsets in y-position 
+                    for line labels wrt top (resp. bottom) of the figure
+    """
+    
     if fig_height is None : fig_height = fig.plot_height
 
     line_data = dict()
@@ -1260,11 +1264,11 @@ def add_lines(fig, z=0 , emission=True, fig_height=None):
     for i in range(len(line_data['restwave'])):
         if i == 0:
             if _line_list[i]['emission']:
-                y.append(fig_height - 100)
+                y.append(fig_height - label_offsets[0])
             else:
-                y.append(5)
+                y.append(label_offsets[1])
         else:
-            if (line_data['restwave'][i] < line_data['restwave'][i-1]+100) and \
+            if (line_data['restwave'][i] < line_data['restwave'][i-1]+label_offsets[0]) and \
                (line_data['emission'][i] == line_data['emission'][i-1]):
                 if line_data['emission'][i]:
                     y.append(y[-1] - 15)
@@ -1272,9 +1276,9 @@ def add_lines(fig, z=0 , emission=True, fig_height=None):
                     y.append(y[-1] + 15)
             else:
                 if line_data['emission'][i]:
-                    y.append(fig_height-100)
+                    y.append(fig_height-label_offsets[0])
                 else:
-                    y.append(5)
+                    y.append(label_offsets[1])
 
     line_data['y'] = y
 
