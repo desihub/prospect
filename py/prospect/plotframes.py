@@ -7,7 +7,6 @@ TODO
 * add code details tab (version, SPECPROD)
 * redshift model fit
 * better smoothing kernel, e.g. gaussian
-* sky? ivar? (could be useful, but makes data payload larger)
 """
 
 import os, sys
@@ -218,6 +217,7 @@ def create_model(spectra, zbest):
 
     #- Now combine to a single wavelength grid across all cameras
     #- TODO: assumes b,r,z all exist
+    assert np.all([ band in spectra.wave.keys() for band in ['b','r','z'] ])
     br_split = 0.5*(spectra.wave['b'][-1] + spectra.wave['r'][0])
     rz_split = 0.5*(spectra.wave['r'][-1] + spectra.wave['z'][0])
     keep = dict()
@@ -257,6 +257,133 @@ def _viewer_urls(spectra, zoom=13, layer='dr8'):
             for i in range(len(ra))]
 
 
+def make_cds_spectra(spectra, with_noise) :
+    """ Creates column data source for b,r,z observed spectra """
+
+    cds_spectra = list()
+    for band in spectra.bands:
+        cdsdata=dict(
+            origwave=spectra.wave[band].copy(),
+            plotwave=spectra.wave[band].copy(),
+            )
+        for i in range(spectra.num_spectra()):
+            key = 'origflux'+str(i)
+            cdsdata[key] = spectra.flux[band][i]
+            if with_noise :
+                key = 'orignoise'+str(i)
+                noise = np.zeros(len(spectra.ivar[band][i]))
+                w, = np.where( (spectra.ivar[band][i] > 0))
+                noise[w] = 1/np.sqrt(spectra.ivar[band][i][w])
+                cdsdata[key] = noise
+        cdsdata['plotflux'] = cdsdata['origflux0']
+        if with_noise : cdsdata['plotnoise'] = cdsdata['orignoise0'] 
+        cds_spectra.append( bk.ColumnDataSource(cdsdata, name=band) )
+    
+    return cds_spectra
+
+def make_cds_coaddcam_spec(spectra, with_noise) :
+    """ Creates column data source for camera-coadded observed spectra 
+        Do NOT store all coadded spectra in CDS obj, to reduce size of html files
+        Except for the first spectrum, coaddition is done later in javascript
+    """
+
+    coadd_wave, coadd_flux, coadd_ivar = mycoaddcam.mycoaddcam(spectra)
+    cds_coaddcam_data = dict(
+        origwave = coadd_wave.copy(),
+        plotwave = coadd_wave.copy(),
+        plotflux = coadd_flux[0,:].copy(),
+        plotnoise = np.ones(len(coadd_wave))
+    )
+    if with_noise :
+        w, = np.where( (coadd_ivar[0,:] > 0) )
+        cds_coaddcam_data['plotnoise'][w] = 1/np.sqrt(coadd_ivar[0,:][w])
+    cds_coaddcam_spec = bk.ColumnDataSource(cds_coaddcam_data)
+    
+    return cds_coaddcam_spec
+
+def make_cds_model(model) :
+    """ Creates column data source for model spectrum """
+    
+    mwave, mflux = model
+    cds_model_data = dict(
+        origwave = mwave.copy(),
+        plotwave = mwave.copy(),
+        plotflux = np.zeros(len(mwave)),
+    )
+    for i in range(len(mflux)):
+        key = 'origflux'+str(i)
+        cds_model_data[key] = mflux[i]
+
+    cds_model_data['plotflux'] = cds_model_data['origflux0']
+    cds_model = bk.ColumnDataSource(cds_model_data)
+
+    return cds_model
+
+def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv) :
+    """ Creates column data source for target-related metadata, from zcatalog, fibermap and VI files """
+
+    target_info = list()
+    vi_info = list()
+    for i, row in enumerate(spectra.fibermap):
+        if sv :
+            target_bit_names = ' '.join(desi_mask_sv1.names(row['SV1_DESI_TARGET']))
+        else :
+            target_bit_names = ' '.join(desi_mask.names(row['DESI_TARGET']))
+        txt = 'Target {}: {} '.format(row['TARGETID'], target_bit_names)
+        if (row['FLUX_G'] > 0 and row['MW_TRANSMISSION_G'] > 0) :
+            gmag = -2.5*np.log10(row['FLUX_G']/row['MW_TRANSMISSION_G'])+22.5
+        else : gmag = 0
+        txt += '<BR> Photometry (dereddened) : g<SUB>mag</SUB>={:.1f}'.format(gmag)
+        if zcatalog is not None:
+            txt += '<BR/> Fit result : {} z={:.4f} ± {:.4f}&emsp;&emsp; z<SUB>WARN</SUB>={}&emsp;&emsp; &Delta;&chi;<SUP>2</SUP>={:.1f}'.format(
+                zcatalog['SPECTYPE'][i],
+                zcatalog['Z'][i],
+                zcatalog['ZERR'][i],
+                zcatalog['ZWARN'][i],
+                zcatalog['DELTACHI2'][i]
+            )
+        target_info.append(txt)
+        # TMP no vidata (will change it)
+#         if ( (vidata is not None) and (len(vidata[i])>0) ) :
+#             txt = ('<BR/> VI info : SCANNER FLAG COMMENTS')
+#             for the_vi in vidata[i] :
+#                 txt += ('<BR/>&emsp;&emsp;&emsp;&emsp; {0} {1} {2}'.format(the_vi['scannername'], the_vi['scanflag'], the_vi['VIcomment']))
+#        else : 
+        txt = ('<BR/> No VI previously recorded for this target')
+        vi_info.append(txt)
+
+    cds_targetinfo = bk.ColumnDataSource(
+        dict(target_info=target_info),
+        name='target_info')
+    cds_targetinfo.add(vi_info, name='vi_info')
+    
+    if zcatalog is not None:
+        cds_targetinfo.add(zcatalog['Z'], name='z')
+        cds_targetinfo.add(zcatalog['SPECTYPE'].astype('U{0:d}'.format(zcatalog['SPECTYPE'].dtype.itemsize)), name='spectype')
+
+    nspec = spectra.num_spectra()
+    if not is_coadded :
+        cds_targetinfo.add(spectra.fibermap['EXPID'], name='expid')
+    else : # If coadd, fill VI accordingly
+        cds_targetinfo.add(['-1' for i in range(nspec)], name='expid')
+    cds_targetinfo.add([str(x) for x in spectra.fibermap['TARGETID']], name='targetid') # !! No int64 in js !!
+
+    #- FIXME: should not hardcode which DEPVERnn has which versions
+    ### cds_targetinfo.add([spectra.meta['DEPVER10'] for i in range(nspec)], name='spec_version')
+    ### cds_targetinfo.add([spectra.meta['DEPVER13'] for i in range(nspec)], name='redrock_version')
+    cds_targetinfo.add(np.zeros(nspec), name='spec_version')
+    cds_targetinfo.add(np.zeros(nspec), name='redrock_version')
+
+    username = '-'
+    # TMP : TODO see if we do that..
+#    if notebook and ("USER" in os.environ) : username = os.environ['USER']
+    cds_targetinfo.add([username for i in range(nspec)], name='VI_ongoing_scanner')
+    cds_targetinfo.add(['-' for i in range(nspec)], name='VI_ongoing_flag')
+    cds_targetinfo.add(['' for i in range(nspec)], name='VI_ongoing_comment')
+
+    return cds_targetinfo
+
+
 def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, savedir='.', is_coadded=True, title=None, html_dir=None, with_noise=True, sv=False):
     '''
     Main prospect routine, creates a bokeh document from a set of spectra and fits
@@ -283,6 +410,11 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
         frame_input = True
     else:
         frame_input = False
+    nspec = spectra.num_spectra()
+    #- Set masked bins to NaN so that Bokeh won't plot them
+    for band in spectra.bands:
+        bad = (spectra.ivar[band] == 0.0) | (spectra.mask[band] != 0)
+        spectra.flux[band][bad] = np.nan
 
     if frame_input and title is None:
         meta = spectra.meta
@@ -290,6 +422,22 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             meta['NIGHT'], meta['EXPID'], meta['CAMERA'][1],
         )
 
+    #- Reorder zcatalog to match input targets
+    #- TODO: allow more than one zcatalog entry with different ZNUM per targetid
+    if zcatalog is not None:
+        zcatalog, kk = utils_specviewer.match_zcat_to_spectra(zcatalog, spectra)
+        
+        #- Also need to re-order input model fluxes
+        if model is not None :
+            assert model_from_zcat == False
+            mwave, mflux = model
+            model = mwave, mflux[kk]
+
+        if model_from_zcat == True :
+            model = create_model(spectra, zcatalog)
+
+    #-----
+    #- Initialize Bokeh output
     if notebook:
         bk.output_notebook()
     else :
@@ -297,146 +445,18 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
         if html_dir is None : raise RuntimeError("Need html_dir")
         bk.output_file(html_dir+"/"+title+".html", title='DESI spectral viewer')
 
-    #- Gather spectra into ColumnDataSource objects for Bokeh
-    nspec = spectra.num_spectra()
-    cds_spectra = list()
-
-    for band in spectra.bands:
-        #- Set masked bins to NaN so that Bokeh won't plot them
-        bad = (spectra.ivar[band] == 0.0) | (spectra.mask[band] != 0)
-        spectra.flux[band][bad] = np.nan
-
-        cdsdata=dict(
-            origwave=spectra.wave[band].copy(),
-            plotwave=spectra.wave[band].copy(),
-            )
-
-        for i in range(nspec):
-            key = 'origflux'+str(i)
-            cdsdata[key] = spectra.flux[band][i]
-            if with_noise :
-                key = 'orignoise'+str(i)
-                noise = np.zeros(len(spectra.ivar[band][i]))
-                w, = np.where( (spectra.ivar[band][i] > 0))
-                noise[w] = 1/np.sqrt(spectra.ivar[band][i][w])
-                cdsdata[key] = noise
-
-        cdsdata['plotflux'] = cdsdata['origflux0']
-        if with_noise : cdsdata['plotnoise'] = cdsdata['orignoise0'] 
-
-        cds_spectra.append(
-            bk.ColumnDataSource(cdsdata, name=band)
-            )
-    
-    # CDS object for camera-merged spectrum
-    # Do NOT store all coadded spectra in CDS obj, to reduce size of html files
-    # Except for the first spectrum, coaddition is done later in javascript
-    coadd_wave, coadd_flux, coadd_ivar = mycoaddcam.mycoaddcam(spectra)
-    cds_coaddcam_data = dict(
-        origwave = coadd_wave.copy(),
-        plotwave = coadd_wave.copy(),
-        plotflux = coadd_flux[0,:].copy(),
-        plotnoise = np.ones(len(coadd_wave))
-    )
-    if with_noise :
-        w, = np.where( (coadd_ivar[0,:] > 0) )
-        cds_coaddcam_data['plotnoise'][w] = 1/np.sqrt(coadd_ivar[0,:][w])
-    cds_coaddcam_spec = bk.ColumnDataSource(cds_coaddcam_data)
-
-    #- Reorder zcatalog to match input targets
-    #- TODO: allow more than one zcatalog entry with different ZNUM per targetid
-    if zcatalog is not None:
-        ## (at the moment, keep argsorts-based code for record)
-        #targetids = spectra.target_ids()
-        #ii = np.argsort(np.argsort(targetids))
-        #jj = np.argsort(zcatalog['TARGETID'])
-        #kk = jj[ii]
-        #zcatalog = zcatalog[kk]
-        ##- That sequence of argsorts may feel like magic,
-        ##- so make sure we got it right
-        #assert np.all(zcatalog['TARGETID'] == targetids)
-        #assert np.all(zcatalog['TARGETID'] == spectra.fibermap['TARGETID'])
-        zcatalog, kk = utils_specviewer.match_zcat_to_spectra(zcatalog, spectra)
-        
-        #- Also need to re-order input model fluxes
-        if model is not None :
-            assert(model_from_zcat == False)
-            mwave, mflux = model
-            model = mwave, mflux[kk]
-
-        if model_from_zcat == True :
-            model = create_model(spectra, zcatalog)
-            
-    #- Gather models into ColumnDataSource objects, row matched to spectra
+    #-----
+    #- Gather information into ColumnDataSource objects for Bokeh
+    cds_spectra = make_cds_spectra(spectra, with_noise)
+    cds_coaddcam_spec = make_cds_coaddcam_spec(spectra, with_noise)
     if model is not None:
-        mwave, mflux = model
-        model_obswave = mwave.copy()
-        model_restwave = mwave.copy()
-        cds_model_data = dict(
-            origwave = mwave.copy(),
-            plotwave = mwave.copy(),
-            plotflux = np.zeros(len(mwave)),
-        )
-
-        for i in range(nspec):
-            key = 'origflux'+str(i)
-            cds_model_data[key] = mflux[i]
-
-        cds_model_data['plotflux'] = cds_model_data['origflux0']
-        cds_model = bk.ColumnDataSource(cds_model_data)
+        cds_model = make_cds_model(model)
     else:
         cds_model = None
+    cds_targetinfo = make_cds_targetinfo(spectra, zcatalog, is_coadded, sv)
 
-    #- Subset of zcatalog and fibermap columns into ColumnDataSource
-    target_info = list()
-    vi_info = list()
-    for i, row in enumerate(spectra.fibermap):
-        if sv :
-            target_bit_names = ' '.join(desi_mask_sv1.names(row['SV1_DESI_TARGET']))
-        else :
-            target_bit_names = ' '.join(desi_mask.names(row['DESI_TARGET']))
-        txt = 'Target {}: {}'.format(row['TARGETID'], target_bit_names)
-        if zcatalog is not None:
-            txt += '<BR/>{} z={:.4f} ± {:.4f}  ZWARN={}'.format(
-                zcatalog['SPECTYPE'][i],
-                zcatalog['Z'][i],
-                zcatalog['ZERR'][i],
-                zcatalog['ZWARN'][i],
-            )
-        target_info.append(txt)
-        if ( (vidata is not None) and (len(vidata[i])>0) ) :
-            txt_viinfo = ('<BR/> VI info : SCANNER FLAG COMMENTS')
-            for the_vi in vidata[i] :
-                txt_viinfo += ('<BR/>&emsp;&emsp;&emsp;&emsp; {0} {1} {2}'.format(the_vi['scannername'], the_vi['scanflag'], the_vi['VIcomment']))
-        else : txt_viinfo = ('<BR/> No VI previously recorded for this target')
-        vi_info.append(txt_viinfo)
-
-    cds_targetinfo = bk.ColumnDataSource(
-        dict(target_info=target_info),
-        name='targetinfo')
-    cds_targetinfo.add(vi_info, name='vi_info')
-    if zcatalog is not None:
-        cds_targetinfo.add(zcatalog['Z'], name='z')
-        cds_targetinfo.add(zcatalog['SPECTYPE'].astype('U{0:d}'.format(zcatalog['SPECTYPE'].dtype.itemsize)), name='spectype')
-    username = '-'
-    if notebook and ("USER" in os.environ) : username = os.environ['USER']
-    cds_targetinfo.add([username for i in range(nspec)], name='VI_ongoing_scanner')
-    cds_targetinfo.add(['-' for i in range(nspec)], name='VI_ongoing_flag')
-    cds_targetinfo.add(['-' for i in range(nspec)], name='VI_ongoing_comment')
-    if not is_coadded :
-        cds_targetinfo.add(spectra.fibermap['EXPID'], name='expid')
-        cds_targetinfo.add(spectra.fibermap['FIBER'], name='fiber')
-    else : # If coadd, fill VI accordingly
-        cds_targetinfo.add(['-1' for i in range(nspec)], name='expid')
-        cds_targetinfo.add(['-1' for i in range(nspec)], name='fiber')
-    cds_targetinfo.add([str(x) for x in spectra.fibermap['TARGETID']], name='targetid') # !! No int64 in js !!
-
-    #- FIXME: should not hardcode which DEPVERnn has which versions
-    ### cds_targetinfo.add([spectra.meta['DEPVER10'] for i in range(nspec)], name='spec_version')
-    ### cds_targetinfo.add([spectra.meta['DEPVER13'] for i in range(nspec)], name='redrock_version')
-    cds_targetinfo.add(np.zeros(nspec), name='spec_version')
-    cds_targetinfo.add(np.zeros(nspec), name='redrock_version')
-
+    #-----
+    #- Main figure
     #- Determine initial ymin, ymax, xmin, xmax
     ymin = ymax = xmax = 0.0
     xmin = 100000.
@@ -448,11 +468,10 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
         xmax = max(xmax, np.max(spectra.wave[band]))        
     xmin -= xmargin
     xmax += xmargin
-        
+    
     plot_width=800
     plot_height=400
-    # tools = 'pan,box_zoom,wheel_zoom,undo,redo,reset,save'
-    tools = 'pan,box_zoom,wheel_zoom,save' # reset
+    tools = 'pan,box_zoom,wheel_zoom,save'
     fig = bk.figure(height=plot_height, width=plot_width, title=title,
         tools=tools, toolbar_location='above', y_range=(ymin, ymax), x_range=(xmin, xmax))
     fig.toolbar.active_drag = fig.tools[0]    #- pan zoom (previously box)
@@ -495,6 +514,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     fig.add_layout(legend, 'center')
     fig.legend.click_policy = 'hide'    #- or 'mute'
 
+    #-----
     #- Zoom figure around mouse hover of main plot
     tooltips_zoomfig = [("wave","$x"),("flux","$y")]
     zoomfig = bk.figure(height=plot_height//2, width=plot_height//2,
@@ -530,9 +550,8 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
 
     fig.js_on_event(bokeh.events.MouseMove, zoom_callback)
 
-    #
-    # Targeting image
-    #
+    #-----
+    #- Targeting image
     imfig = bk.figure(width=plot_height//2, height=plot_height//2,
                       x_range=(0, 256), y_range=(0, 256),
                       x_axis_location=None, y_axis_location=None,
@@ -558,7 +577,15 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     zoom_line_data, zoom_lines, zoom_line_labels = add_lines(zoomfig, z=z, label_offsets=[50, 5])
 
     #-----
-    #- Add widgets for controling plots
+    #-- Widgets and callbacks --
+    #-----
+
+    #-----
+    #- Widget whose value controls which spectrum is displayed
+    ifiberslider = Slider(start=0, end=nspec-1, value=0, step=1, title='Spectrum')
+
+    #-----
+    #- Redshift / wavelength scale widgets
     z1 = np.floor(z*100)/100
     dz = z-z1
     zslider = Slider(start=0.0, end=4.0, value=z1, step=0.01, title='Redshift rough tuning')
@@ -569,13 +596,6 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     #- Observer vs. Rest frame wavelengths
     waveframe_buttons = RadioButtonGroup(
         labels=["Obs", "Rest"], active=0)
-
-    ifiberslider = Slider(start=0, end=nspec-1, value=0, step=1)
-    ifiberslider.title = 'Spectrum'
-#     if frame_input:
-#         ifiberslider.title = 'Fiber'
-#     else:
-#         ifiberslider.title = 'Target'
 
     zslider_callback  = CustomJS(
         args=dict(
@@ -669,15 +689,21 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     )
     waveframe_buttons.js_on_click(plotrange_callback)
 
+
+    #-----
+    #- Targeting image callback
     imfig_callback = CustomJS(args=dict(urls=imfig_urls,
                                         ifiberslider=ifiberslider),
                               code='''window.open(urls[ifiberslider.value][1], "_blank");''')
     imfig.js_on_event('tap', imfig_callback)
 
+
+    #-----
+    #- Smoothing widget
     smootherslider = Slider(start=0, end=31, value=0, step=1.0, title='Gaussian Sigma Smooth')
    
     #-----
-    #- Checkboxes to display or not noise and model
+    #- Checkboxes to display noise / model
     if with_noise : 
         display_options_group = CheckboxGroup(labels=['Show model', 'Show noise spectra'], active=[0,1])
     else :
@@ -724,28 +750,38 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     )
     coaddcam_buttons.js_on_click(coaddcam_callback)
 
-    target_info_div = Div(text=target_info[0])
+    #-----
+    # Display object-related informations
+    target_info_div = Div(text=cds_targetinfo.data['target_info'][0])
     vi_info_div = Div(text=" ") # consistent with show_prev_vi="No" by default
 
     #-----
     #- Toggle lines
     lines_button_group = CheckboxButtonGroup(
             labels=["Emission", "Absorption"], active=[])
+    majorline_checkbox = CheckboxGroup(
+            labels=['Show only major lines'], active=[0])
 
     lines_callback = CustomJS(
-        args = dict(line_data=line_data, lines=lines, line_labels=line_labels, zlines=zoom_lines, zline_labels=zoom_line_labels),
+        args = dict(line_data=line_data, lines=lines, line_labels=line_labels, zlines=zoom_lines, 
+                    zline_labels=zoom_line_labels, lines_button_group=lines_button_group, majorline_checkbox=majorline_checkbox),
         code="""
         var show_emission = false
         var show_absorption = false
-        if (cb_obj.active.indexOf(0) >= 0) {  // index 0=Emission in active list
+        if (lines_button_group.active.indexOf(0) >= 0) {  // index 0=Emission in active list
             show_emission = true
         }
-        if (cb_obj.active.indexOf(1) >= 0) {  // index 1=Absorption in active list
+        if (lines_button_group.active.indexOf(1) >= 0) {  // index 1=Absorption in active list
             show_absorption = true
         }
 
         for(var i=0; i<lines.length; i++) {
-            if(line_data.data['emission'][i]) {
+            if ( !(line_data.data['major'][i]) && (majorline_checkbox.active.indexOf(0)>=0) ) {
+                lines[i].visible = false
+                line_labels[i].visible = false
+                zlines[i].visible = false
+                zline_labels[i].visible = false
+            } else if (line_data.data['emission'][i]) {
                 lines[i].visible = show_emission
                 line_labels[i].visible = show_emission
                 zlines[i].visible = show_emission
@@ -760,11 +796,12 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
         """
     )
     lines_button_group.js_on_click(lines_callback)
-    # lines_button_group.js_on_change('value', lines_callback)
+    majorline_checkbox.js_on_click(lines_callback)
 
-    # edit visual inspection
+    #-----
+    #- VI-related widgets
     vi_commentinput = TextInput(value='-', title="VI comment :")
-    vi_nameinput = TextInput(value=username, title="Your name :")
+    vi_nameinput = TextInput(value=cds_targetinfo.data['VI_ongoing_scanner'][0], title="Your name :")
     viflags = ["Yes","No","Maybe","LowSNR","Bad"] # To put somewhere else in code
     #vi_flaginput = Select(title="VI flag :", value="-", options=viflags)
     vi_flaginput = RadioButtonGroup(labels=viflags)
@@ -1188,8 +1225,9 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             ),
             bk.Row(
                 widgetbox(waveframe_buttons, width=120),
-                widgetbox(lines_button_group, width=120),
-                widgetbox(Spacer(width=plot_width-440)),
+                widgetbox(lines_button_group, width=200),
+                widgetbox(majorline_checkbox, width=120),
+                widgetbox(Spacer(width=plot_width-640)),
                 widgetbox(coaddcam_buttons, width=200)
             ),
             bk.Row(Spacer(height=30)),
@@ -1220,55 +1258,55 @@ _line_list = [
     # Wavelengths are in air for lambda > 2000, vacuum for lambda < 2000.
     # TODO: convert to vacuum wavelengths
     #
-    {"name" : "Lyα",      "longname" : "Lyman α",        "lambda" : 1215.67,  "emission": True },
-    {"name" : "Lyβ",      "longname" : "Lyman β",        "lambda" : 1025.18,  "emission": True },
-    {"name" : "N V",      "longname" : "N V 1240",       "lambda" : 1240.81,  "emission": True },
-    {"name" : "C IV",     "longname" : "C IV 1549",      "lambda" : 1549.48,  "emission": True },
-    {"name" : "He II",    "longname" : "He II 1640",     "lambda" : 1640.42,  "emission": True },
-    {"name" : "C III]",   "longname" : "C III] 1908",    "lambda" : 1908.734, "emission": True },
-    {"name" : "Mg II",    "longname" : "Mg II 2799",     "lambda" : 2799.49,  "emission": True },
-    {"name" : "[O II]",   "longname" : "[O II] 3725",    "lambda" : 3726.032, "emission": True },
-    {"name" : "[O II]",   "longname" : "[O II] 3727",    "lambda" : 3728.815, "emission": True },
-    {"name" : "[Ne III]", "longname" : "[Ne III] 3868",  "lambda" : 3868.76,  "emission": True },
-    {"name" : "Hζ",       "longname" : "Balmer ζ",       "lambda" : 3889.049, "emission": True },
-    {"name" : "[Ne III]", "longname" : "[Ne III] 3970",  "lambda" : 3970.00,  "emission": True },
-    {"name" : "Hε",       "longname" : "Balmer ε",       "lambda" : 3970.072, "emission": True },
-    {"name" : "Hδ",       "longname" : "Balmer δ",       "lambda" : 4101.734, "emission": True },
-    {"name" : "Hγ",       "longname" : "Balmer γ",       "lambda" : 4340.464, "emission": True },
-    {"name" : "[O III]",  "longname" : "[O III] 4363",   "lambda" : 4363.209, "emission": True },
-    {"name" : "He II",    "longname" : "He II 4685",     "lambda" : 4685.68,  "emission": True },
-    {"name" : "Hβ",       "longname" : "Balmer β",       "lambda" : 4861.325, "emission": True },
-    {"name" : "[O III]",  "longname" : "[O III] 4959",   "lambda" : 4958.911, "emission": True },
-    {"name" : "[O III]",  "longname" : "[O III] 5007",   "lambda" : 5006.843, "emission": True },
-    {"name" : "He II",    "longname" : "He II 5411",     "lambda" : 5411.52,  "emission": True },
-    {"name" : "[O I]",    "longname" : "[O I] 5577",     "lambda" : 5577.339, "emission": True },
-    {"name" : "[N II]",   "longname" : "[N II] 5755",    "lambda" : 5754.59,  "emission": True },
-    {"name" : "He I",     "longname" : "He I 5876",      "lambda" : 5875.68,  "emission": True },
-    {"name" : "[O I]",    "longname" : "[O I] 6300",     "lambda" : 6300.304, "emission": True },
-    {"name" : "[S III]",  "longname" : "[S III] 6312",   "lambda" : 6312.06,  "emission": True },
-    {"name" : "[O I]",    "longname" : "[O I] 6363",     "lambda" : 6363.776, "emission": True },
-    {"name" : "[N II]",   "longname" : "[N II] 6548",    "lambda" : 6548.05,  "emission": True },
-    {"name" : "Hα",       "longname" : "Balmer α",       "lambda" : 6562.801, "emission": True },
-    {"name" : "[N II]",   "longname" : "[N II] 6583",    "lambda" : 6583.45,  "emission": True },
-    {"name" : "[S II]",   "longname" : "[S II] 6716",    "lambda" : 6716.44,  "emission": True },
-    {"name" : "[S II]",   "longname" : "[S II] 6730",    "lambda" : 6730.82,  "emission": True },
-    {"name" : "[Ar III]", "longname" : "[Ar III] 7135",  "lambda" : 7135.790, "emission": True },
+    {"name" : "Lyα",      "longname" : "Lyman α",        "lambda" : 1215.67,  "emission": True, "major": True  },
+    {"name" : "Lyβ",      "longname" : "Lyman β",        "lambda" : 1025.18,  "emission": True, "major": False },
+    {"name" : "N V",      "longname" : "N V 1240",       "lambda" : 1240.81,  "emission": True, "major": False },
+    {"name" : "C IV",     "longname" : "C IV 1549",      "lambda" : 1549.48,  "emission": True, "major": True  },
+    {"name" : "He II",    "longname" : "He II 1640",     "lambda" : 1640.42,  "emission": True, "major": False },
+    {"name" : "C III]",   "longname" : "C III] 1908",    "lambda" : 1908.734, "emission": True, "major": False },
+    {"name" : "Mg II",    "longname" : "Mg II 2799",     "lambda" : 2799.49,  "emission": True, "major": False },
+    {"name" : "[O II]",   "longname" : "[O II] 3725",    "lambda" : 3726.032, "emission": True, "major": True  },
+    {"name" : "[O II]",   "longname" : "[O II] 3727",    "lambda" : 3728.815, "emission": True, "major": True  },
+    {"name" : "[Ne III]", "longname" : "[Ne III] 3868",  "lambda" : 3868.76,  "emission": True, "major": False },
+    {"name" : "Hζ",       "longname" : "Balmer ζ",       "lambda" : 3889.049, "emission": True, "major": False },
+    {"name" : "[Ne III]", "longname" : "[Ne III] 3970",  "lambda" : 3970.00,  "emission": True, "major": False },
+    {"name" : "Hε",       "longname" : "Balmer ε",       "lambda" : 3970.072, "emission": True, "major": False },
+    {"name" : "Hδ",       "longname" : "Balmer δ",       "lambda" : 4101.734, "emission": True, "major": False },
+    {"name" : "Hγ",       "longname" : "Balmer γ",       "lambda" : 4340.464, "emission": True, "major": False },
+    {"name" : "[O III]",  "longname" : "[O III] 4363",   "lambda" : 4363.209, "emission": True, "major": False },
+    {"name" : "He II",    "longname" : "He II 4685",     "lambda" : 4685.68,  "emission": True, "major": False },
+    {"name" : "Hβ",       "longname" : "Balmer β",       "lambda" : 4861.325, "emission": True, "major": False },
+    {"name" : "[O III]",  "longname" : "[O III] 4959",   "lambda" : 4958.911, "emission": True, "major": False },
+    {"name" : "[O III]",  "longname" : "[O III] 5007",   "lambda" : 5006.843, "emission": True, "major": True  },
+    {"name" : "He II",    "longname" : "He II 5411",     "lambda" : 5411.52,  "emission": True, "major": False },
+    {"name" : "[O I]",    "longname" : "[O I] 5577",     "lambda" : 5577.339, "emission": True, "major": False },
+    {"name" : "[N II]",   "longname" : "[N II] 5755",    "lambda" : 5754.59,  "emission": True, "major": False },
+    {"name" : "He I",     "longname" : "He I 5876",      "lambda" : 5875.68,  "emission": True, "major": False },
+    {"name" : "[O I]",    "longname" : "[O I] 6300",     "lambda" : 6300.304, "emission": True, "major": False },
+    {"name" : "[S III]",  "longname" : "[S III] 6312",   "lambda" : 6312.06,  "emission": True, "major": False },
+    {"name" : "[O I]",    "longname" : "[O I] 6363",     "lambda" : 6363.776, "emission": True, "major": False },
+    {"name" : "[N II]",   "longname" : "[N II] 6548",    "lambda" : 6548.05,  "emission": True, "major": False },
+    {"name" : "Hα",       "longname" : "Balmer α",       "lambda" : 6562.801, "emission": True, "major": True  },
+    {"name" : "[N II]",   "longname" : "[N II] 6583",    "lambda" : 6583.45,  "emission": True, "major": False },
+    {"name" : "[S II]",   "longname" : "[S II] 6716",    "lambda" : 6716.44,  "emission": True, "major": False },
+    {"name" : "[S II]",   "longname" : "[S II] 6730",    "lambda" : 6730.82,  "emission": True, "major": False },
+    {"name" : "[Ar III]", "longname" : "[Ar III] 7135",  "lambda" : 7135.790, "emission": True, "major": False },
     #
     # Absorption lines
     #
-    {"name" : "Hζ",   "longname" : "Balmer ζ",         "lambda" : 3889.049, "emission": False },
-    {"name" : "K",    "longname" : "K (Ca II 3933)",   "lambda" : 3933.7,   "emission": False },
-    {"name" : "H",    "longname" : "H (Ca II 3968)",   "lambda" : 3968.5,   "emission": False },
-    {"name" : "Hε",   "longname" : "Balmer ε",         "lambda" : 3970.072, "emission": False },
-    {"name" : "Hδ",   "longname" : "Balmer δ",         "lambda" : 4101.734, "emission": False },
-    {"name" : "G",    "longname" : "G (Ca I 4307)",    "lambda" : 4307.74,  "emission": False },
-    {"name" : "Hγ",   "longname" : "Balmer γ",         "lambda" : 4340.464, "emission": False },
-    {"name" : "Hβ",   "longname" : "Balmer β",         "lambda" : 4861.325, "emission": False },
-    {"name" : "Mg I", "longname" : "Mg I 5175",        "lambda" : 5175.0,   "emission": False },
-    {"name" : "D2",   "longname" : "D2 (Na I 5889)",   "lambda" : 5889.95,  "emission": False },
-    # {"name" : "D",    "longname" : "D (Na I doublet)", "lambda": 5892.9,   "emission": False },
-    {"name" : "D1",   "longname" : "D1 (Na I 5895)",   "lambda" : 5895.92,  "emission": False },
-    {"name" : "Hα",   "longname" : "Balmer α",         "lambda" : 6562.801, "emission": False },
+    {"name" : "Hζ",   "longname" : "Balmer ζ",         "lambda" : 3889.049, "emission": False, "major": False },
+    {"name" : "K",    "longname" : "K (Ca II 3933)",   "lambda" : 3933.7,   "emission": False, "major": False },
+    {"name" : "H",    "longname" : "H (Ca II 3968)",   "lambda" : 3968.5,   "emission": False, "major": False },
+    {"name" : "Hε",   "longname" : "Balmer ε",         "lambda" : 3970.072, "emission": False, "major": False },
+    {"name" : "Hδ",   "longname" : "Balmer δ",         "lambda" : 4101.734, "emission": False, "major": False },
+    {"name" : "G",    "longname" : "G (Ca I 4307)",    "lambda" : 4307.74,  "emission": False, "major": False },
+    {"name" : "Hγ",   "longname" : "Balmer γ",         "lambda" : 4340.464, "emission": False, "major": False },
+    {"name" : "Hβ",   "longname" : "Balmer β",         "lambda" : 4861.325, "emission": False, "major": False },
+    {"name" : "Mg I", "longname" : "Mg I 5175",        "lambda" : 5175.0,   "emission": False, "major": False },
+    {"name" : "D2",   "longname" : "D2 (Na I 5889)",   "lambda" : 5889.95,  "emission": False, "major": False },
+    # {"name" : "D",    "longname" : "D (Na I doublet)", "lambda": 5892.9,   "emission": False, "major": False },
+    {"name" : "D1",   "longname" : "D1 (Na I 5895)",   "lambda" : 5895.92,  "emission": False, "major": False },
+    {"name" : "Hα",   "longname" : "Balmer α",         "lambda" : 6562.801, "emission": False, "major": False },
   ]
 
 def _airtovac(w):
@@ -1308,6 +1346,7 @@ def add_lines(fig, z=0 , emission=True, fig_height=None, label_offsets=[100, 5])
     line_data['longname'] = [row['name'] for row in _line_list]
     line_data['plotname'] = [row['name'] for row in _line_list]
     line_data['emission'] = [row['emission'] for row in _line_list]
+    line_data['major'] = [row['major'] for row in _line_list]
 
     y = list()
     for i in range(len(line_data['restwave'])):
