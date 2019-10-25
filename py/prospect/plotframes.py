@@ -36,6 +36,19 @@ from prospect import utils_specviewer
 from prospect import mycoaddcam
 from astropy.table import Table
 
+_vi_flags = [
+    # Definition of VI flags
+    # Replaces former list: viflags = ["Yes","No","Maybe","LowSNR","Bad"]
+    {"num" : "4", "classification" : True, "description" : "Confident classification, two or more secure features"},
+    {"num" : "3", "classification" : True, "description" : "Probable classification, at least one secure feature + continuum; or many weak features"},
+    {"num" : "2", "classification" : True, "description" : "Possible classification, one strong emission feature, but not sure what it is"},
+    {"num" : "1", "classification" : True, "description" : "Unlikely classification, one or some unidentified features"},
+    {"num" : "0", "classification" : True, "description" : "Nothing there"},
+    {"num" : "-1", "classification" : False, "description" : "Misidentification of redshift (pipeline)"},
+    {"num" : "-2", "classification" : False, "description" : "Bad spectrum"}
+]
+
+
 def _coadd(wave, flux, ivar, rdat):
     '''
     Return weighted coadd of spectra
@@ -800,18 +813,14 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
 
     #-----
     #- VI-related widgets
-    vi_commentinput = TextInput(value='-', title="VI comment :")
+    vi_commentinput = TextInput(value='', title="VI comment :")
     vi_nameinput = TextInput(value=cds_targetinfo.data['VI_ongoing_scanner'][0], title="Your name :")
-    viflags = ["Yes","No","Maybe","LowSNR","Bad"] # To put somewhere else in code
-    #vi_flaginput = Select(title="VI flag :", value="-", options=viflags)
-    vi_flaginput = RadioButtonGroup(labels=viflags)
+
+    vi_classification_labels = [x["num"] for x in _vi_flags if x["classification"]==True]
+    vi_flaginput = RadioButtonGroup(labels=vi_classification_labels)
 
     add_viflag_callback = CustomJS(args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider, vi_flaginput=vi_flaginput, viflags=viflags, nspec=nspec), code="""
         cds_targetinfo.data['VI_ongoing_flag'][ifiberslider.value]=viflags[vi_flaginput.active]
-   //     if(ifiberslider.value<nspec-1) {
-   //        ifiberslider.value += 1 ;
-   //     }
-   //     vi_flaginput.active = -1 // Reset once scan is done
     """)
     add_vicomment_callback = CustomJS(args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider, vi_commentinput=vi_commentinput), code="""
         cds_targetinfo.data['VI_ongoing_comment'][ifiberslider.value]=vi_commentinput.value
