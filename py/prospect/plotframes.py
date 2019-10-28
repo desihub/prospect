@@ -38,16 +38,30 @@ from astropy.table import Table
 
 _vi_flags = [
     # Definition of VI flags
-    # Replaces former list: viflags = ["Yes","No","Maybe","LowSNR","Bad"]
-    {"num" : "4", "classification" : True, "description" : "Confident classification, two or more secure features"},
-    {"num" : "3", "classification" : True, "description" : "Probable classification, at least one secure feature + continuum; or many weak features"},
-    {"num" : "2", "classification" : True, "description" : "Possible classification, one strong emission feature, but not sure what it is"},
-    {"num" : "1", "classification" : True, "description" : "Unlikely classification, one or some unidentified features"},
-    {"num" : "0", "classification" : True, "description" : "Nothing there"},
-    {"num" : "-1", "classification" : False, "description" : "Misidentification of redshift (pipeline)"},
-    {"num" : "-2", "classification" : False, "description" : "Bad spectrum"}
+    # Replaces former list viflags = ["Yes","No","Maybe","LowSNR","Bad"]
+    {"label" : "4", "type" : "class", "description" : "Confident classification, two or more secure features"},
+    {"label" : "3", "type" : "class", "description" : "Probable classification, at least one secure feature + continuum; or many weak features"},
+    {"label" : "2", "type" : "class", "description" : "Possible classification, one strong emission feature, but not sure what it is"},
+    {"label" : "1", "type" : "class", "description" : "Unlikely classification, one or some unidentified features"},
+    {"label" : "0", "type" : "class", "description" : "Nothing there"},
+    {"label" : "Redshift", "type" : "issue", "description" : "Misidentification of redshift (pipeline)"},
+    {"label" : "Spectrum", "type" : "issue", "description" : "Bad spectrum"}
 ]
 
+_vi_file_fields = [
+    # Contents of VI files: [ "field name (in VI file header)", "associated variable in cds_targetinfo"]
+    # Ordered list
+    ["TargetID", "targetid"],
+    ["ExpID", "expid"],
+    ["Spec version", "spec_version"],
+    ["Redrock version", "redrock_version"],
+    ["Redrock spectype", "spectype"],
+    ["Redrock z", "z"],
+    ["VI scanner", "VI_scanner"],
+    ["VI class", "VI_class_flag"],
+    ["VI issue", "VI_issue_flag"], 
+    ["VI comment", "VI_comment"]
+]
 
 def _coadd(wave, flux, ivar, rdat):
     '''
@@ -332,7 +346,7 @@ def make_cds_model(model) :
 
     return cds_model
 
-def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv) :
+def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
     """ Creates column data source for target-related metadata, from zcatalog, fibermap and VI files """
 
     target_info = list()
@@ -387,12 +401,11 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv) :
     cds_targetinfo.add(np.zeros(nspec), name='spec_version')
     cds_targetinfo.add(np.zeros(nspec), name='redrock_version')
 
-    username = '-'
-    # TMP : TODO see if we do that..
-#    if notebook and ("USER" in os.environ) : username = os.environ['USER']
-    cds_targetinfo.add([username for i in range(nspec)], name='VI_ongoing_scanner')
-    cds_targetinfo.add(['-' for i in range(nspec)], name='VI_ongoing_flag')
-    cds_targetinfo.add(['' for i in range(nspec)], name='VI_ongoing_comment')
+    # VI inputs
+    cds_targetinfo.add([username for i in range(nspec)], name='VI_scanner')
+    cds_targetinfo.add([" " for i in range(nspec)], name='VI_class_flag')
+    cds_targetinfo.add([" " for i in range(nspec)], name='VI_issue_flag')
+    cds_targetinfo.add([" " for i in range(nspec)], name='VI_comment')
 
     return cds_targetinfo
 
@@ -466,7 +479,17 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
         cds_model = make_cds_model(model)
     else:
         cds_model = None
-    cds_targetinfo = make_cds_targetinfo(spectra, zcatalog, is_coadded, sv)
+    if notebook and ("USER" in os.environ) : 
+        username = os.environ['USER']
+    else :
+        username = " "
+    cds_targetinfo = make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=username)
+
+
+    #-------------------------
+    #-- Graphical objects --
+    #-------------------------
+
 
     #-----
     #- Main figure
@@ -589,13 +612,74 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     line_data, lines, line_labels = add_lines(fig, z=z)
     zoom_line_data, zoom_lines, zoom_line_labels = add_lines(zoomfig, z=z, label_offsets=[50, 5])
 
-    #-----
+
+    #-------------------------
     #-- Widgets and callbacks --
-    #-----
+    #-------------------------
 
     #-----
-    #- Widget whose value controls which spectrum is displayed
+    #- Ifiberslider and smoothing widgets
+    # Ifiberslider's value controls which spectrum is displayed
+    # These two widgets call update_plot(), later defined
     ifiberslider = Slider(start=0, end=nspec-1, value=0, step=1, title='Spectrum')
+    smootherslider = Slider(start=0, end=31, value=0, step=1.0, title='Gaussian Sigma Smooth')
+
+    #-----
+    #- Navigation buttons
+    navigation_button_width = 30
+    prev_button = Button(label="<", width=navigation_button_width)
+    next_button = Button(label=">", width=navigation_button_width)
+    prev_callback = CustomJS(
+        args=dict(ifiberslider=ifiberslider),
+        code="""
+        if(ifiberslider.value>0) {
+            ifiberslider.value--
+        }
+        """)
+    next_callback = CustomJS(
+        args=dict(ifiberslider=ifiberslider, nspec=nspec),
+        code="""
+        if(ifiberslider.value<nspec-1) {
+            ifiberslider.value++
+        }
+        """)
+    prev_button.js_on_event('button_click', prev_callback)
+    next_button.js_on_event('button_click', next_callback)
+
+
+    #-----
+    #- Axis reset button (superseeds the default bokeh "reset"
+    reset_plotrange_button = Button(label="Reset X-Y range",button_type="default")
+    reset_plotrange_callback = CustomJS(args = dict(fig=fig, xmin=xmin, xmax=xmax, spectra=cds_spectra), code="""
+        // x-range : use fixed x-range determined once for all
+        fig.x_range.start = xmin
+        fig.x_range.end = xmax
+        
+        // y-range : same function as in update_plot()
+        function get_y_minmax(pmin, pmax, data) {
+            var dx = data.slice().filter(Boolean)
+            dx.sort()
+            var imin = Math.floor(pmin * dx.length)
+            var imax = Math.floor(pmax * dx.length)
+            return [dx[imin], dx[imax]]
+        }
+        var ymin = 0.0
+        var ymax = 0.0
+        for (var i=0; i<spectra.length; i++) {
+            var data = spectra[i].data
+            tmp = get_y_minmax(0.01, 0.99, data['plotflux'])
+            ymin = Math.min(ymin, tmp[0])
+            ymax = Math.max(ymax, tmp[1])
+        }
+        if(ymin<0) {
+            fig.y_range.start = ymin * 1.4
+        } else {
+            fig.y_range.start = ymin * 0.6
+        }
+        fig.y_range.end = ymax * 1.4
+
+    """)
+    reset_plotrange_button.js_on_event('button_click', reset_plotrange_callback)
 
     #-----
     #- Redshift / wavelength scale widgets
@@ -710,10 +794,6 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
                               code='''window.open(urls[ifiberslider.value][1], "_blank");''')
     imfig.js_on_event('tap', imfig_callback)
 
-
-    #-----
-    #- Smoothing widget
-    smootherslider = Slider(start=0, end=31, value=0, step=1.0, title='Gaussian Sigma Smooth')
    
     #-----
     #- Checkboxes to display noise / model
@@ -813,58 +893,106 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
 
     #-----
     #- VI-related widgets
-    vi_commentinput = TextInput(value='', title="VI comment :")
-    vi_nameinput = TextInput(value=cds_targetinfo.data['VI_ongoing_scanner'][0], title="Your name :")
 
-    vi_classification_labels = [x["num"] for x in _vi_flags if x["classification"]==True]
-    vi_flaginput = RadioButtonGroup(labels=vi_classification_labels)
+    #- Main VI classification
+    vi_class_labels = [ x["label"] for x in _vi_flags if x["type"]=="class" ]
+    vi_class_input = RadioButtonGroup(labels=vi_class_labels)
+    vi_class_callback = CustomJS(
+        args=dict(cds_targetinfo=cds_targetinfo, vi_class_input=vi_class_input, 
+                vi_class_labels=vi_class_labels, ifiberslider = ifiberslider), 
+        code="""
+        cds_targetinfo.data['VI_class_flag'][ifiberslider.value] = vi_class_labels[vi_class_input.active]
+        """
+    )
+    vi_class_input.js_on_click(vi_class_callback)
 
-    add_viflag_callback = CustomJS(args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider, vi_flaginput=vi_flaginput, viflags=viflags, nspec=nspec), code="""
-        cds_targetinfo.data['VI_ongoing_flag'][ifiberslider.value]=viflags[vi_flaginput.active]
-    """)
-    add_vicomment_callback = CustomJS(args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider, vi_commentinput=vi_commentinput), code="""
-        cds_targetinfo.data['VI_ongoing_comment'][ifiberslider.value]=vi_commentinput.value
-    """)
-    change_viname_callback = CustomJS(args=dict(cds_targetinfo=cds_targetinfo,nspec = nspec, vi_nameinput=vi_nameinput), code="""
+    #- Optional VI flags (issues)
+    vi_issue_labels = [ x["label"] for x in _vi_flags if x["type"]=="issue" ]
+    vi_issue_input = CheckboxButtonGroup(labels=vi_issue_labels, active=[])
+    vi_issue_callback = CustomJS(
+        args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider, 
+                vi_issue_input=vi_issue_input, vi_issue_labels=vi_issue_labels), 
+        code="""
+        var issues = ''
+        for (var i=0; i<vi_issue_labels.length(); i++) {
+            if (vi_issue_input.active.indexOf(i) >= 0) issues += (vi_issue_labels[i]+' ')
+        }
+        cds_targetinfo.data['VI_issue_flag'][ifiberslider.value] = issues
+        """
+    )
+    vi_issue_input.js_on_click(vi_issue_callback)
+    
+    #- Optional VI comment
+    vi_comment_input = TextInput(value='', title="VI comment :")
+    vi_comment_callback = CustomJS(
+        args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider, vi_comment_input=vi_comment_input), 
+        code="""
+        cds_targetinfo.data['VI_comment'][ifiberslider.value]=vi_commentinput.value
+        """
+    )
+    vi_comment_input.js_on_change('value',vi_comment_callback)
+
+    #- VI name    
+    vi_name_input = TextInput(value=cds_targetinfo.data['VI_ongoing_scanner'][0], title="Your name :")
+    vi_name_callback = CustomJS(
+        args=dict(cds_targetinfo=cds_targetinfo, nspec = nspec, vi_name_input=vi_name_input), 
+        code="""
         for (var i=0; i<nspec; i++) {
-            cds_targetinfo.data['VI_ongoing_scanner'][i]=vi_nameinput.value
+            cds_targetinfo.data['VI_scanner'][i]=vi_name_input.value
         }
-    """)
-    vi_commentinput.js_on_change('value',add_vicomment_callback)
-    vi_nameinput.js_on_change('value',change_viname_callback)
-    vi_flaginput.js_on_click(add_viflag_callback)
+        """
+    )
+    vi_name_input.js_on_change('value',vi_name_callback)
 
-    # save VI info to ASCII file
-    # tested briefly safari chrome firefox
+    #- Save VI info to text/csv file
     # Warning text output very sensitve for # " \  ... (standard js formatting not ok)
-    save_vi_button = Button(label="Download VI",button_type="default")
-    save_vi_callback = CustomJS(args=dict(cds_targetinfo=cds_targetinfo, viflags=viflags), code="""
+    # TODO : edit file name
+    save_vi_button = Button(label="Download VI", button_type="default")
+    vi_file_fields = _vi_file_fields
+    save_vi_callback = CustomJS(
+        args=dict(cds_targetinfo=cds_targetinfo, vi_class_labels=vi_class_labels, 
+            vi_file_fields=vi_file_fields, nspec=nspec), 
+        code="""
+        
         function download(filename, text) {
-            var element = document.createElement('a');
-            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-            element.setAttribute('download', filename);
-            element.style.display = 'none';
-            document.body.appendChild(element);
-            element.click();
-            document.body.removeChild(element);
+            var element = document.createElement('a')
+            element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(text))
+            element.setAttribute('download', filename)
+            element.style.display = 'none'
+            document.body.appendChild(element)
+            element.click()
+            document.body.removeChild(element)
         }
-        var thetext="# Prototype VI result file generated by prospect \\n";
-        thetext+= "# TargetID Expid Fiber Spec_version Redrock_version Redrock_spectype Redrock_z VI_Scanner VI_flag VI_comment \\n";
-        var toto = cds_targetinfo.data['VI_ongoing_flag'];
-        var titi = cds_targetinfo.data['VI_ongoing_scanner'];
-        var tutu = cds_targetinfo.data['VI_ongoing_comment'];
-        var fa = cds_targetinfo.data['expid'];
-        var fb = cds_targetinfo.data['fiber'];
-        var fc = cds_targetinfo.data['targetid'];
-        var fd = cds_targetinfo.data['spec_version'];
-        var fe = cds_targetinfo.data['redrock_version'];
-        var za = cds_targetinfo.data['spectype'] ;
-        var zb = cds_targetinfo.data['z'] ;
-        for (var i=0 ; i< toto.length; i++) {
-            if (viflags.includes(toto[i])) thetext += (fc[i]+" "+fa[i]+" "+fb[i]+" "+fd[i]+" "+fe[i]+" "+za[i]+" "+zb[i].toFixed(3)+" "+titi[i]+" "+toto[i]+' "'+tutu[i]+'"'+" \\n");
+        
+        var nb_fields = vi_file_fields.length
+        var array_to_store = []
+        
+        var header = []
+        for (var j=0; j<nb_fields; j++) header.push(vi_file_fields[j][0])
+        array_to_store.push(header)
+        for (var i=0; i<nspec; i++) {
+             // Record only information if a VI classification was assigned
+            if ( vi_class_labels.includes(cds_targetinfo.data['VI_class_flag'][i]) ) {
+                var row = []
+                for (var j=0; j<vi_file_fields.length; j++) {
+                    var entry = cds_targetinfo.data[vi_file_fields[j][1]][i]
+                    if (vi_file_fields[j][1]=="z") entry = entry.toFixed(3)
+                    entry = entry.replace( ',' , '","' )
+                    entry = entry.replace( '"' , '""')
+                    row.push(entry)
+                }
+                array_to_store.push(row)
+            }
         }
-        download("vi_result.txt",thetext) ;
-    """)
+        
+        var csv_to_store = ""
+        array_to_store.forEach(function(row) {
+            csv_to_store += row.join(',')
+            csv_to_store += "\n"
+        })
+        download("vi_result.txt", csv_to_store)
+        """
+    )
     save_vi_button.js_on_event('button_click', save_vi_callback)
 
     # Choose to show or not previous VI
@@ -877,42 +1005,8 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
         }
     """)
     show_prev_vi_select.js_on_change('value',show_prev_vi_callback)
-
     
-    #-----
-    reset_plotrange_button = Button(label="Reset X-Y range",button_type="default")
-    reset_plotrange_callback = CustomJS(args = dict(fig=fig, xmin=xmin, xmax=xmax, spectra=cds_spectra), code="""
-        // x-range : use fixed x-range determined once for all
-        fig.x_range.start = xmin
-        fig.x_range.end = xmax
-        
-        // y-range : same function as in update_plot()
-        function get_y_minmax(pmin, pmax, data) {
-            var dx = data.slice().filter(Boolean)
-            dx.sort()
-            var imin = Math.floor(pmin * dx.length)
-            var imax = Math.floor(pmax * dx.length)
-            return [dx[imin], dx[imax]]
-        }
-        var ymin = 0.0
-        var ymax = 0.0
-        for (var i=0; i<spectra.length; i++) {
-            var data = spectra[i].data
-            tmp = get_y_minmax(0.01, 0.99, data['plotflux'])
-            ymin = Math.min(ymin, tmp[0])
-            ymax = Math.max(ymax, tmp[1])
-        }
-        if(ymin<0) {
-            fig.y_range.start = ymin * 1.4
-        } else {
-            fig.y_range.start = ymin * 0.6
-        }
-        fig.y_range.end = ymax * 1.4
-
-    """)
-    reset_plotrange_button.js_on_event('button_click', reset_plotrange_callback)
-    
-    #-----
+    #- Main js code to update plot
     update_plot = CustomJS(
         args = dict(
             spectra = cds_spectra,
@@ -926,7 +1020,6 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             smootherslider = smootherslider,
             zslider=zslider,
             dzslider=dzslider,
-  #          lines_button_group = lines_button_group,
             fig = fig,
             imfig_source=imfig_source,
             imfig_urls=imfig_urls,
@@ -1183,29 +1276,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     smootherslider.js_on_change('value', update_plot)
     ifiberslider.js_on_change('value', update_plot)
 
-    #-----
-    #- Add navigation buttons
-    navigation_button_width = 30
-    prev_button = Button(label="<", width=navigation_button_width)
-    next_button = Button(label=">", width=navigation_button_width)
-    
-    prev_callback = CustomJS(
-        args=dict(ifiberslider=ifiberslider),
-        code="""
-        if(ifiberslider.value>0) {
-            ifiberslider.value--
-        }
-        """)
-    next_callback = CustomJS(
-        args=dict(ifiberslider=ifiberslider, nspec=nspec),
-        code="""
-        if(ifiberslider.value<nspec-1) {
-            ifiberslider.value++
-        }
-        """)
 
-    prev_button.js_on_event('button_click', prev_callback)
-    next_button.js_on_event('button_click', next_callback)
     
     #-----
     slider_width = plot_width - 2*navigation_button_width
