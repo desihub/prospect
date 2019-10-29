@@ -360,9 +360,9 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
         if (row['FLUX_G'] > 0 and row['MW_TRANSMISSION_G'] > 0) :
             gmag = -2.5*np.log10(row['FLUX_G']/row['MW_TRANSMISSION_G'])+22.5
         else : gmag = 0
-        txt += '<BR> Photometry (dereddened) : g<SUB>mag</SUB>={:.1f}'.format(gmag)
+        txt += '<BR /> Photometry (dereddened) : g<SUB>mag</SUB>={:.1f}'.format(gmag)
         if zcatalog is not None:
-            txt += '<BR/> Fit result : {} z={:.4f} ± {:.4f}&emsp;&emsp; z<SUB>WARN</SUB>={}&emsp;&emsp; &Delta;&chi;<SUP>2</SUP>={:.1f}'.format(
+            txt += '<BR /> Fit result : {} z={:.4f} ± {:.4f}&emsp;&emsp; z<SUB>WARN</SUB>={}&emsp;&emsp; &Delta;&chi;<SUP>2</SUP>={:.1f}'.format(
                 zcatalog['SPECTYPE'][i],
                 zcatalog['Z'][i],
                 zcatalog['ZERR'][i],
@@ -943,6 +943,16 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
         """
     )
     vi_name_input.js_on_change('value',vi_name_callback)
+
+    #- Guidelines for VI flags
+    vi_guideline_txt = "<B> VI guidelines </B>"
+    vi_guideline_txt += "<BR /> <B> Classification flags : </B>"
+    for flag in _vi_flags :
+        if flag['type'] == 'class' : vi_guideline_txt += ("<BR />&emsp;&emsp;["+flag['label']+"] : "+flag['description'])
+    vi_guideline_txt += "<BR /> <B> Optional indications : </B>"
+    for flag in _vi_flags :
+        if flag['type'] == 'issue' : vi_guideline_txt += ("<BR />&emsp;&emsp;["+flag['label']+"] : "+flag['description'])
+    vi_guideline_div = Div(text=vi_guideline_txt)
 
     #- Save VI info to text/csv file
     # Warning text output very sensitve for # " \  ... (standard js formatting not ok)
