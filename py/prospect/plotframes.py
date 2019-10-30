@@ -932,8 +932,8 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     )
     vi_comment_input.js_on_change('value',vi_comment_callback)
 
-    #- VI name    
-    vi_name_input = TextInput(value=cds_targetinfo.data['VI_ongoing_scanner'][0], title="Your name :")
+    #- VI scanner name    
+    vi_name_input = TextInput(value=cds_targetinfo.data['VI_scanner'][0], title="Your name :")
     vi_name_callback = CustomJS(
         args=dict(cds_targetinfo=cds_targetinfo, nspec = nspec, vi_name_input=vi_name_input), 
         code="""
@@ -963,7 +963,6 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
         args=dict(cds_targetinfo=cds_targetinfo, vi_class_labels=vi_class_labels, 
             vi_file_fields=vi_file_fields, nspec=nspec), 
         code="""
-        
         function download(filename, text) {
             var element = document.createElement('a')
             element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(text))
