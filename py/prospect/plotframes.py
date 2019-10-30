@@ -944,6 +944,13 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     )
     vi_name_input.js_on_change('value',vi_name_callback)
 
+    #- VI file name
+    if title is None :
+        default_vi_filename = "vi_result.csv"
+    else :
+        default_vi_filename = "vi_result_"+title+".csv"
+    vi_filename_input = TextInput(value=default_vi_filename, title="VI file name :")
+    
     #- Guidelines for VI flags
     vi_guideline_txt = "<B> VI guidelines </B>"
     vi_guideline_txt += "<BR /> <B> Classification flags : </B>"
@@ -956,12 +963,11 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
 
     #- Save VI info to CSV file
     # Warning text output very sensitve for # " \  ... (standard js formatting not ok)
-    # TODO : edit file name
     save_vi_button = Button(label="Download VI", button_type="default")
     vi_file_fields = _vi_file_fields
     save_vi_callback = CustomJS(
         args=dict(cds_targetinfo=cds_targetinfo, vi_class_labels=vi_class_labels, 
-            vi_file_fields=vi_file_fields, nspec=nspec), 
+            vi_file_fields=vi_file_fields, nspec=nspec, vi_filename_input=vi_filename_input), 
         code="""   
         function download(filename, text) {
             var element = document.createElement('a')
@@ -1000,7 +1006,9 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             var row = (array_to_store[j]).join(' , ')
             csv_to_store += ( row.concat("\\n") )
         }
-        download("vi_result.txt", csv_to_store)       
+        
+        var filename = vi_filename_input.value
+        download(filename, csv_to_store)       
         """
     )
     save_vi_button.js_on_event('button_click', save_vi_callback)
@@ -1335,6 +1343,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
                     widgetbox(vi_issue_input, width=300),
                     widgetbox(vi_comment_input, width=300),
                     widgetbox(vi_name_input, width=120),
+                    widgetbox(vi_filename_input, width=300),
                     widgetbox(save_vi_button, width=100)
                 ),
                 widgetbox(Spacer(width=50)),
