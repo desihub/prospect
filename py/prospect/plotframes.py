@@ -908,16 +908,16 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
 
     #- Optional VI flags (issues)
     vi_issue_labels = [ x["label"] for x in _vi_flags if x["type"]=="issue" ]
-    vi_issue_input = CheckboxButtonGroup(labels=vi_issue_labels, active=[])
+    vi_issue_input = CheckboxGroup(labels=vi_issue_labels, active=[])
     vi_issue_callback = CustomJS(
         args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider, 
                 vi_issue_input=vi_issue_input, vi_issue_labels=vi_issue_labels), 
         code="""
-        var issues = ''
-        for (var i=0; i<vi_issue_labels.length(); i++) {
-            if (vi_issue_input.active.indexOf(i) >= 0) issues += (vi_issue_labels[i]+' ')
+        var issues = []
+        for (var i=0; i<vi_issue_labels.length; i++) {
+            if (vi_issue_input.active.indexOf(i) >= 0) issues.push(vi_issue_labels[i])
         }
-        cds_targetinfo.data['VI_issue_flag'][ifiberslider.value] = issues
+        cds_targetinfo.data['VI_issue_flag'][ifiberslider.value] = ( issues.join(" ") )
         """
     )
     vi_issue_input.js_on_click(vi_issue_callback)
@@ -927,7 +927,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     vi_comment_callback = CustomJS(
         args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider, vi_comment_input=vi_comment_input), 
         code="""
-        cds_targetinfo.data['VI_comment'][ifiberslider.value]=vi_commentinput.value
+        cds_targetinfo.data['VI_comment'][ifiberslider.value]=vi_comment_input.value
         """
     )
     vi_comment_input.js_on_change('value',vi_comment_callback)
@@ -948,13 +948,13 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     vi_guideline_txt = "<B> VI guidelines </B>"
     vi_guideline_txt += "<BR /> <B> Classification flags : </B>"
     for flag in _vi_flags :
-        if flag['type'] == 'class' : vi_guideline_txt += ("<BR />&emsp;&emsp;["+flag['label']+"] : "+flag['description'])
+        if flag['type'] == 'class' : vi_guideline_txt += ("<BR />&emsp;&emsp;[&emsp;"+flag['label']+"&emsp;] "+flag['description'])
     vi_guideline_txt += "<BR /> <B> Optional indications : </B>"
     for flag in _vi_flags :
-        if flag['type'] == 'issue' : vi_guideline_txt += ("<BR />&emsp;&emsp;["+flag['label']+"] : "+flag['description'])
+        if flag['type'] == 'issue' : vi_guideline_txt += ("<BR />&emsp;&emsp;[&emsp;"+flag['label']+"&emsp;] "+flag['description'])
     vi_guideline_div = Div(text=vi_guideline_txt)
 
-    #- Save VI info to text/csv file
+    #- Save VI info to CSV file
     # Warning text output very sensitve for # " \  ... (standard js formatting not ok)
     # TODO : edit file name
     save_vi_button = Button(label="Download VI", button_type="default")
@@ -962,7 +962,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     save_vi_callback = CustomJS(
         args=dict(cds_targetinfo=cds_targetinfo, vi_class_labels=vi_class_labels, 
             vi_file_fields=vi_file_fields, nspec=nspec), 
-        code="""
+        code="""   
         function download(filename, text) {
             var element = document.createElement('a')
             element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(text))
@@ -974,8 +974,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
         }
         
         var nb_fields = vi_file_fields.length
-        var array_to_store = []
-        
+        var array_to_store = []        
         var header = []
         for (var j=0; j<nb_fields; j++) header.push(vi_file_fields[j][0])
         array_to_store.push(header)
@@ -986,20 +985,22 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
                 for (var j=0; j<vi_file_fields.length; j++) {
                     var entry = cds_targetinfo.data[vi_file_fields[j][1]][i]
                     if (vi_file_fields[j][1]=="z") entry = entry.toFixed(3)
-                    entry = entry.replace( ',' , '","' )
-                    entry = entry.replace( '"' , '""')
+                    if ( typeof(entry)!="string" ) entry = entry.toString()
+                    entry = entry.replace(/"/g, '""')
+                    entry = entry.replace(/,/g, '","')
+                    if (entry=="" || entry==" ") entry = "-"
                     row.push(entry)
                 }
                 array_to_store.push(row)
             }
         }
         
-        var csv_to_store = ""
-        array_to_store.forEach(function(row) {
-            csv_to_store += row.join(',')
-            csv_to_store += "\n"
-        })
-        download("vi_result.txt", csv_to_store)
+        var csv_to_store = ''
+        for (var j=0; j<array_to_store.length; j++) {
+            var row = (array_to_store[j]).join(' , ')
+            csv_to_store += ( row.concat("\\n") )
+        }
+        download("vi_result.txt", csv_to_store)       
         """
     )
     save_vi_button.js_on_event('button_click', save_vi_callback)
@@ -1032,10 +1033,12 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             fig = fig,
             imfig_source=imfig_source,
             imfig_urls=imfig_urls,
-            vi_commentinput=vi_commentinput,
-            vi_nameinput=vi_nameinput,
-            vi_flaginput=vi_flaginput,
-            viflags = viflags
+            vi_comment_input = vi_comment_input,
+            vi_name_input = vi_name_input,
+            vi_class_input = vi_class_input,
+            vi_class_labels = vi_class_labels,
+            vi_issue_input = vi_issue_input,
+            vi_issue_labels = vi_issue_labels
             ),
         code = """
         var ifiber = ifiberslider.value
@@ -1048,10 +1051,16 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
         }
         // Added EA : ongoing VI
         if (cb_obj == ifiberslider) {
-            vi_commentinput.value=targetinfo.data['VI_ongoing_comment'][ifiber] ;
-            vi_nameinput.value=targetinfo.data['VI_ongoing_scanner'][ifiber] ;
-         //   vi_flaginput.value=targetinfo.data['VI_ongoing_flag'][ifiber] ;
-            vi_flaginput.active = viflags.indexOf(targetinfo.data['VI_ongoing_flag'][ifiber]) ; // -1 if nothing
+            vi_comment_input.value=targetinfo.data['VI_comment'][ifiber] ;
+            vi_name_input.value=targetinfo.data['VI_scanner'][ifiber] ;
+            vi_class_input.active = vi_class_labels.indexOf(targetinfo.data['VI_class_flag'][ifiber]) ; // -1 if nothing
+            var issues_on = []
+            for (var i=0; i<vi_issue_labels.length; i++) {
+                if ( (targetinfo.data['VI_issue_flag'][ifiber]).indexOf(vi_issue_labels[i]) >= 0 ) {
+                    issues_on.push(i)
+                }
+            }
+            vi_issue_input.active = issues_on
         }
 
         if(targetinfo.data['z'] != undefined && cb_obj == ifiberslider) {
@@ -1291,9 +1300,9 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     slider_width = plot_width - 2*navigation_button_width
     navigator = bk.Row(
         widgetbox(prev_button, width=navigation_button_width+15),
-        widgetbox(vi_flaginput, width=60*len(viflags)),
+        widgetbox(vi_class_input, width=60*len(vi_class_labels)),
         widgetbox(next_button, width=navigation_button_width+20),
-        widgetbox(ifiberslider, width=plot_width-(60*len(viflags)+2*navigation_button_width+40)))
+        widgetbox(ifiberslider, width=plot_width-(60*len(vi_class_labels)+2*navigation_button_width+40)))
     the_bokehsetup = bk.Column(
             bk.Row(fig, bk.Column(imfig, zoomfig)),
             bk.Row(
@@ -1321,11 +1330,16 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
             ),
             bk.Row(Spacer(height=30)),
             bk.Row(
-                widgetbox(vi_commentinput,width=plot_width-500),
-                widgetbox(vi_nameinput,width=120),
+                bk.Column(
+                    widgetbox( Div(text="VI optional indications :"), width=300 ),
+                    widgetbox(vi_issue_input, width=300),
+                    widgetbox(vi_comment_input, width=300),
+                    widgetbox(vi_name_input, width=120),
+                    widgetbox(save_vi_button, width=100)
+                ),
                 widgetbox(Spacer(width=50)),
-                widgetbox(save_vi_button,width=100,sizing_mode="scale_height")
-            ),
+                widgetbox(vi_guideline_div, width=plot_width-350)
+            )
 #            widgetbox(save_vi_button,width=100)
             ## Don't want this in principle :
 #            bk.Row(
