@@ -16,6 +16,34 @@ import matplotlib.pyplot as plt
 
 from prospect import mycoaddcam
 
+_vi_flags = [
+    # Definition of VI flags
+    # Replaces former list viflags = ["Yes","No","Maybe","LowSNR","Bad"]
+    {"label" : "4", "type" : "class", "description" : "Confident classification, two or more secure features"},
+    {"label" : "3", "type" : "class", "description" : "Probable classification, at least one secure feature + continuum; or many weak features"},
+    {"label" : "2", "type" : "class", "description" : "Possible classification, one strong emission feature, but not sure what it is"},
+    {"label" : "1", "type" : "class", "description" : "Unlikely classification, one or some unidentified features"},
+    {"label" : "0", "type" : "class", "description" : "Nothing there"},
+    {"label" : "Redshift", "type" : "issue", "description" : "Misidentification of redshift (pipeline)"},
+    {"label" : "Spectrum", "type" : "issue", "description" : "Bad spectrum"}
+]
+
+_vi_file_fields = [
+    # Contents of VI files: [ "field name (in VI file header)", "associated variable in cds_targetinfo"]
+    # Ordered list
+    ["TargetID", "targetid"],
+    ["ExpID", "expid"],
+    ["Spec version", "spec_version"],
+    ["Redrock version", "redrock_version"],
+    ["Redrock spectype", "spectype"],
+    ["Redrock z", "z"],
+    ["VI scanner", "VI_scanner"],
+    ["VI class", "VI_class_flag"],
+    ["VI issue", "VI_issue_flag"], 
+    ["VI comment", "VI_comment"]
+]
+
+
 def read_vi(vifile) :
     '''
     Read visual inspection file (ASCII or FITS according to file extension)

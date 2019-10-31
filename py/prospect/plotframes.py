@@ -36,32 +36,6 @@ from prospect import utils_specviewer
 from prospect import mycoaddcam
 from astropy.table import Table
 
-_vi_flags = [
-    # Definition of VI flags
-    # Replaces former list viflags = ["Yes","No","Maybe","LowSNR","Bad"]
-    {"label" : "4", "type" : "class", "description" : "Confident classification, two or more secure features"},
-    {"label" : "3", "type" : "class", "description" : "Probable classification, at least one secure feature + continuum; or many weak features"},
-    {"label" : "2", "type" : "class", "description" : "Possible classification, one strong emission feature, but not sure what it is"},
-    {"label" : "1", "type" : "class", "description" : "Unlikely classification, one or some unidentified features"},
-    {"label" : "0", "type" : "class", "description" : "Nothing there"},
-    {"label" : "Redshift", "type" : "issue", "description" : "Misidentification of redshift (pipeline)"},
-    {"label" : "Spectrum", "type" : "issue", "description" : "Bad spectrum"}
-]
-
-_vi_file_fields = [
-    # Contents of VI files: [ "field name (in VI file header)", "associated variable in cds_targetinfo"]
-    # Ordered list
-    ["TargetID", "targetid"],
-    ["ExpID", "expid"],
-    ["Spec version", "spec_version"],
-    ["Redrock version", "redrock_version"],
-    ["Redrock spectype", "spectype"],
-    ["Redrock z", "z"],
-    ["VI scanner", "VI_scanner"],
-    ["VI class", "VI_class_flag"],
-    ["VI issue", "VI_issue_flag"], 
-    ["VI comment", "VI_comment"]
-]
 
 def _coadd(wave, flux, ivar, rdat):
     '''
@@ -895,7 +869,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     #- VI-related widgets
 
     #- Main VI classification
-    vi_class_labels = [ x["label"] for x in _vi_flags if x["type"]=="class" ]
+    vi_class_labels = [ x["label"] for x in utils_specviewer._vi_flags if x["type"]=="class" ]
     vi_class_input = RadioButtonGroup(labels=vi_class_labels)
     vi_class_callback = CustomJS(
         args=dict(cds_targetinfo=cds_targetinfo, vi_class_input=vi_class_input, 
@@ -907,7 +881,7 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     vi_class_input.js_on_click(vi_class_callback)
 
     #- Optional VI flags (issues)
-    vi_issue_labels = [ x["label"] for x in _vi_flags if x["type"]=="issue" ]
+    vi_issue_labels = [ x["label"] for x in utils_specviewer._vi_flags if x["type"]=="issue" ]
     vi_issue_input = CheckboxGroup(labels=vi_issue_labels, active=[])
     vi_issue_callback = CustomJS(
         args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider, 
@@ -954,17 +928,17 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
     #- Guidelines for VI flags
     vi_guideline_txt = "<B> VI guidelines </B>"
     vi_guideline_txt += "<BR /> <B> Classification flags : </B>"
-    for flag in _vi_flags :
+    for flag in utils_specviewer._vi_flags :
         if flag['type'] == 'class' : vi_guideline_txt += ("<BR />&emsp;&emsp;[&emsp;"+flag['label']+"&emsp;] "+flag['description'])
     vi_guideline_txt += "<BR /> <B> Optional indications : </B>"
-    for flag in _vi_flags :
+    for flag in utils_specviewer._vi_flags :
         if flag['type'] == 'issue' : vi_guideline_txt += ("<BR />&emsp;&emsp;[&emsp;"+flag['label']+"&emsp;] "+flag['description'])
     vi_guideline_div = Div(text=vi_guideline_txt)
 
     #- Save VI info to CSV file
     # Warning text output very sensitve for # " \  ... (standard js formatting not ok)
     save_vi_button = Button(label="Download VI", button_type="default")
-    vi_file_fields = _vi_file_fields
+    vi_file_fields = utils_specviewer._vi_file_fields
     save_vi_callback = CustomJS(
         args=dict(cds_targetinfo=cds_targetinfo, vi_class_labels=vi_class_labels, 
             vi_file_fields=vi_file_fields, nspec=nspec, vi_filename_input=vi_filename_input), 
@@ -1388,7 +1362,7 @@ _line_list = [
     {"name" : "[O III]",  "longname" : "[O III] 4363",   "lambda" : 4363.209, "emission": True, "major": False },
     {"name" : "He II",    "longname" : "He II 4685",     "lambda" : 4685.68,  "emission": True, "major": False },
     {"name" : "Hβ",       "longname" : "Balmer β",       "lambda" : 4861.325, "emission": True, "major": False },
-    {"name" : "[O III]",  "longname" : "[O III] 4959",   "lambda" : 4958.911, "emission": True, "major": False },
+    {"name" : "[O III]",  "longname" : "[O III] 4959",   "lambda" : 4958.911, "emission": True, "major": True },
     {"name" : "[O III]",  "longname" : "[O III] 5007",   "lambda" : 5006.843, "emission": True, "major": True  },
     {"name" : "He II",    "longname" : "He II 5411",     "lambda" : 5411.52,  "emission": True, "major": False },
     {"name" : "[O I]",    "longname" : "[O I] 5577",     "lambda" : 5577.339, "emission": True, "major": False },
@@ -1492,12 +1466,12 @@ def add_lines(fig, z=0 , emission=True, fig_height=None, label_offsets=[100, 5])
             line_data['emission']
             ):
         if emission:
-            color = 'magenta'
+            color = 'blueviolet'
         else:
             color = 'green'
 
         s = Span(location=w, dimension='height', line_color=color,
-                line_alpha=1.0, visible=False)
+                line_alpha=1.0, line_dash='dashed', visible=False)
 
         fig.add_layout(s)
         lines.append(s)
