@@ -150,7 +150,7 @@ def coadd_targets(spectra, targetids=None):
             meta=spectra.meta)
 
 
-def frames2spectra(frames):
+def frames2spectra(frames, nspec=None):
     '''Convert input list of Frames into Spectra object
 
     Do no propagate resolution, scores
@@ -161,15 +161,21 @@ def frames2spectra(frames):
     ivar = dict()
     mask = dict()
     for fr in frames:
+        fibermap = fr.fibermap
         band = fr.meta['CAMERA'][0]
         bands.append(band)
         wave[band] = fr.wave
         flux[band] = fr.flux
         ivar[band] = fr.ivar
         mask[band] = fr.mask
+        if nspec is not None :
+            flux[band] = flux[band][0:nspec]
+            ivar[band] = ivar[band][0:nspec]
+            mask[band] = mask[band][0:nspec]
+            fibermap = fr.fibermap[0:nspec]
 
     spectra = desispec.spectra.Spectra(
-        bands, wave, flux, ivar, mask, fibermap=fr.fibermap, meta=fr.meta
+        bands, wave, flux, ivar, mask, fibermap=fibermap, meta=fr.meta
     )
     return spectra
 
@@ -384,13 +390,14 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
     return cds_targetinfo
 
 
-def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, savedir='.', is_coadded=True, title=None, html_dir=None, with_noise=True, sv=False):
+def plotspectra(spectra, nspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, savedir='.', is_coadded=True, title=None, html_dir=None, with_noise=True, sv=False):
     '''
     Main prospect routine, creates a bokeh document from a set of spectra and fits
 
     Parameter
     ---------
     spectra : desi spectra object, or a list of frames
+    nspec : select subsample of spectra, only for frame input
     zcatalog : FITS file of pipeline redshifts for the spectra. Currently supports only redrock-PCA files.
     model_from_zcat : if True, model spectra will be computed from the input zcatalog
     model : if set, use this input set of model spectra (instead of computing it from zcat)
@@ -406,10 +413,11 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
 
     #- If inputs are frames, convert to a spectra object
     if isinstance(spectra, list) and isinstance(spectra[0], desispec.frame.Frame):
-        spectra = frames2spectra(spectra)
+        spectra = frames2spectra(spectra, nspec=nspec)
         frame_input = True
     else:
         frame_input = False
+        assert nspec is None
     nspec = spectra.num_spectra()
     #- Set masked bins to NaN so that Bokeh won't plot them
     for band in spectra.bands:
