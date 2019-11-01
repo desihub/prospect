@@ -377,7 +377,7 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
 
     # VI inputs
     cds_targetinfo.add([username for i in range(nspec)], name='VI_scanner')
-    cds_targetinfo.add([" " for i in range(nspec)], name='VI_class_flag')
+    cds_targetinfo.add([" " for i in range(nspec)], name='VI_class_flag') 
     cds_targetinfo.add([" " for i in range(nspec)], name='VI_issue_flag')
     cds_targetinfo.add([" " for i in range(nspec)], name='VI_comment')
 
@@ -875,7 +875,11 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
         args=dict(cds_targetinfo=cds_targetinfo, vi_class_input=vi_class_input, 
                 vi_class_labels=vi_class_labels, ifiberslider = ifiberslider), 
         code="""
-        cds_targetinfo.data['VI_class_flag'][ifiberslider.value] = vi_class_labels[vi_class_input.active]
+        if ( vi_class_input.active >= 0 ) {
+            cds_targetinfo.data['VI_class_flag'][ifiberslider.value] = vi_class_labels[vi_class_input.active]
+        } else {
+            cds_targetinfo.data['VI_class_flag'][ifiberslider.value] = " "
+        }
         """
     )
     vi_class_input.js_on_click(vi_class_callback)
@@ -891,7 +895,11 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
         for (var i=0; i<vi_issue_labels.length; i++) {
             if (vi_issue_input.active.indexOf(i) >= 0) issues.push(vi_issue_labels[i])
         }
-        cds_targetinfo.data['VI_issue_flag'][ifiberslider.value] = ( issues.join(" ") )
+        if (issues.length > 0) {
+            cds_targetinfo.data['VI_issue_flag'][ifiberslider.value] = ( issues.join(" ") )
+        } else {
+            cds_targetinfo.data['VI_issue_flag'][ifiberslider.value] = " "
+        }
         """
     )
     vi_issue_input.js_on_click(vi_issue_callback)
@@ -960,7 +968,9 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
         array_to_store.push(header)
         for (var i=0; i<nspec; i++) {
              // Record only information if a VI classification was assigned
-            if ( vi_class_labels.includes(cds_targetinfo.data['VI_class_flag'][i]) ) {
+            if ( (vi_class_labels.includes(cds_targetinfo.data['VI_class_flag'][i])) ||
+                (cds_targetinfo.data['VI_comment'][i].trim() != "") ||
+                (cds_targetinfo.data['VI_issue_flag'][i].trim() != "" ) ) {
                 var row = []
                 for (var j=0; j<vi_file_fields.length; j++) {
                     var entry = cds_targetinfo.data[vi_file_fields[j][1]][i]
