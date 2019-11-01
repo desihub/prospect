@@ -771,10 +771,11 @@ def plotspectra(spectra, zcatalog=None, model_from_zcat=True, model=None, notebo
    
     #-----
     #- Checkboxes to display noise / model
-    if with_noise : 
-        display_options_group = CheckboxGroup(labels=['Show model', 'Show noise spectra'], active=[0,1])
-    else :
-        display_options_group = CheckboxGroup(labels=['Show model'], active=[0])
+    disp_opt_labels = []
+    if cds_model is not None : disp_opt_labels.append('Show model')
+    if with_noise : disp_opt_labels.append('Show noise spectra')
+    display_options_group = CheckboxGroup(labels=disp_opt_labels, 
+                                          active=list(range(len(disp_opt_labels))))
     disp_opt_callback = CustomJS(
         args = dict(noise_lines=noise_lines, model_lines=model_lines, zoom_noise_lines=zoom_noise_lines, zoom_model_lines=zoom_model_lines), code="""
         for (var i=0; i<noise_lines.length; i++) {
