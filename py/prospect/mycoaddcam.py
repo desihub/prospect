@@ -53,6 +53,8 @@ def mycoaddcam(spectra) :
             phi1, ivar1 = resample_flux(lambd_over, spectra.wave[b1], spectra.flux[b1][ispec,:], ivar=spectra.ivar[b1][ispec,:])
             phi2, ivar2 = resample_flux(lambd_over, spectra.wave[b2], spectra.flux[b2][ispec,:], ivar=spectra.ivar[b2][ispec,:])
             ivar[ispec,w_overlap] = ivar1+ivar2
-            flux[ispec,w_overlap] = (ivar1*phi1 + ivar2*phi2)/ivar[ispec,w_overlap]
+            w_ok = np.where( ivar[ispec,w_overlap] > 0)
+            flux[ispec,w_overlap] = (phi1+phi2)/2
+            flux[ispec,w_overlap][w_ok] = (ivar1[w_ok]*phi1[w_ok] + ivar2[w_ok]*phi2[w_ok])/ivar[ispec,w_overlap][w_ok]
     
     return (wave, flux, ivar)
