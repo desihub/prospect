@@ -14,6 +14,7 @@ import matplotlib
 matplotlib.use('Agg') # No DISPLAY
 import matplotlib.pyplot as plt
 
+from desiutil.log import get_logger
 from prospect import mycoaddcam
 
 _vi_flags = [
@@ -29,32 +30,32 @@ _vi_flags = [
 ]
 
 _vi_file_fields = [
-    # Contents of VI files: [ "field name (in VI file header)", "associated variable in cds_targetinfo"]
+    # Contents of VI files: [ "field name (in VI file header)", "associated variable in cds_targetinfo", default dtype in VI file]
     # Ordered list
-    ["TargetID", "targetid"],
-    ["ExpID", "expid"],
-    ["Spec version", "spec_version"],
-    ["Redrock version", "redrock_version"],
-    ["Redrock spectype", "spectype"],
-    ["Redrock z", "z"],
-    ["VI scanner", "VI_scanner"],
-    ["VI class", "VI_class_flag"],
-    ["VI issue", "VI_issue_flag"], 
-    ["VI comment", "VI_comment"]
+    ["TargetID", "targetid", "i4"],
+    ["ExpID", "expid", "i4"],
+    ["Spec version", "spec_version", "i4"], # TODO define
+    ["Redrock version", "redrock_version", "i4"], # TODO define
+    ["Redrock spectype", "spectype", "S6"],
+    ["Redrock z", "z", "f4"],
+    ["VI scanner", "VI_scanner", "S6"],
+    ["VI class", "VI_class_flag", "i4"],
+    ["VI issue", "VI_issue_flag", "S6"], 
+    ["VI comment", "VI_comment", "S6"]
 ]
 
 
 def read_vi(vifile) :
     '''
-    Read visual inspection file (ASCII or FITS according to file extension)
+    Read visual inspection file (ASCII/CSV or FITS according to file extension)
     Return full VI catalog, in Table format
     '''
-    vi_records = ['targetid','expid','fiber','spec_version','redrock_version','redrock_spectype','redrock_z','scannername','scanflag','VIcomment']
+    vi_records = [x[0] for x in _vi_file_fields]
 
-    if (vifile[-5:] != ".fits" and vifile[-4:] not in [".fit",".fts",".txt"]) :
+    if (vifile[-5:] != ".fits" and vifile[-4:] not in [".fit",".fts",".csv"]) :
         raise RuntimeError("wrong file extension")
-    if vifile[-4:] == ".txt" :
-        vi_info = Table.read(vifile,format='ascii', names=vi_records)
+    if vifile[-4:] == ".csv" :
+        vi_info = Table.read(vifile,format='ascii.csv', names=vi_records)
     else :
         vi_info = astropy.io.fits.getdata(vifile,1)
         if [(x in vi_info.names) for x in vi_records]!=[1 for x in vi_records] :
@@ -77,11 +78,25 @@ def match_vi_targets(vifile, targetlist) :
     return vicatalog
 
 
-def convert_vi_tofits(vifile_in,overwrite=True) :
-    if vifile_in[-4:] != ".txt" : raise RuntimeError("wrong file extension")
+def convert_vi_tofits(vifile_in, overwrite=True) :
+    log = get_logger()
+    if vifile_in[-4:] != ".csv" : raise RuntimeError("wrong file extension")
     vi_info = read_vi(vifile_in)
-    vifile_out=vifile_in.replace(".txt",".fits")
+    vifile_out=vifile_in.replace(".csv",".fits")
     vi_info.write(vifile_out, format='fits', overwrite=overwrite)
+    log.info("Created fits file : "+vifile_out+" ("+str(len(vi_info))+" entries).")
+    
+
+def initialize_master_vi(mastervifile, overwrite=False) :
+    '''
+    Create "master" VI file with no entry
+    '''
+    log = get_logger()
+    vi_records = [x[0] for x in _vi_file_fields]
+    vi_dtype = [x[2] for x in _vi_file_fields]
+    vi_info = Table(names=vi_records, dtype=tuple(vi_dtype))
+    vi_info.write(mastervifile, format='fits', overwrite=overwrite)
+    log.info("Initialized VI file : "+mastervifile+" (0 entry)")
     
 
 def merge_vi(mastervifile, newvifile) :
@@ -89,13 +104,15 @@ def merge_vi(mastervifile, newvifile) :
     Merge a new VI file to the "master" VI file
     The master file is overwritten.
     '''
+    log = get_logger()
     mastervi = read_vi(mastervifile)
     newvi = read_vi(newvifile)
-    mergedvi = vstack([mastervi,newvi])
+    mergedvi = vstack([mastervi,newvi], join_type='exact')
     mergedvi.write(mastervifile, format='fits', overwrite=True)
+    log.info("Updated master VI file : "+mastervifile+" (now "+str(len(mergedvi))+" entries).")
 
 
-def match_zcat_to_spectra(zcat_in,spectra) :
+def match_zcat_to_spectra(zcat_in, spectra) :
     '''
     zcat_in : astropy Table from redshift fitter
     creates a new astropy Table whose rows match the targetids of input spectra

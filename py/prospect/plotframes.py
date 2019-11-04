@@ -383,7 +383,7 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
 
     # VI inputs
     cds_targetinfo.add([username for i in range(nspec)], name='VI_scanner')
-    cds_targetinfo.add([" " for i in range(nspec)], name='VI_class_flag') 
+    cds_targetinfo.add(["-1" for i in range(nspec)], name='VI_class_flag') 
     cds_targetinfo.add([" " for i in range(nspec)], name='VI_issue_flag')
     cds_targetinfo.add([" " for i in range(nspec)], name='VI_comment')
 
@@ -887,7 +887,7 @@ def plotspectra(spectra, nspec=None, zcatalog=None, model_from_zcat=True, model=
         if ( vi_class_input.active >= 0 ) {
             cds_targetinfo.data['VI_class_flag'][ifiberslider.value] = vi_class_labels[vi_class_input.active]
         } else {
-            cds_targetinfo.data['VI_class_flag'][ifiberslider.value] = " "
+            cds_targetinfo.data['VI_class_flag'][ifiberslider.value] = "-1"
         }
         """
     )
@@ -987,7 +987,7 @@ def plotspectra(spectra, nspec=None, zcatalog=None, model_from_zcat=True, model=
                     if ( typeof(entry)!="string" ) entry = entry.toString()
                     entry = entry.replace(/"/g, '""')
                     entry = entry.replace(/,/g, '","')
-                    if (entry=="" || entry==" ") entry = "-"
+                    if (entry=="" || entry==" ") entry = "--"
                     row.push(entry)
                 }
                 array_to_store.push(row)
@@ -1006,6 +1006,9 @@ def plotspectra(spectra, nspec=None, zcatalog=None, model_from_zcat=True, model=
     )
     save_vi_button.js_on_event('button_click', save_vi_callback)
 
+    #- Show VI in a table
+    ## TODO 
+    
     # Choose to show or not previous VI
     show_prev_vi_select = Select(title='Show previous VI', value='No', options=['Yes','No'])
     show_prev_vi_callback = CustomJS(args=dict(vi_info_div = vi_info_div, show_prev_vi_select=show_prev_vi_select, targetinfo = cds_targetinfo, ifiberslider = ifiberslider), code="""
