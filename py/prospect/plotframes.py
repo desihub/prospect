@@ -390,7 +390,7 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
     return cds_targetinfo
 
 
-def plotspectra(spectra, nspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, savedir='.', is_coadded=True, title=None, html_dir=None, with_noise=True, sv=False):
+def plotspectra(spectra, nspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, savedir='.', is_coadded=True, title=None, html_dir=None, with_noise=True, with_coaddcam=True, sv=False):
     '''
     Main prospect routine, creates a bokeh document from a set of spectra and fits
 
@@ -408,6 +408,7 @@ def plotspectra(spectra, nspec=None, zcatalog=None, model_from_zcat=True, model=
     title : title of produced html page and bokeh figure
     html_dir : directory to store html page
     with_noise : include noise for each spectrum
+    with_coaddcam : include camera-coaddition
     sv : if True, will use SV1_DESI_TARGET instead of DESI_TARGET
     '''
 
@@ -456,7 +457,10 @@ def plotspectra(spectra, nspec=None, zcatalog=None, model_from_zcat=True, model=
     #-----
     #- Gather information into ColumnDataSource objects for Bokeh
     cds_spectra = make_cds_spectra(spectra, with_noise)
-    cds_coaddcam_spec = make_cds_coaddcam_spec(spectra, with_noise)
+    if with_coaddcam :
+        cds_coaddcam_spec = make_cds_coaddcam_spec(spectra, with_noise)
+    else :
+        cds_coaddcam_spec = None
     if model is not None:
         cds_model = make_cds_model(model)
     else:
@@ -480,8 +484,8 @@ def plotspectra(spectra, nspec=None, zcatalog=None, model_from_zcat=True, model=
     xmin = 100000.
     xmargin = 300.
     for band in spectra.bands:
-        ymin = min(ymin, np.min(spectra.flux[band][0]))
-        ymax = max(ymax, np.max(spectra.flux[band][0]))
+        ymin = min(ymin, np.nanmin(spectra.flux[band][0]))
+        ymax = max(ymax, np.nanmax(spectra.flux[band][0]))
         xmin = min(xmin, np.min(spectra.wave[band]))
         xmax = max(xmax, np.max(spectra.wave[band]))        
     xmin -= xmargin
@@ -501,21 +505,24 @@ def plotspectra(spectra, nspec=None, zcatalog=None, model_from_zcat=True, model=
     colors = dict(b='#1f77b4', r='#d62728', z='maroon', coadd='#d62728')
     noise_colors = dict(b='greenyellow', r='green', z='forestgreen', coadd='green') # TODO test several and choose
     alpha_discrete = 0.2 # alpha for "almost-hidden" curves (single-arm spectra and noise by default)
+    if not with_coaddcam : alpha_discrete = 1
     
     data_lines = list()
     for spec in cds_spectra:
         lx = fig.line('plotwave', 'plotflux', source=spec, line_color=colors[spec.name], line_alpha=alpha_discrete)
         data_lines.append(lx)
-    lx = fig.line('plotwave', 'plotflux', source=cds_coaddcam_spec, line_color=colors['coadd'], line_alpha=1)
-    data_lines.append(lx)
+    if with_coaddcam :
+        lx = fig.line('plotwave', 'plotflux', source=cds_coaddcam_spec, line_color=colors['coadd'], line_alpha=1)
+        data_lines.append(lx)
     
     noise_lines = list()
     if with_noise :
         for spec in cds_spectra :
             lx = fig.line('plotwave', 'plotnoise', source=spec, line_color=noise_colors[spec.name], line_alpha=alpha_discrete)
             noise_lines.append(lx)
-        lx = fig.line('plotwave', 'plotnoise', source=cds_coaddcam_spec, line_color=noise_colors['coadd'], line_alpha=1)
-        noise_lines.append(lx)
+        if with_coaddcam :
+            lx = fig.line('plotwave', 'plotnoise', source=cds_coaddcam_spec, line_color=noise_colors['coadd'], line_alpha=1)
+            noise_lines.append(lx)
 
     model_lines = list()
     if cds_model is not None:
@@ -548,11 +555,11 @@ def plotspectra(spectra, nspec=None, zcatalog=None, model_from_zcat=True, model=
         if with_noise :
             zoom_noise_lines.append(zoomfig.line('plotwave', 'plotnoise', source=spec,
                             line_color=noise_colors[spec.name], line_width=1, line_alpha=alpha_discrete))
-    zoom_data_lines.append(zoomfig.line('plotwave', 'plotflux', source=cds_coaddcam_spec, line_color=colors['coadd'], line_alpha=1))
-    
-    if with_noise :
-        lx = zoomfig.line('plotwave', 'plotnoise', source=cds_coaddcam_spec, line_color=noise_colors['coadd'], line_alpha=1)
-        zoom_noise_lines.append(lx)
+    if with_coaddcam :
+        zoom_data_lines.append(zoomfig.line('plotwave', 'plotflux', source=cds_coaddcam_spec, line_color=colors['coadd'], line_alpha=1))
+        if with_noise :
+            lx = zoomfig.line('plotwave', 'plotnoise', source=cds_coaddcam_spec, line_color=noise_colors['coadd'], line_alpha=1)
+            zoom_noise_lines.append(lx)
             
     zoom_model_lines = list()
     if cds_model is not None:
@@ -722,7 +729,7 @@ def plotspectra(spectra, nspec=None, zcatalog=None, model_from_zcat=True, model=
         for(var i=0; i<spectra.length; i++) {
             shift_plotwave(spectra[i], waveshift_spec)
         }
-        shift_plotwave(coaddcam_spec, waveshift_spec)
+        if (coaddcam_spec) shift_plotwave(coaddcam_spec, waveshift_spec)
         
         // Update model wavelength array
         if(model) {
@@ -810,7 +817,9 @@ def plotspectra(spectra, nspec=None, zcatalog=None, model_from_zcat=True, model=
     
     #-----
     #- Highlight individual-arm or camera-coadded spectra
-    coaddcam_buttons = RadioButtonGroup( labels=["Camera-coadded", "Single-arm"], active=0 )
+    coaddcam_labels = []
+    if cds_coaddcam_spec is not None : coaddcam_labels = ["Camera-coadded", "Single-arm"]
+    coaddcam_buttons = RadioButtonGroup(labels=coaddcam_labels, active=0)
     coaddcam_callback = CustomJS(
         args = dict(coaddcam_buttons=coaddcam_buttons, list_lines=[data_lines, noise_lines, zoom_data_lines, zoom_noise_lines], alpha_discrete=alpha_discrete), code="""
         var n_lines = list_lines[0].length
@@ -1249,27 +1258,29 @@ def plotspectra(spectra, nspec=None, zcatalog=None, model_from_zcat=True, model=
 
         // update camera-coadd
         // Here I choose to do coaddition on the smoothed spectra (should be ok?)
-        var wave_in = []
-        var flux_in = []
-        var noise_in = []
-        for (var i=0; i<3; i++) {
-            var data = spectra[i].data
-            wave_in.push(data['plotwave'].slice())
-            flux_in.push(data['plotflux'].slice())
-            if ('plotnoise' in data) {
-                noise_in.push(data['plotnoise'].slice())
-            } else {
-                var dummy_noise = []
-                for (var j=0; j<data['plotflux'].length; j++) dummy_noise.push(1)
-                noise_in.push(dummy_noise)
+        if (coaddcam_spec) {
+            var wave_in = []
+            var flux_in = []
+            var noise_in = []
+            for (var i=0; i<3; i++) {
+                var data = spectra[i].data
+                wave_in.push(data['plotwave'].slice())
+                flux_in.push(data['plotflux'].slice())
+                if ('plotnoise' in data) {
+                    noise_in.push(data['plotnoise'].slice())
+                } else {
+                    var dummy_noise = []
+                    for (var j=0; j<data['plotflux'].length; j++) dummy_noise.push(1)
+                    noise_in.push(dummy_noise)
+                }
             }
+            var coadd_infos = coadd_brz_cams(wave_in, flux_in, noise_in)
+            coaddcam_spec.data['plotwave'] = coadd_infos[0].slice()
+            coaddcam_spec.data['plotflux'] = coadd_infos[1].slice()
+            coaddcam_spec.data['plotnoise'] = coadd_infos[2].slice()
+            coaddcam_spec.change.emit()
         }
-        var coadd_infos = coadd_brz_cams(wave_in, flux_in, noise_in)
-        coaddcam_spec.data['plotwave'] = coadd_infos[0].slice()
-        coaddcam_spec.data['plotflux'] = coadd_infos[1].slice()
-        coaddcam_spec.data['plotnoise'] = coadd_infos[2].slice()
-        coaddcam_spec.change.emit()
-
+        
         // update model
         if(model) {
             var origflux = model.data['origflux'+ifiber]
@@ -1299,7 +1310,6 @@ def plotspectra(spectra, nspec=None, zcatalog=None, model_from_zcat=True, model=
     ifiberslider.js_on_change('value', update_plot)
 
 
-    
     #-----
     slider_width = plot_width - 2*navigation_button_width
     navigator = bk.Row(
