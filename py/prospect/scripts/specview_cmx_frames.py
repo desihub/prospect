@@ -27,6 +27,7 @@ def parse() :
     parser.add_argument('--nspecperfile', help='Number of spectra in each html page', type=int, default=50)
     parser.add_argument('--webdir', help='Base directory for webpages', type=str, default=None)
     parser.add_argument('--nmax_spectra', help='Stop the production of HTML pages once a given number of spectra are done', type=int, default=None)
+    parser.add_argument('--vignette_smoothing', help='Smoothing of the vignette images (-1 : no smoothing)', type=float, default=10)
     args = parser.parse_args()
     return args
 
@@ -56,7 +57,7 @@ def main(args) :
     exposures = exposure_db(specprod_dir)
     if args.exposure_list is not None :
         expo_subset = np.loadtxt(args.exposure_list, dtype=str)
-        exposures = [x for x in exposures if x[0] in expo_subset]
+        exposures = [ x for x in exposures if x[0] in expo_subset or x[0].lstrip("0") in expo_subset ]
     log.info(str(len(exposures))+" exposures to be processed")
         
     # Loop on exposures
@@ -75,12 +76,19 @@ def main(args) :
             
             log.info(" * Page "+str(i_page)+" / "+str(nbpages))
             i_start = (i_page-1)*args.nspecperfile
-            titlepage = "specviewer_exposure_"+exposure+"_"+str(i_page)
+            titlepage = "specviewer_"+exposure+"_"+str(i_page)
             html_dir = os.path.join(webdir,exposure)
             if not os.path.exists(html_dir) : 
-                os.makedirs(html_dir)            
+                os.makedirs(html_dir)
+                os.mkdir( os.path.join(html_dir, "vignettes") )
             plotframes.plotspectra(frames, nspec=args.nspecperfile, startspec=i_start, 
                                     with_noise=True, with_coaddcam=False, sv=False, is_coadded=False, title=titlepage, html_dir=html_dir)
+
+            # not elegant ..
+            spec = plotframes.frames2spectra(frames, nspec=args.nspecperfile, startspec=i_start)
+            for i_spec in range(spec.num_spectra()) :
+                saveplot = html_dir+"/vignettes/expo"+exposure+"_"+str(i_page)+"_"+str(i_spec)+".png"
+                utils_specviewer.miniplot_spectrum(spec, i_spec, model=None, coaddcam=False, saveplot=saveplot, smoothing = args.vignette_smoothing)
         
         # Stop running if needed, only once a full exposure is completed
         nspec_done += nspec_expo

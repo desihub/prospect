@@ -25,16 +25,18 @@ def parse() :
     return args
 
 
-def prepare_subdir(subdir, entry, template_index, template_vignette, target=None, expo=False) :
+def prepare_subdir(subdir, entry, template_index, template_vignette, target=None, do_expo=False) :
 
+    # A DEBUGGER !!!
+    
     spec_pages = glob.glob( subdir+"/specviewer_"+entry+"_*.html" )
     subsets = [ x[len(subdir+"/specviewer_"+entry)+1:-5] for x in spec_pages ]
     subsets.sort(key=int)
     img_list = glob.glob( subdir+"/vignettes/*.png" )
     nspec = len(img_list)
-    if target is None :
+    if target is None and do_expo==False :
         pagetext = template_index.render(pixel=entry, subsets=subsets, nspec=nspec)
-    elif expo is True :
+    elif target is None and do_expo==True :
         pagetext = template_index.render(expo=entry, subsets=subsets, nspec=nspec)
     else :
         pagetext = template_index.render(pixel=entry, subsets=subsets, nspec=nspec, target=target)
@@ -51,13 +53,12 @@ def prepare_subdir(subdir, entry, template_index, template_vignette, target=None
     for x in glob.glob(subdir+"/*.html") :
         st = os.stat(x)
         os.chmod(x, st.st_mode | stat.S_IROTH) # "chmod a+r "
-    if expo==False : # to improve ..
-        for thedir in [subdir, os.path.join(subdir,"vignettes") ] :
-            st = os.stat(thedir)
-            os.chmod(thedir, st.st_mode | stat.S_IROTH | stat.S_IXOTH) # "chmod a+rx "
-        for x in glob.glob(subdir+"/vignettes/*.png") :
-            st = os.stat(x)
-            os.chmod(x, st.st_mode | stat.S_IROTH) # "chmod a+r "
+    for thedir in [subdir, os.path.join(subdir,"vignettes") ] :
+        st = os.stat(thedir)
+        os.chmod(thedir, st.st_mode | stat.S_IROTH | stat.S_IXOTH) # "chmod a+rx "
+    for x in glob.glob(subdir+"/vignettes/*.png") :
+        st = os.stat(x)
+        os.chmod(x, st.st_mode | stat.S_IROTH) # "chmod a+r "
 
 
 def main(args) :
@@ -80,7 +81,7 @@ def main(args) :
         exposures = os.listdir( os.path.join(webdir,"exposures") )
         for expo in exposures :
             expo_dir = os.path.join(webdir,"exposures",expo)
-            prepare_subdir(expo_dir, expo, template_expolist, template_vignettelist, expo=True)
+            prepare_subdir(expo_dir, expo, template_expolist, template_vignettelist, do_expo=True)
             log.info("Subdirectory done : "+expo)
     else : exposures = None
 
@@ -108,7 +109,6 @@ def main(args) :
                 log.info("Subdirectory done : "+pix)
     else : target_pixels={'BGS_ANY':None,'ELG':None,'LRG':None,'QSO':None,'MWS_ANY':None}
 
-
     # Main index # TODO improve template handling target-based pages
     pagetext = template_index.render(pixels=pixels, exposures=exposures, bgs_pixels=target_pixels['BGS_ANY'], 
             elg_pixels=target_pixels['ELG'], lrg_pixels=target_pixels['LRG'], qso_pixels=target_pixels['QSO'],
@@ -119,4 +119,4 @@ def main(args) :
         fh.close()
         st = os.stat(indexfile)
         os.chmod(indexfile, st.st_mode | stat.S_IROTH) # "chmod a+r"
-
+        log.info("Main index done")

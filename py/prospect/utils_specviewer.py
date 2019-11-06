@@ -128,13 +128,15 @@ def match_zcat_to_spectra(zcat_in, spectra) :
     return (zcat_out, index_list)
 
 
-def get_y_minmax(pmin, pmax, data) :
+def get_y_minmax(pmin, pmax, data, ispec) :
     '''
     Utility, from plotframe
     '''
-    dx = np.sort(data)
+    dx = np.sort(data[np.isfinite(data)])
+    if len(dx)==0 : return (0,0)
     imin = int(np.floor(pmin*len(dx)))
     imax = int(np.floor(pmax*len(dx)))
+    if (imax >= len(dx)) : imax = len(dx)-1
     return (dx[imin],dx[imax])
 
 
@@ -178,9 +180,9 @@ def miniplot_spectrum(spectra, i_spec, model=None, saveplot=None, smoothing=-1, 
         for spec in data :
             spec['wave'] = spec['wave']
             spec['flux'] = scipy.ndimage.filters.gaussian_filter1d(spec['flux'], sigma=smoothing, mode='nearest')
-            tmpmin,tmpmax=get_y_minmax(0.01, 0.99, spec['flux'])
-            ymin=np.min((tmpmin,ymin))
-            ymax=np.max((tmpmax,ymax))
+            tmpmin,tmpmax=get_y_minmax(0.01, 0.99, spec['flux'],i_spec)
+            ymin=np.nanmin((tmpmin,ymin))
+            ymax=np.nanmax((tmpmax,ymax))
         if model is not None :
             mwave = mwave[int(smoothing):-int(smoothing)]
             mflux = scipy.ndimage.filters.gaussian_filter1d(mflux, sigma=smoothing, mode='nearest')[int(smoothing):-int(smoothing)]
@@ -196,6 +198,8 @@ def miniplot_spectrum(spectra, i_spec, model=None, saveplot=None, smoothing=-1, 
         plt.plot(mwave, mflux, c='k')
     # No label to save space
     if smoothing > 0 :
+        ymin = ymin*1.4 if (ymin<0) else ymin*0.6
+        ymax = ymax*1.4
         plt.ylim((ymin,ymax))
     # TODO : include some infos on plot
     
