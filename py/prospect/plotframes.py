@@ -150,7 +150,7 @@ def coadd_targets(spectra, targetids=None):
             meta=spectra.meta)
 
 
-def frames2spectra(frames, nspec=None):
+def frames2spectra(frames, nspec=None, startspec=None):
     '''Convert input list of Frames into Spectra object
 
     Do no propagate resolution, scores
@@ -169,10 +169,11 @@ def frames2spectra(frames, nspec=None):
         ivar[band] = fr.ivar
         mask[band] = fr.mask
         if nspec is not None :
-            flux[band] = flux[band][0:nspec]
-            ivar[band] = ivar[band][0:nspec]
-            mask[band] = mask[band][0:nspec]
-            fibermap = fr.fibermap[0:nspec]
+            if startspec is None : startspec = 0
+            flux[band] = flux[band][startspec:nspec+startspec]
+            ivar[band] = ivar[band][startspec:nspec+startspec]
+            mask[band] = mask[band][startspec:nspec+startspec]
+            fibermap = fr.fibermap[startspec:nspec+startspec]
 
     spectra = desispec.spectra.Spectra(
         bands, wave, flux, ivar, mask, fibermap=fibermap, meta=fr.meta
@@ -337,6 +338,11 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
         else :
             target_bit_names = ' '.join(desi_mask.names(row['DESI_TARGET']))
         txt = 'Target {}: {} '.format(row['TARGETID'], target_bit_names)
+        if not is_coadded :
+            txt += '<BR />'
+            if 'NIGHT' in spectra.fibermap.keys() : txt += "Night : {}".format(row['NIGHT'])
+            if 'EXPID' in spectra.fibermap.keys() : txt += "Exposure : {}".format(row['EXPID'])
+            if 'FIBER' in spectra.fibermap.keys() : txt += "Fiber : {}".format(row['FIBER'])
         if (row['FLUX_G'] > 0 and row['MW_TRANSMISSION_G'] > 0) :
             gmag = -2.5*np.log10(row['FLUX_G']/row['MW_TRANSMISSION_G'])+22.5
         else : gmag = 0
@@ -369,7 +375,7 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
         cds_targetinfo.add(zcatalog['SPECTYPE'].astype('U{0:d}'.format(zcatalog['SPECTYPE'].dtype.itemsize)), name='spectype')
 
     nspec = spectra.num_spectra()
-    if not is_coadded :
+    if not is_coadded and 'EXPID' in spectra.fibermap.keys() :
         cds_targetinfo.add(spectra.fibermap['EXPID'], name='expid')
     else : # If coadd, fill VI accordingly
         cds_targetinfo.add(['-1' for i in range(nspec)], name='expid')
@@ -390,7 +396,7 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
     return cds_targetinfo
 
 
-def plotspectra(spectra, nspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, savedir='.', is_coadded=True, title=None, html_dir=None, with_noise=True, with_coaddcam=True, sv=False):
+def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, savedir='.', is_coadded=True, title=None, html_dir=None, with_noise=True, with_coaddcam=True, sv=False):
     '''
     Main prospect routine, creates a bokeh document from a set of spectra and fits
 
@@ -398,6 +404,7 @@ def plotspectra(spectra, nspec=None, zcatalog=None, model_from_zcat=True, model=
     ---------
     spectra : desi spectra object, or a list of frames
     nspec : select subsample of spectra, only for frame input
+    startspec : if nspec is set, subsample selection will be [startspec:startspec+nspec]
     zcatalog : FITS file of pipeline redshifts for the spectra. Currently supports only redrock-PCA files.
     model_from_zcat : if True, model spectra will be computed from the input zcatalog
     model : if set, use this input set of model spectra (instead of computing it from zcat)
@@ -414,12 +421,12 @@ def plotspectra(spectra, nspec=None, zcatalog=None, model_from_zcat=True, model=
 
     #- If inputs are frames, convert to a spectra object
     if isinstance(spectra, list) and isinstance(spectra[0], desispec.frame.Frame):
-        spectra = frames2spectra(spectra, nspec=nspec)
+        spectra = frames2spectra(spectra, nspec=nspec, startspec=startspec)
         frame_input = True
     else:
         frame_input = False
         assert nspec is None
-    nspec = spectra.num_spectra()
+    nspec = spectra.num_spectra() # NB can be less than input "nspec"
     #- Set masked bins to NaN so that Bokeh won't plot them
     for band in spectra.bands:
         bad = (spectra.ivar[band] == 0.0) | (spectra.mask[band] != 0)
