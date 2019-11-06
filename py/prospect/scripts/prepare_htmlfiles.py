@@ -18,44 +18,46 @@ def parse() :
     parser = argparse.ArgumentParser(description="Write html index pages")
     parser.add_argument('--webdir', help='Base directory for webpages', type=str, default=None)
     parser.add_argument('--template_dir', help='Template directory', type=str, default=None)
-    parser.add_argument('--pixels', help='Pixel-based arborescence', action='store_true')
-    parser.add_argument('--targets', help='Target-based arborescence', action='store_true')
-    parser.add_argument('--nights', help='Night-based arborescence', action='store_true')
+    parser.add_argument('--pixels', help='Pixel-based directory structure', action='store_true')
+    parser.add_argument('--targets', help='Target-based directory structure', action='store_true')
+    parser.add_argument('--exposures', help='Exposure-based directory structure', action='store_true')
     args = parser.parse_args()
     return args
 
 
-def prepare_subdir(subdir, pix, template_index, template_vignette, target=None) :
-    # In progress. To edit => avoid duplicate
+def prepare_subdir(subdir, entry, template_index, template_vignette, target=None, expo=False) :
 
-    spec_pages = glob.glob( subdir+"/specviewer_"+pix+"_*.html" )
-    subsets = [ x[len(subdir+"/specviewer_"+pix)+1:-5] for x in spec_pages ]
+    spec_pages = glob.glob( subdir+"/specviewer_"+entry+"_*.html" )
+    subsets = [ x[len(subdir+"/specviewer_"+entry)+1:-5] for x in spec_pages ]
     subsets.sort(key=int)
     img_list = glob.glob( subdir+"/vignettes/*.png" )
     nspec = len(img_list)
     if target is None :
-        pagetext = template_index.render(pixel=pix, subsets=subsets, nspec=nspec)
+        pagetext = template_index.render(pixel=entry, subsets=subsets, nspec=nspec)
+    elif expo is True :
+        pagetext = template_index.render(expo=entry, subsets=subsets, nspec=nspec)
     else :
-        pagetext = template_index.render(pixel=pix, subsets=subsets, nspec=nspec, target=target)
+        pagetext = template_index.render(pixel=entry, subsets=subsets, nspec=nspec, target=target)
 
-    with open( os.path.join(subdir,"index_"+pix+".html"), "w") as fh:
+    with open( os.path.join(subdir,"index_"+entry+".html"), "w") as fh:
         fh.write(pagetext)
         fh.close()
     for subset in subsets :
-        img_sublist = [ os.path.basename(x) for x in img_list if pix+"_"+subset in x ]
-        pagetext = template_vignette.render(set=pix, i_subset=subset, n_subsets=len(subsets), imglist=img_sublist)
-        with open( os.path.join(subdir,"vignettelist_"+pix+"_"+subset+".html"), "w") as fh:
+        img_sublist = [ os.path.basename(x) for x in img_list if entry+"_"+subset in x ]
+        pagetext = template_vignette.render(set=entry, i_subset=subset, n_subsets=len(subsets), imglist=img_sublist)
+        with open( os.path.join(subdir,"vignettelist_"+entry+"_"+subset+".html"), "w") as fh:
             fh.write(pagetext)
             fh.close()
-    for thedir in [subdir, os.path.join(subdir,"vignettes") ] :
-        st = os.stat(thedir)
-        os.chmod(thedir, st.st_mode | stat.S_IROTH | stat.S_IXOTH) # "chmod a+rx "
     for x in glob.glob(subdir+"/*.html") :
         st = os.stat(x)
         os.chmod(x, st.st_mode | stat.S_IROTH) # "chmod a+r "
-    for x in glob.glob(subdir+"/vignettes/*.png") :
-        st = os.stat(x)
-        os.chmod(x, st.st_mode | stat.S_IROTH) # "chmod a+r "
+    if expo==False : # to improve ..
+        for thedir in [subdir, os.path.join(subdir,"vignettes") ] :
+            st = os.stat(thedir)
+            os.chmod(thedir, st.st_mode | stat.S_IROTH | stat.S_IXOTH) # "chmod a+rx "
+        for x in glob.glob(subdir+"/vignettes/*.png") :
+            st = os.stat(x)
+            os.chmod(x, st.st_mode | stat.S_IROTH) # "chmod a+r "
 
 
 def main(args) :
@@ -74,34 +76,12 @@ def main(args) :
     template_targetlist = env.get_template('template_target_list.html')
     template_vignettelist = env.get_template('template_vignettelist.html')
 
-    if args.nights :
-        # Could re-write to avoid duplicates
-        # TO EDIT (old expo-based code) once nights working and ok
-  ### Exposure-based : for each expo create an index of fiber subsets, and a vignette webpage for each fiber subset 
-## Arborescence : webdir/exposures/expoN/ =>  specviewer_expoN_fibersetM.html ; vignettes/*.png
-        exposures=os.listdir(webdir+"/exposures")
+    if args.exposures :
+        exposures = os.listdir( os.path.join(webdir,"exposures") )
         for expo in exposures :
-            basedir = webdir+"/exposures/"+expo
-            pp=glob.glob(basedir+"/specviewer_"+expo+"_*.html")
-            subsets = [int(x[x.find("fiberset")+8:-5]) for x in pp]
-            subsets.sort()
-            subsets = [str(x) for x in subsets]
-            pp=glob.glob(basedir+"/vignettes/*.png")
-            nspec = len(pp)
-            pagetext=template_expolist.render(expo=expo, fiberlist=subsets, nspec=nspec)
-            with open(basedir+"/index_"+expo+".html", "w") as fh:
-                fh.write(pagetext)
-                fh.close()
-            for fiber in subsets :
-                pp = glob.glob(basedir+"/vignettes/"+expo+"_fiberset"+fiber+"_*.png")
-                vignettelist = [os.path.basename(x) for x in pp]
-                pagetext = template_vignettelist.render(set=expo, i_subset=fiber, n_subsets=len(subsets), imglist=vignettelist)
-                with open(basedir+"/vignettelist_"+expo+"_"+fiber+".html", "w") as fh:
-                    fh.write(pagetext)
-                    fh.close()
-            for thedir in [basedir,basedir+"/vignettes"] : os.system("chmod a+rx "+thedir)
-            for x in glob.glob(basedir+"/*.html") : os.system("chmod a+r "+x)
-            for x in glob.glob(basedir+"/vignettes/*.png") : os.system("chmod a+r "+x)
+            expo_dir = os.path.join(webdir,"exposures",expo)
+            prepare_subdir(expo_dir, expo, template_expolist, template_vignettelist, expo=True)
+            log.info("Subdirectory done : "+expo)
     else : exposures = None
 
     if args.pixels :

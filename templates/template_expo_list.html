@@ -1,19 +1,19 @@
 <HTML>
 
 <HEAD>
-<TITLE>DESI spectra in {{ expo }} </TITLE>
+<TITLE>DESI spectra in CMX exposure {{ expo }} </TITLE>
 </HEAD>
 
 <BODY>
-<h2> DESI spectra for exposure {{ expo }} </h2>
-<p> Spectra from individual observations.
+<h2> DESI spectra for CMX exposure {{ expo }} </h2>
+<p> Using frames, no redrock fit.
 <br> {{ expo }} has {{ nspec }} spectra in total.
 <br> Divided into subsets sorted by fiber.
 <br><a href="../../index.html">Back to main index</a>
 
 <ul>
-{% for fiber in fiberlist %}
-<li><a href="specviewer_{{ expo }}_fiberset{{ fiber }}.html"> View fiberset {{ fiber }}</a> (vignette overview <a href="vignettelist_{{ expo }}_{{ fiber }}.html">here</a>) </li>
+{% for subset in subsets %}
+<li><a href="specviewer_{{ expo }}_{{ subset }}.html"> View subset {{ subset }}</a></li>
 {% endfor %}
 </ul>
 
