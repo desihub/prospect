@@ -802,22 +802,28 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
                                           active=list(range(len(disp_opt_labels))))
     disp_opt_callback = CustomJS(
         args = dict(noise_lines=noise_lines, model_lines=model_lines, zoom_noise_lines=zoom_noise_lines, zoom_model_lines=zoom_model_lines), code="""
-        for (var i=0; i<noise_lines.length; i++) {
-            if (cb_obj.active.indexOf(1) >= 0) {
-                noise_lines[i].visible = true
-                zoom_noise_lines[i].visible = true
-            } else {
-                noise_lines[i].visible = false
-                zoom_noise_lines[i].visible = false
+        var i_noise = cb_obj.labels.indexOf("Show noise spectra")
+        if (i_noise >= 0) {
+            for (var i=0; i<noise_lines.length; i++) {
+                if (cb_obj.active.indexOf(i_noise) >= 0) {
+                    noise_lines[i].visible = true
+                    zoom_noise_lines[i].visible = true
+                } else {
+                    noise_lines[i].visible = false
+                    zoom_noise_lines[i].visible = false
+                }
             }
         }
-        for (var i=0; i<model_lines.length; i++) {
-            if (cb_obj.active.indexOf(0) >= 0) {
-                model_lines[i].visible = true
-                zoom_model_lines[i].visible = true
-            } else {
-                model_lines[i].visible = false
-                zoom_model_lines[i].visible = false
+        var i_model = cb_obj.labels.indexOf("Show model")
+        if (i_model >= 0) {
+            for (var i=0; i<model_lines.length; i++) {
+                if (cb_obj.active.indexOf(i_model) >= 0) {
+                    model_lines[i].visible = true
+                    zoom_model_lines[i].visible = true
+                } else {
+                    model_lines[i].visible = false
+                    zoom_model_lines[i].visible = false
+                }
             }
         }
         """
