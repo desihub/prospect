@@ -9,7 +9,7 @@ if (show_prev_vi_select.value == "Yes") {
     vi_info_div.text = " ";
 }
 
-if (cb_obj == ifiberslider) {
+if (cb_obj == ifiberslider) { // update VI buttons for current spectrum
     vi_comment_input.value=targetinfo.data['VI_comment'][ifiber] ;
     vi_name_input.value=targetinfo.data['VI_scanner'][ifiber] ;
     vi_class_input.active = vi_class_labels.indexOf(targetinfo.data['VI_class_flag'][ifiber]) ; // -1 if nothing

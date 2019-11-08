@@ -947,20 +947,23 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         """
     vi_comment_callback = CustomJS(
         args=dict(cds_targetinfo=cds_targetinfo, ifiberslider = ifiberslider, vi_comment_input=vi_comment_input, 
-                  title=title, vi_file_fields = vi_file_fields), 
+                  title=title, vi_file_fields=vi_file_fields), 
         code=vi_comment_code )
     vi_comment_input.js_on_change('value',vi_comment_callback)
 
     #- VI scanner name    
     vi_name_input = TextInput(value=cds_targetinfo.data['VI_scanner'][0], title="Your name :")
-    vi_name_callback = CustomJS(
-        args=dict(cds_targetinfo=cds_targetinfo, nspec = nspec, vi_name_input=vi_name_input), 
-        code="""
+    with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_name_code = f.read()
+    vi_name_code += """
         for (var i=0; i<nspec; i++) {
             cds_targetinfo.data['VI_scanner'][i]=vi_name_input.value
         }
+        autosave_vi(title, vi_file_fields, cds_targetinfo.data)
         """
-    )
+    vi_name_callback = CustomJS(
+        args=dict(cds_targetinfo=cds_targetinfo, nspec = nspec, vi_name_input=vi_name_input,
+                 title=title, vi_file_fields=vi_file_fields), 
+        code=vi_name_code )
     vi_name_input.js_on_change('value',vi_name_callback)
 
     #- VI file name
@@ -995,7 +998,10 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     recover_vi_button = Button(label="Recover auto-saved VI", button_type="default")
     with open(os.path.join(js_dir,"recover_autosave_vi.js"), 'r') as f : recover_vi_code = f.read()
     recover_vi_callback = CustomJS(
-        args = dict(title=title, vi_file_fields=vi_file_fields, cds_targetinfo=cds_targetinfo),
+        args = dict(title=title, vi_file_fields=vi_file_fields, cds_targetinfo=cds_targetinfo, 
+                   ifiber=ifiberslider.value, vi_comment_input=vi_comment_input,
+                   vi_name_input=vi_name_input, vi_class_input=vi_class_input, vi_issue_input=vi_issue_input,
+                   vi_issue_labels=vi_issue_labels, vi_class_labels=vi_class_labels),
         code = recover_vi_code )
     recover_vi_button.js_on_event('button_click', recover_vi_callback)
     
