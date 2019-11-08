@@ -613,6 +613,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     #-- Widgets and callbacks --
     #-------------------------
 
+    js_dir = os.path.join(os.path.dirname(__file__),os.pardir,os.pardir,"js")
+
     #-----
     #- Ifiberslider and smoothing widgets
     # Ifiberslider's value controls which spectrum is displayed
@@ -892,30 +894,32 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
 
     #-----
     #- VI-related widgets
+    vi_file_fields = utils_specviewer._vi_file_fields
 
     #- Main VI classification
     vi_class_labels = [ x["label"] for x in utils_specviewer._vi_flags if x["type"]=="class" ]
     vi_class_input = RadioButtonGroup(labels=vi_class_labels)
-    vi_class_callback = CustomJS(
-        args=dict(cds_targetinfo=cds_targetinfo, vi_class_input=vi_class_input, 
-                vi_class_labels=vi_class_labels, ifiberslider = ifiberslider), 
-        code="""
+    with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_class_code = f.read()
+    vi_class_code += """
         if ( vi_class_input.active >= 0 ) {
             cds_targetinfo.data['VI_class_flag'][ifiberslider.value] = vi_class_labels[vi_class_input.active]
         } else {
             cds_targetinfo.data['VI_class_flag'][ifiberslider.value] = "-1"
         }
-        """
-    )
+        autosave_vi(title, vi_file_fields, cds_targetinfo.data)
+    """
+    vi_class_callback = CustomJS(
+        args=dict(cds_targetinfo=cds_targetinfo, vi_class_input=vi_class_input, 
+                vi_class_labels=vi_class_labels, ifiberslider = ifiberslider,
+                title=title, vi_file_fields = vi_file_fields), 
+        code=vi_class_code )
     vi_class_input.js_on_click(vi_class_callback)
 
     #- Optional VI flags (issues)
     vi_issue_labels = [ x["label"] for x in utils_specviewer._vi_flags if x["type"]=="issue" ]
     vi_issue_input = CheckboxGroup(labels=vi_issue_labels, active=[])
-    vi_issue_callback = CustomJS(
-        args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider, 
-                vi_issue_input=vi_issue_input, vi_issue_labels=vi_issue_labels), 
-        code="""
+    with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_issue_code = f.read()
+    vi_issue_code += """
         var issues = []
         for (var i=0; i<vi_issue_labels.length; i++) {
             if (vi_issue_input.active.indexOf(i) >= 0) issues.push(vi_issue_labels[i])
@@ -925,60 +929,26 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         } else {
             cds_targetinfo.data['VI_issue_flag'][ifiberslider.value] = " "
         }
+        autosave_vi(title, vi_file_fields, cds_targetinfo.data)
         """
-    )
+    vi_issue_callback = CustomJS(
+        args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider, 
+                vi_issue_input=vi_issue_input, vi_issue_labels=vi_issue_labels,
+                title=title, vi_file_fields = vi_file_fields), 
+        code=vi_issue_code )
     vi_issue_input.js_on_click(vi_issue_callback)
     
     #- Optional VI comment
     vi_comment_input = TextInput(value='', title="VI comment :")
-    vi_comment_callback = CustomJS(
-        args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider, vi_comment_input=vi_comment_input, 
-                  title=title, vi_file_fields = utils_specviewer._vi_file_fields), 
-        code="""
+    with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_comment_code = f.read()
+    vi_comment_code += """
         cds_targetinfo.data['VI_comment'][ifiberslider.value]=vi_comment_input.value
-        
-        function autosave(title, vi_file_fields, cds_data) {
-            var nb_fields = vi_file_fields.length
-            var nspec = cds_data['VI_class_flag'].length
-            var array_to_store = []        
-            for (var i_spec=0; i_spec<nspec; i_spec++) {
-                 // Record only information if a VI classification was assigned
-                if ( (cds_data['VI_class_flag'][i_spec] != "-1") ||
-                    (cds_data['VI_comment'][i_spec].trim() != "") ||
-                    (cds_data['VI_issue_flag'][i_spec].trim() != "" ) ) {
-                    var row = [ i_spec.toString() ] // Record entry number within this page
-                    for (var j=0; j<vi_file_fields.length; j++) {
-                        var entry = cds_data[vi_file_fields[j][1]][i_spec]
-                        if (vi_file_fields[j][1]=="z") entry = entry.toFixed(3)
-                        if ( typeof(entry)!="string" ) entry = entry.toString()
-                        entry = entry.replace(/"/g, '""')
-                        entry = entry.replace(/,/g, '","')
-                        if (entry=="" || entry==" ") entry = "--"
-                        row.push(entry)
-                    }
-                    array_to_store.push(row)
-                }
-            }
-
-            var csv_to_store = ''
-            for (var j=0; j<array_to_store.length; j++) {
-                var row = (array_to_store[j]).join(' , ')
-                csv_to_store += ( row.concat("\\n") )
-            }
-            
-            if (typeof(localStorage) !== "undefined") {
-                localStorage.setItem(title, csv_to_store)
-                for (var p=0; p<localStorage.length; p++) {
-                }
-            } else {
-                console.log("Warning : no local storage available in browser.")
-            }
-        }
-        
-        autosave(title, vi_file_fields, cds_targetinfo.data)
-        
+        autosave_vi(title, vi_file_fields, cds_targetinfo.data)
         """
-    )
+    vi_comment_callback = CustomJS(
+        args=dict(cds_targetinfo=cds_targetinfo, ifiberslider = ifiberslider, vi_comment_input=vi_comment_input, 
+                  title=title, vi_file_fields = vi_file_fields), 
+        code=vi_comment_code )
     vi_comment_input.js_on_change('value',vi_comment_callback)
 
     #- VI scanner name    
@@ -1013,7 +983,6 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     #- Save VI info to CSV file
     # Warning text output very sensitve for # " \  ... (standard js formatting not ok)
     save_vi_button = Button(label="Download VI", button_type="default")
-    vi_file_fields = utils_specviewer._vi_file_fields
     save_vi_callback = CustomJS(
         args=dict(cds_targetinfo=cds_targetinfo, vi_class_labels=vi_class_labels, 
             vi_file_fields=vi_file_fields, nspec=nspec, vi_filename_input=vi_filename_input), 
@@ -1066,52 +1035,17 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
 
     #- Recover auto-saved VI data in browser
     recover_vi_button = Button(label="Recover auto-saved VI", button_type="default")
+    with open(os.path.join(js_dir,"recover_autosave_vi.js"), 'r') as f : recover_vi_code = f.read()
     recover_vi_callback = CustomJS(
         args = dict(title=title, vi_file_fields=vi_file_fields, cds_targetinfo=cds_targetinfo),
-        code = """
-        // TODO check if there is sthg to recover
-        var recovered_csv = localStorage.getItem(title)
-
-        // Return array of string values, or NULL if CSV string not well formed.
-        function CSVtoArray(text) {        
-            var re_value = /(?!\s*$)\s*(?:'([^'\\\]*(?:\\\[\S\s][^'\\\]*)*)'|"([^"\\\]*(?:\\\[\S\s][^"\\\]*)*)"|([^,'"\s\\\]*(?:\s+[^,'"\s\\\]+)*))\s*(?:,|$)/g;
-            var a = [];                     // Initialize array to receive values.
-            text.replace(re_value, // "Walk" the string using replace with callback.
-                function(m0, m1, m2, m3) {
-                    // Remove backslash from \' in single quoted values.
-                    if      (m1 !== undefined) a.push(m1.replace(/\\'/g, "'"));
-                    // Remove backslash from \" in double quoted values.
-                    else if (m2 !== undefined) a.push(m2.replace(/\\"/g, '"'));
-                    else if (m3 !== undefined) a.push(m3);
-                    return ''; // Return empty string.
-                });
-            // Handle special case of empty last value.
-            if (/,\s*$/.test(text)) a.push('');
-            return a;
-        };
-
-        var recovered_entries = recovered_csv.split("\\n")
-        for (var j=0; j<recovered_entries.length; j++) {
-            var row = CSVtoArray(recovered_entries[j])
-            var i_spec = Number(row[0])
-            for (var k=1; k<row.length; k++) {
-                if (vi_file_fields[k-1][1].includes('VI')) {                    
-                    cds_targetinfo.data[vi_file_fields[k-1][1]][i_spec] = row[k]
-                }
-            }
-        }
-        """
-    )
+        code = recover_vi_code )
     recover_vi_button.js_on_event('button_click', recover_vi_callback)
     
     #- Clear all auto-saved VI
     clear_vi_button = Button(label="Clear auto-saved VI", button_type="default")
-    clear_vi_callback = CustomJS(
-        args = dict(),
-        code = """
+    clear_vi_callback = CustomJS( args = dict(), code = """
         localStorage.clear()
-        """
-    )
+        """ )
     clear_vi_button.js_on_event('button_click', clear_vi_callback)
 
 
@@ -1130,6 +1064,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     show_prev_vi_select.js_on_change('value',show_prev_vi_callback)
     
     #- Main js code to update plot
+    with open(os.path.join(js_dir,"update_plot.js"), 'r') as f : update_plot_code = f.read()
     update_plot = CustomJS(
         args = dict(
             spectra = cds_spectra,
@@ -1153,259 +1088,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             vi_issue_input = vi_issue_input,
             vi_issue_labels = vi_issue_labels
             ),
-        code = """
-        var ifiber = ifiberslider.value
-        var nsmooth = smootherslider.value
-        target_info_div.text = targetinfo.data['target_info'][ifiber]
-        if (show_prev_vi_select.value == "Yes") {
-            vi_info_div.text = targetinfo.data['vi_info'][ifiber];
-        } else {
-            vi_info_div.text = " ";
-        }
-        // Added EA : ongoing VI
-        if (cb_obj == ifiberslider) {
-            vi_comment_input.value=targetinfo.data['VI_comment'][ifiber] ;
-            vi_name_input.value=targetinfo.data['VI_scanner'][ifiber] ;
-            vi_class_input.active = vi_class_labels.indexOf(targetinfo.data['VI_class_flag'][ifiber]) ; // -1 if nothing
-            var issues_on = []
-            for (var i=0; i<vi_issue_labels.length; i++) {
-                if ( (targetinfo.data['VI_issue_flag'][ifiber]).indexOf(vi_issue_labels[i]) >= 0 ) {
-                    issues_on.push(i)
-                }
-            }
-            vi_issue_input.active = issues_on
-        }
-
-        if(targetinfo.data['z'] != undefined && cb_obj == ifiberslider) {
-            var z = targetinfo.data['z'][ifiber]
-            var z1 = Math.floor(z*100) / 100
-            zslider.value = z1
-            dzslider.value = (z - z1)
-        }
-
-        function get_y_minmax(pmin, pmax, data) {
-            // copy before sorting to not impact original, and filter out NaN
-            var dx = data.slice().filter(Boolean)
-            dx.sort()
-            var imin = Math.floor(pmin * dx.length)
-            var imax = Math.floor(pmax * dx.length)
-            return [dx[imin], dx[imax]]
-        }
-
-        // Smoothing kernel
-        if (nsmooth > 0) {
-            var kernel = [];
-            for(var i=-2*nsmooth; i<=2*nsmooth; i++) {
-                kernel.push(Math.exp(-(i**2)/(2*nsmooth)))
-            }
-            var kernel_offset = Math.floor(kernel.length/2)
-        }
-
-        function smooth_data(data_in, kernel, kernel_offset, quadrature=false) {
-            // by default : out_j ~ (sum K_i in_i) / (sum K_i)
-            // if quadrature is true (for noise) : out_j^2 ~ (sum K_i^2 in_i^2) / (sum K_i)^2
-            var smoothed_data = data_in.slice()
-            for (var j=0; j<data_in.length; j++) {
-                smoothed_data[j] = 0.0
-                var weight = 0.0
-                // TODO: speed could be improved by moving `if` out of loop
-                for (var k=0; k<kernel.length; k++) {
-                    var m = j+k-kernel_offset
-                    if((m >= 0) && (m < data_in.length)) {
-                        var fx = data_in[m]
-                        if(fx == fx) {
-                            if (quadrature==true) {
-                                smoothed_data[j] = smoothed_data[j] + (fx * kernel[k])**2
-                            } else {
-                                smoothed_data[j] = smoothed_data[j] + fx * kernel[k]
-                            }
-                            weight += kernel[k]
-                        }
-                    }
-                }
-                if (quadrature==true) {
-                    smoothed_data[j] = Math.sqrt(smoothed_data[j]) / weight
-                } else {
-                    smoothed_data[j] = smoothed_data[j] / weight
-                }
-            }
-            return smoothed_data
-        }
-        
-        // Find nearest index in grid, left from point; use dichotomy method
-        function index_dichotomy(point, grid) {
-            if ( point < grid[0] ) return 0
-            if ( point > grid[grid.length-1] ) return grid.length-2
-            var i_left = 0
-            var i_center = 0
-            var i_right = grid.length-1
-            while ( i_right - i_left != 1) {
-                i_center = i_left + Math.floor((i_right-i_left)/2)
-                if ( point >= grid[i_center] ) {
-                    i_left = i_center
-                } else {
-                    i_right = i_center
-                }
-            }
-            return i_left
-        }
-
-        // Basic linear interpolation at on point
-        function interp_grid(xval, xarr, yarr) {
-            var index = index_dichotomy(xval, xarr)
-            var a = (yarr[index+1] - yarr[index])/(xarr[index+1] - xarr[index])
-            var b = yarr[index]-a*xarr[index]
-            var yval = a*xval+b
-            return yval
-        }
-
-        // Coadd brz spectra. Similar to the python code mycoaddcam()
-        function coadd_brz_cams(wave_in, flux_in, noise_in) {
-            // each "_in" must have 3 entries (brz)
-            // TODO handle case of no noise
-
-            // Find b,r,z ordering in input arrays
-            var wave_start = [wave_in[0][0], wave_in[1][0], wave_in[2][0]]
-            var i_b = wave_start.indexOf(Math.min.apply(Math, wave_start))
-            var i_z = wave_start.indexOf(Math.max.apply(Math, wave_start))
-            var i_r = 1
-            for (var i=0; i<3; i++) {
-                if ( (i_b != i) && (i_z != i) ) i_r = i
-            }
-
-            var wave_out = []
-            var flux_out = []
-            var noise_out = []
-            var margin = 20
-            for (var i=0; i<wave_in[i_b].length; i++) { // b
-                if (wave_in[i_b][i] < wave_in[i_b][wave_in[i_b].length-1] - margin) {
-                    wave_out.push(wave_in[i_b][i])
-                    flux_out.push(flux_in[i_b][i])
-                    noise_out.push(noise_in[i_b][i])
-                }
-            }
-            var the_lim = wave_out[wave_out.length-1]
-            for (var i=0; i<wave_in[i_r].length; i++) { // r
-                if ( (wave_in[i_r][i] < wave_in[i_r][wave_in[i_r].length-1] - margin) && (wave_in[i_r][i] > the_lim)) {
-                    wave_out.push(wave_in[i_r][i])
-                    flux_out.push(flux_in[i_r][i])
-                    noise_out.push(noise_in[i_r][i])
-                }
-            }
-            the_lim = wave_out[wave_out.length-1]
-            for (var i=0; i<wave_in[i_z].length; i++) { // z
-                if (wave_in[i_z][i] > the_lim) {
-                    wave_out.push(wave_in[i_z][i])
-                    flux_out.push(flux_in[i_z][i])
-                    noise_out.push(noise_in[i_z][i])
-                }
-            }
-            for (var i=0; i<wave_out.length; i++) { // combine in overlapping regions
-                var b1 = -1
-                var b2 = -1
-                if ( (wave_out[i] > wave_in[i_r][0]) && (wave_out[i] < wave_in[i_b][wave_in[i_b].length-1]) ) { // br
-                    b1 = 0
-                    b2 = 1
-                }
-                if ( (wave_out[i] > wave_in[i_z][0]) && (wave_out[i] < wave_in[i_r][wave_in[i_r].length-1]) ) {  // rz
-                    b1 = 1
-                    b2 = 2
-                }
-                if (b1 != -1) {
-                    var phi1 = interp_grid(wave_out[i], wave_in[b1], flux_in[b1])
-                    var noise1 = interp_grid(wave_out[i], wave_in[b1], noise_in[b1])
-                    var phi2 = interp_grid(wave_out[i], wave_in[b2], flux_in[b2])
-                    var noise2 = interp_grid(wave_out[i], wave_in[b2], noise_in[b2])
-                    if ( noise1 > 0 && noise2 > 0 ) {
-                        var iv1 = 1/(noise1*noise1)
-                        var iv2 = 1/(noise2*noise2)
-                        var iv = iv1+iv2
-                        noise_out[i] = 1/Math.sqrt(iv)
-                        flux_out[i] = (iv1*phi1+iv2*phi2)/iv
-                    }
-                }
-            }
-            return [wave_out, flux_out, noise_out]
-        }
-        
-        // Smooth plot and recalculate ymin/ymax
-        var ymin = 0.0
-        var ymax = 0.0
-        for (var i=0; i<spectra.length; i++) {
-            var data = spectra[i].data
-            var origflux = data['origflux'+ifiber]
-            if ('plotnoise' in data) {
-                var orignoise = data['orignoise'+ifiber]
-            }
-            if (nsmooth == 0) {
-                data['plotflux'] = origflux.slice()
-                if ('plotnoise' in data) {
-                    data['plotnoise'] = orignoise.slice()
-                }
-            } else {
-                data['plotflux'] = smooth_data(origflux, kernel, kernel_offset)
-                if ('plotnoise' in data) {
-                    // Add noise in quadrature
-                    data['plotnoise'] = smooth_data(orignoise, kernel, kernel_offset, quadrature=true)
-                }
-            }
-            spectra[i].change.emit()
-
-            tmp = get_y_minmax(0.01, 0.99, data['plotflux'])
-            ymin = Math.min(ymin, tmp[0])
-            ymax = Math.max(ymax, tmp[1])
-        }
-
-        // update camera-coadd
-        // Here I choose to do coaddition on the smoothed spectra (should be ok?)
-        if (coaddcam_spec) {
-            var wave_in = []
-            var flux_in = []
-            var noise_in = []
-            for (var i=0; i<3; i++) {
-                var data = spectra[i].data
-                wave_in.push(data['plotwave'].slice())
-                flux_in.push(data['plotflux'].slice())
-                if ('plotnoise' in data) {
-                    noise_in.push(data['plotnoise'].slice())
-                } else {
-                    var dummy_noise = []
-                    for (var j=0; j<data['plotflux'].length; j++) dummy_noise.push(1)
-                    noise_in.push(dummy_noise)
-                }
-            }
-            var coadd_infos = coadd_brz_cams(wave_in, flux_in, noise_in)
-            coaddcam_spec.data['plotwave'] = coadd_infos[0].slice()
-            coaddcam_spec.data['plotflux'] = coadd_infos[1].slice()
-            coaddcam_spec.data['plotnoise'] = coadd_infos[2].slice()
-            coaddcam_spec.change.emit()
-        }
-        
-        // update model
-        if(model) {
-            var origflux = model.data['origflux'+ifiber]
-            if (nsmooth == 0) {
-                model.data['plotflux'] = origflux.slice()
-            } else {
-                model.data['plotflux'] = smooth_data(origflux, kernel, kernel_offset)
-            }
-            model.change.emit()
-        }
-
-        // update y_range
-        if(ymin<0) {
-            fig.y_range.start = ymin * 1.4
-        } else {
-            fig.y_range.start = ymin * 0.6
-        }
-        fig.y_range.end = ymax * 1.4
-        //
-        // update target image
-        //
-        imfig_source.data.url[0] = imfig_urls[ifiber][0]
-        imfig_source.data.txt[0] = imfig_urls[ifiber][2]
-        imfig_source.change.emit()
-    """)
+        code = update_plot_code
+    )
     smootherslider.js_on_change('value', update_plot)
     ifiberslider.js_on_change('value', update_plot)
 
