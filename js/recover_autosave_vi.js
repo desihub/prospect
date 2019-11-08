@@ -1,4 +1,5 @@
 // CustomJS, recover auto-saved VI infos from browser
+// args = title, cds_targetinfo, vi_file_fields
 
 // Return array of string values
 function CSVtoArray(text) {        

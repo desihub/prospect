@@ -983,54 +983,12 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     #- Save VI info to CSV file
     # Warning text output very sensitve for # " \  ... (standard js formatting not ok)
     save_vi_button = Button(label="Download VI", button_type="default")
+    with open(os.path.join(js_dir,"FileSaver.js"), 'r') as f : save_vi_code = f.read()
+    with open(os.path.join(js_dir,"download_vi.js"), 'r') as f : save_vi_code += f.read()
     save_vi_callback = CustomJS(
-        args=dict(cds_targetinfo=cds_targetinfo, vi_class_labels=vi_class_labels, 
-            vi_file_fields=vi_file_fields, nspec=nspec, vi_filename_input=vi_filename_input), 
-        code="""   
-        function download(filename, text) {
-            var element = document.createElement('a')
-            element.setAttribute('href', 'data:text/csv;charset=utf-8,' + encodeURIComponent(text))
-            element.setAttribute('download', filename)
-            element.style.display = 'none'
-            document.body.appendChild(element)
-            element.click()
-            document.body.removeChild(element)
-        }
-        
-        var nb_fields = vi_file_fields.length
-        var array_to_store = []        
-        var header = []
-        for (var j=0; j<nb_fields; j++) header.push(vi_file_fields[j][0])
-        array_to_store.push(header)
-        for (var i=0; i<nspec; i++) {
-             // Record only information if a VI classification was assigned
-            if ( (vi_class_labels.includes(cds_targetinfo.data['VI_class_flag'][i])) ||
-                (cds_targetinfo.data['VI_comment'][i].trim() != "") ||
-                (cds_targetinfo.data['VI_issue_flag'][i].trim() != "" ) ) {
-                var row = []
-                for (var j=0; j<vi_file_fields.length; j++) {
-                    var entry = cds_targetinfo.data[vi_file_fields[j][1]][i]
-                    if (vi_file_fields[j][1]=="z") entry = entry.toFixed(3)
-                    if ( typeof(entry)!="string" ) entry = entry.toString()
-                    entry = entry.replace(/"/g, '""')
-                    entry = entry.replace(/,/g, '","')
-                    if (entry=="" || entry==" ") entry = "--"
-                    row.push(entry)
-                }
-                array_to_store.push(row)
-            }
-        }
-        
-        var csv_to_store = ''
-        for (var j=0; j<array_to_store.length; j++) {
-            var row = (array_to_store[j]).join(' , ')
-            csv_to_store += ( row.concat("\\n") )
-        }
-        
-        var filename = vi_filename_input.value
-        download(filename, csv_to_store)       
-        """
-    )
+        args=dict(cds_targetinfo=cds_targetinfo, 
+            vi_file_fields=vi_file_fields, vi_filename_input=vi_filename_input), 
+        code=save_vi_code ) 
     save_vi_button.js_on_event('button_click', save_vi_callback)
 
     #- Recover auto-saved VI data in browser
@@ -1042,7 +1000,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     recover_vi_button.js_on_event('button_click', recover_vi_callback)
     
     #- Clear all auto-saved VI
-    clear_vi_button = Button(label="Clear auto-saved VI", button_type="default")
+    clear_vi_button = Button(label="Clear all auto-saved VI", button_type="default")
     clear_vi_callback = CustomJS( args = dict(), code = """
         localStorage.clear()
         """ )
