@@ -932,9 +932,51 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     #- Optional VI comment
     vi_comment_input = TextInput(value='', title="VI comment :")
     vi_comment_callback = CustomJS(
-        args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider, vi_comment_input=vi_comment_input), 
+        args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider, vi_comment_input=vi_comment_input, 
+                  title=title, vi_file_fields = utils_specviewer._vi_file_fields), 
         code="""
         cds_targetinfo.data['VI_comment'][ifiberslider.value]=vi_comment_input.value
+        
+        function autosave(title, vi_file_fields, cds_data) {
+            var nb_fields = vi_file_fields.length
+            var nspec = cds_data['VI_class_flag'].length
+            var array_to_store = []        
+            for (var i_spec=0; i_spec<nspec; i_spec++) {
+                 // Record only information if a VI classification was assigned
+                if ( (cds_data['VI_class_flag'][i_spec] != "-1") ||
+                    (cds_data['VI_comment'][i_spec].trim() != "") ||
+                    (cds_data['VI_issue_flag'][i_spec].trim() != "" ) ) {
+                    var row = [ i_spec.toString() ] // Record entry number within this page
+                    for (var j=0; j<vi_file_fields.length; j++) {
+                        var entry = cds_data[vi_file_fields[j][1]][i_spec]
+                        if (vi_file_fields[j][1]=="z") entry = entry.toFixed(3)
+                        if ( typeof(entry)!="string" ) entry = entry.toString()
+                        entry = entry.replace(/"/g, '""')
+                        entry = entry.replace(/,/g, '","')
+                        if (entry=="" || entry==" ") entry = "--"
+                        row.push(entry)
+                    }
+                    array_to_store.push(row)
+                }
+            }
+
+            var csv_to_store = ''
+            for (var j=0; j<array_to_store.length; j++) {
+                var row = (array_to_store[j]).join(' , ')
+                csv_to_store += ( row.concat("\\n") )
+            }
+            
+            if (typeof(localStorage) !== "undefined") {
+                localStorage.setItem(title, csv_to_store)
+                for (var p=0; p<localStorage.length; p++) {
+                }
+            } else {
+                console.log("Warning : no local storage available in browser.")
+            }
+        }
+        
+        autosave(title, vi_file_fields, cds_targetinfo.data)
+        
         """
     )
     vi_comment_input.js_on_change('value',vi_comment_callback)
@@ -1021,6 +1063,57 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         """
     )
     save_vi_button.js_on_event('button_click', save_vi_callback)
+
+    #- Recover auto-saved VI data in browser
+    recover_vi_button = Button(label="Recover auto-saved VI", button_type="default")
+    recover_vi_callback = CustomJS(
+        args = dict(title=title, vi_file_fields=vi_file_fields, cds_targetinfo=cds_targetinfo),
+        code = """
+        // TODO check if there is sthg to recover
+        var recovered_csv = localStorage.getItem(title)
+
+        // Return array of string values, or NULL if CSV string not well formed.
+        function CSVtoArray(text) {        
+            var re_value = /(?!\s*$)\s*(?:'([^'\\\]*(?:\\\[\S\s][^'\\\]*)*)'|"([^"\\\]*(?:\\\[\S\s][^"\\\]*)*)"|([^,'"\s\\\]*(?:\s+[^,'"\s\\\]+)*))\s*(?:,|$)/g;
+            var a = [];                     // Initialize array to receive values.
+            text.replace(re_value, // "Walk" the string using replace with callback.
+                function(m0, m1, m2, m3) {
+                    // Remove backslash from \' in single quoted values.
+                    if      (m1 !== undefined) a.push(m1.replace(/\\'/g, "'"));
+                    // Remove backslash from \" in double quoted values.
+                    else if (m2 !== undefined) a.push(m2.replace(/\\"/g, '"'));
+                    else if (m3 !== undefined) a.push(m3);
+                    return ''; // Return empty string.
+                });
+            // Handle special case of empty last value.
+            if (/,\s*$/.test(text)) a.push('');
+            return a;
+        };
+
+        var recovered_entries = recovered_csv.split("\\n")
+        for (var j=0; j<recovered_entries.length; j++) {
+            var row = CSVtoArray(recovered_entries[j])
+            var i_spec = Number(row[0])
+            for (var k=1; k<row.length; k++) {
+                if (vi_file_fields[k-1][1].includes('VI')) {                    
+                    cds_targetinfo.data[vi_file_fields[k-1][1]][i_spec] = row[k]
+                }
+            }
+        }
+        """
+    )
+    recover_vi_button.js_on_event('button_click', recover_vi_callback)
+    
+    #- Clear all auto-saved VI
+    clear_vi_button = Button(label="Clear auto-saved VI", button_type="default")
+    clear_vi_callback = CustomJS(
+        args = dict(),
+        code = """
+        localStorage.clear()
+        """
+    )
+    clear_vi_button.js_on_event('button_click', clear_vi_callback)
+
 
     #- Show VI in a table
     ## TODO 
@@ -1357,7 +1450,9 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
                     widgetbox(vi_comment_input, width=300),
                     widgetbox(vi_name_input, width=120),
                     widgetbox(vi_filename_input, width=300),
-                    widgetbox(save_vi_button, width=100)
+                    widgetbox(save_vi_button, width=100),
+                    widgetbox(recover_vi_button, width=100),
+                    widgetbox(clear_vi_button, width=100),
                 ),
                 widgetbox(Spacer(width=50)),
                 widgetbox(vi_guideline_div, width=plot_width-350)
