@@ -20,7 +20,8 @@ import bokeh.plotting as bk
 from bokeh.models import ColumnDataSource, CDSView, IndexFilter
 from bokeh.models import CustomJS, LabelSet, Label, Span, Legend
 from bokeh.models.widgets import (
-    Slider, Button, Div, CheckboxGroup, CheckboxButtonGroup, RadioButtonGroup, TextInput, Select)
+    Slider, Button, Div, CheckboxGroup, CheckboxButtonGroup, RadioButtonGroup, 
+    TextInput, Select, DataTable, TableColumn)
 from bokeh.layouts import widgetbox, Spacer
 import bokeh.events
 # from bokeh.layouts import row, column
@@ -913,6 +914,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             cds_targetinfo.data['VI_class_flag'][ifiberslider.value] = "-1"
         }
         autosave_vi(title, vi_file_fields, cds_targetinfo.data)
+        cds_targetinfo.change.emit()
     """
     vi_class_callback = CustomJS(
         args=dict(cds_targetinfo=cds_targetinfo, vi_class_input=vi_class_input, 
@@ -936,6 +938,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             cds_targetinfo.data['VI_issue_flag'][ifiberslider.value] = " "
         }
         autosave_vi(title, vi_file_fields, cds_targetinfo.data)
+        cds_targetinfo.change.emit()
         """
     vi_issue_callback = CustomJS(
         args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider, 
@@ -950,6 +953,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     vi_comment_code += """
         cds_targetinfo.data['VI_comment'][ifiberslider.value]=vi_comment_input.value
         autosave_vi(title, vi_file_fields, cds_targetinfo.data)
+        cds_targetinfo.change.emit()
         """
     vi_comment_callback = CustomJS(
         args=dict(cds_targetinfo=cds_targetinfo, ifiberslider = ifiberslider, vi_comment_input=vi_comment_input, 
@@ -1018,9 +1022,13 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         """ )
     clear_vi_button.js_on_event('button_click', clear_vi_callback)
 
-
     #- Show VI in a table
-    ## TODO 
+    vi_table_columns = [
+        TableColumn(field="VI_class_flag", title="Classification"),
+        TableColumn(field="VI_issue_flag", title="Issue flag"),
+        TableColumn(field="VI_comment", title="Comment")
+    ]
+    vi_table = DataTable(source=cds_targetinfo, columns=vi_table_columns, width=500)
     
     # Choose to show or not previous VI
     show_prev_vi_select = Select(title='Show previous VI', value='No', options=['Yes','No'])
@@ -1105,12 +1113,13 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
                     widgetbox(vi_name_input, width=120),
                     widgetbox(vi_filename_input, width=300),
                     widgetbox(save_vi_button, width=100),
-                    widgetbox(recover_vi_button, width=100),
-                    widgetbox(clear_vi_button, width=100),
+                    bk.Row(widgetbox(recover_vi_button, width=150),
+                        widgetbox(clear_vi_button, width=150))
                 ),
                 widgetbox(Spacer(width=50)),
                 widgetbox(vi_guideline_div, width=plot_width-350)
-            )
+            ),
+            widgetbox(vi_table)
 #            widgetbox(save_vi_button,width=100)
             ## Don't want this in principle :
 #            bk.Row(
