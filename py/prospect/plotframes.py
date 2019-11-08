@@ -394,6 +394,9 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
     cds_targetinfo.add([" " for i in range(nspec)], name='VI_issue_flag')
     cds_targetinfo.add([" " for i in range(nspec)], name='VI_comment')
 
+    # spectrum nb are 1 -> N instead of 0 -> N-1 :
+    cds_targetinfo.add([i+1 for i in range(nspec)], name='i_fiber')
+    
     return cds_targetinfo
 
 
@@ -1024,11 +1027,12 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
 
     #- Show VI in a table
     vi_table_columns = [
-        TableColumn(field="VI_class_flag", title="Classification"),
+        TableColumn(field="i_fiber", title="#", width=20),
+        TableColumn(field="VI_class_flag", title="Classification", width=100),
         TableColumn(field="VI_issue_flag", title="Issue flag"),
         TableColumn(field="VI_comment", title="Comment")
     ]
-    vi_table = DataTable(source=cds_targetinfo, columns=vi_table_columns, width=500)
+    vi_table = DataTable(source=cds_targetinfo, columns=vi_table_columns, index_position=None, width=500)
     
     # Choose to show or not previous VI
     show_prev_vi_select = Select(title='Show previous VI', value='No', options=['Yes','No'])

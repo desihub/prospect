@@ -44,5 +44,6 @@ if (title in localStorage) {
             vi_issue_input.active = issues_on
         }
     }
+    cds_targetinfo.change.emit()
 }
 
