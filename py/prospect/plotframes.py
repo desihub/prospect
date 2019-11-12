@@ -392,6 +392,8 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
     cds_targetinfo.add([username for i in range(nspec)], name='VI_scanner')
     cds_targetinfo.add(["-1" for i in range(nspec)], name='VI_class_flag') 
     cds_targetinfo.add([" " for i in range(nspec)], name='VI_issue_flag')
+    cds_targetinfo.add([" " for i in range(nspec)], name='VI_z')
+    cds_targetinfo.add([" " for i in range(nspec)], name='VI_spectype')
     cds_targetinfo.add([" " for i in range(nspec)], name='VI_comment')
 
     # spectrum nb are 1 -> N instead of 0 -> N-1 :
@@ -400,7 +402,7 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
     return cds_targetinfo
 
 
-def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, savedir='.', is_coadded=True, title=None, html_dir=None, with_noise=True, with_coaddcam=True, sv=False):
+def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, is_coadded=True, title=None, html_dir=None, with_noise=True, with_coaddcam=True, sv=False):
     '''
     Main prospect routine, creates a bokeh document from a set of spectra and fits
 
@@ -864,7 +866,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     lines_button_group = CheckboxButtonGroup(
             labels=["Emission", "Absorption"], active=[])
     majorline_checkbox = CheckboxGroup(
-            labels=['Show only major lines'], active=[0])
+            labels=['Show only major lines'], active=[])
 
     lines_callback = CustomJS(
         args = dict(line_data=line_data, lines=lines, line_labels=line_labels, zlines=zoom_lines, 
@@ -904,10 +906,13 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
 
     #-----
     #- VI-related widgets
+    
     vi_file_fields = utils_specviewer._vi_file_fields
+    vi_class_labels = [ x["label"] for x in utils_specviewer._vi_flags if x["type"]=="class" ]
+    vi_issue_labels = [ x["label"] for x in utils_specviewer._vi_flags if x["type"]=="issue" ]
+    vi_issue_slabels = [ x["shortlabel"] for x in utils_specviewer._vi_flags if x["type"]=="issue" ]
 
     #- Main VI classification
-    vi_class_labels = [ x["label"] for x in utils_specviewer._vi_flags if x["type"]=="class" ]
     vi_class_input = RadioButtonGroup(labels=vi_class_labels)
     with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_class_code = f.read()
     vi_class_code += """
@@ -927,16 +932,15 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     vi_class_input.js_on_click(vi_class_callback)
 
     #- Optional VI flags (issues)
-    vi_issue_labels = [ x["label"] for x in utils_specviewer._vi_flags if x["type"]=="issue" ]
     vi_issue_input = CheckboxGroup(labels=vi_issue_labels, active=[])
     with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_issue_code = f.read()
     vi_issue_code += """
         var issues = []
         for (var i=0; i<vi_issue_labels.length; i++) {
-            if (vi_issue_input.active.indexOf(i) >= 0) issues.push(vi_issue_labels[i])
+            if (vi_issue_input.active.indexOf(i) >= 0) issues.push(vi_issue_slabels[i])
         }
         if (issues.length > 0) {
-            cds_targetinfo.data['VI_issue_flag'][ifiberslider.value] = ( issues.join(" ") )
+            cds_targetinfo.data['VI_issue_flag'][ifiberslider.value] = ( issues.join('') )
         } else {
             cds_targetinfo.data['VI_issue_flag'][ifiberslider.value] = " "
         }
@@ -946,10 +950,41 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     vi_issue_callback = CustomJS(
         args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider, 
                 vi_issue_input=vi_issue_input, vi_issue_labels=vi_issue_labels,
+                vi_issue_slabels=vi_issue_slabels,
                 title=title, vi_file_fields = vi_file_fields), 
         code=vi_issue_code )
     vi_issue_input.js_on_click(vi_issue_callback)
     
+    #- Optional VI information on redshift
+    vi_z_input = TextInput(value='', title="VI redshift :")
+    with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_z_code = f.read()
+    vi_z_code += """
+        cds_targetinfo.data['VI_z'][ifiberslider.value]=vi_z_input.value
+        autosave_vi(title, vi_file_fields, cds_targetinfo.data)
+        cds_targetinfo.change.emit()
+        """
+    vi_z_callback = CustomJS(
+        args=dict(cds_targetinfo=cds_targetinfo, ifiberslider = ifiberslider, vi_z_input=vi_z_input, 
+                  title=title, vi_file_fields=vi_file_fields), 
+        code=vi_z_code )
+    vi_z_input.js_on_change('value',vi_z_callback)
+    
+    #- Optional VI information on spectral type
+    vi_spectypes = [" "] + utils_specviewer._vi_spectypes
+    vi_category_select = Select(value=" ", title="VI spectype :", options=vi_spectypes)
+    with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_category_code = f.read()
+    vi_category_code += """
+        cds_targetinfo.data['VI_spectype'][ifiberslider.value]=vi_category_select.value
+        autosave_vi(title, vi_file_fields, cds_targetinfo.data)
+        cds_targetinfo.change.emit()
+        """
+    vi_category_callback = CustomJS(
+        args=dict(cds_targetinfo=cds_targetinfo, ifiberslider = ifiberslider,
+                  vi_category_select=vi_category_select,
+                  title=title, vi_file_fields=vi_file_fields), 
+        code=vi_category_code )
+    vi_category_select.js_on_change('value',vi_category_callback)
+
     #- Optional VI comment
     vi_comment_input = TextInput(value='', title="VI comment :")
     with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_comment_code = f.read()
@@ -993,7 +1028,9 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         if flag['type'] == 'class' : vi_guideline_txt += ("<BR />&emsp;&emsp;[&emsp;"+flag['label']+"&emsp;] "+flag['description'])
     vi_guideline_txt += "<BR /> <B> Optional indications : </B>"
     for flag in utils_specviewer._vi_flags :
-        if flag['type'] == 'issue' : vi_guideline_txt += ("<BR />&emsp;&emsp;[&emsp;"+flag['label']+"&emsp;] "+flag['description'])
+        if flag['type'] == 'issue' : 
+            vi_guideline_txt += ( "<BR />&emsp;&emsp;" + flag['label'] + 
+                                 "&emsp;[&emsp;" + flag['shortlabel'] + "&emsp;] " + flag['description'] )
     vi_guideline_div = Div(text=vi_guideline_txt)
 
     #- Save VI info to CSV file
@@ -1014,7 +1051,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         args = dict(title=title, vi_file_fields=vi_file_fields, cds_targetinfo=cds_targetinfo, 
                    ifiber=ifiberslider.value, vi_comment_input=vi_comment_input,
                    vi_name_input=vi_name_input, vi_class_input=vi_class_input, vi_issue_input=vi_issue_input,
-                   vi_issue_labels=vi_issue_labels, vi_class_labels=vi_class_labels),
+                   vi_issue_slabels=vi_issue_slabels, vi_class_labels=vi_class_labels),
         code = recover_vi_code )
     recover_vi_button.js_on_event('button_click', recover_vi_callback)
     
@@ -1028,11 +1065,14 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     #- Show VI in a table
     vi_table_columns = [
         TableColumn(field="i_fiber", title="#", width=20),
-        TableColumn(field="VI_class_flag", title="Classification", width=100),
-        TableColumn(field="VI_issue_flag", title="Issue flag"),
-        TableColumn(field="VI_comment", title="Comment")
+        TableColumn(field="VI_class_flag", title="Class. flag", width=50),
+        TableColumn(field="VI_issue_flag", title="Opt. ind.", width=50),
+        TableColumn(field="VI_z", title="VI z", width=80),
+        TableColumn(field="VI_spectype", title="VI spectype", width=150),
+        TableColumn(field="VI_comment", title="VI comment", width=200)
     ]
     vi_table = DataTable(source=cds_targetinfo, columns=vi_table_columns, index_position=None, width=500)
+    vi_table.height = 10 * vi_table.row_height
     
     # Choose to show or not previous VI
     show_prev_vi_select = Select(title='Show previous VI', value='No', options=['Yes','No'])
@@ -1068,7 +1108,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             vi_class_input = vi_class_input,
             vi_class_labels = vi_class_labels,
             vi_issue_input = vi_issue_input,
-            vi_issue_labels = vi_issue_labels
+            vi_z_input = vi_z_input, vi_category_select = vi_category_select,
+            vi_issue_slabels = vi_issue_slabels
             ),
         code = update_plot_code
     )
@@ -1083,54 +1124,87 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         widgetbox(vi_class_input, width=60*len(vi_class_labels)),
         widgetbox(next_button, width=navigation_button_width+20),
         widgetbox(ifiberslider, width=plot_width-(60*len(vi_class_labels)+2*navigation_button_width+40)))
+    vi_widget_set = bk.Column(
+        widgetbox( Div(text="VI optional indications :"), width=300 ),
+        widgetbox(vi_issue_input, width=300),
+        widgetbox(vi_z_input, width=150),
+        widgetbox(vi_category_select, width=150),                    
+        widgetbox(vi_comment_input, width=300),
+        widgetbox(vi_name_input, width=150),
+        widgetbox(vi_filename_input, width=300),
+        widgetbox(save_vi_button, width=100),
+        widgetbox(vi_table),        
+        bk.Row(widgetbox(recover_vi_button, width=150),
+            widgetbox(clear_vi_button, width=150))
+    )
+    plot_widget_set = bk.Column(
+        widgetbox(smootherslider, width=plot_width//2),
+        widgetbox(display_options_group,width=120),
+        widgetbox(coaddcam_buttons, width=200),
+        widgetbox(zslider, width=plot_width//2 - 110),
+        widgetbox(dzslider, width=plot_width//2 - 110),
+        bk.Row(widgetbox(z_display, width=120),
+            widgetbox(zreset_button, width=100)),
+        widgetbox(waveframe_buttons, width=120),
+        widgetbox(lines_button_group, width=200),
+        widgetbox(majorline_checkbox, width=120),
+        widgetbox(Spacer(height=30)),
+        widgetbox(vi_guideline_div, width=plot_width-350)
+    )
     the_bokehsetup = bk.Column(
-            bk.Row(fig, bk.Column(imfig, zoomfig)),
-            bk.Row(
-                widgetbox(target_info_div, width=plot_width - 120),
-                widgetbox(reset_plotrange_button, width = 100)
-            ),
-            navigator,
-            bk.Row(
-                widgetbox(smootherslider, width=plot_width//2),
-                widgetbox(Spacer(width=plot_width//2-120)),
-                widgetbox(display_options_group,width=120),
-            ),
-            bk.Row(
-                widgetbox(z_display, width=120),
-                widgetbox(zslider, width=plot_width//2 - 110),
-                widgetbox(dzslider, width=plot_width//2 - 110),
-                widgetbox(zreset_button, width=100)
-            ),
-            bk.Row(
-                widgetbox(waveframe_buttons, width=120),
-                widgetbox(lines_button_group, width=200),
-                widgetbox(majorline_checkbox, width=120),
-                widgetbox(Spacer(width=plot_width-640)),
-                widgetbox(coaddcam_buttons, width=200)
-            ),
-            bk.Row(Spacer(height=30)),
-            bk.Row(
-                bk.Column(
-                    widgetbox( Div(text="VI optional indications :"), width=300 ),
-                    widgetbox(vi_issue_input, width=300),
-                    widgetbox(vi_comment_input, width=300),
-                    widgetbox(vi_name_input, width=120),
-                    widgetbox(vi_filename_input, width=300),
-                    widgetbox(save_vi_button, width=100),
-                    bk.Row(widgetbox(recover_vi_button, width=150),
-                        widgetbox(clear_vi_button, width=150))
-                ),
-                widgetbox(Spacer(width=50)),
-                widgetbox(vi_guideline_div, width=plot_width-350)
-            ),
-            widgetbox(vi_table)
+        bk.Row(fig, bk.Column(imfig, zoomfig)),
+        bk.Row(
+            widgetbox(target_info_div, width=plot_width - 120),
+            widgetbox(reset_plotrange_button, width = 100)
+        ),
+        navigator,
+        bk.Row(
+            vi_widget_set,
+            widgetbox(Spacer(width=40)),
+            plot_widget_set
+        )
+#                 widgetbox(smootherslider, width=plot_width//2),
+#                 widgetbox(Spacer(width=plot_width//2-120)),
+#                 widgetbox(display_options_group,width=120),
+#             ),
+#             bk.Row(
+#                 widgetbox(z_display, width=120),
+#                 widgetbox(zslider, width=plot_width//2 - 110),
+#                 widgetbox(dzslider, width=plot_width//2 - 110),
+#                 widgetbox(zreset_button, width=100)
+#             ),
+#             bk.Row(
+#                 widgetbox(waveframe_buttons, width=120),
+#                 widgetbox(lines_button_group, width=200),
+#                 widgetbox(majorline_checkbox, width=120),
+#                 widgetbox(Spacer(width=plot_width-640)),
+#                 widgetbox(coaddcam_buttons, width=200)
+#             ),
+#             bk.Row(Spacer(height=30)),
+#             bk.Row(
+#                 bk.Column(
+#                     widgetbox( Div(text="VI optional indications :"), width=300 ),
+#                     widgetbox(vi_issue_input, width=300),
+#                     widgetbox(vi_z_input, width=300),
+#                     widgetbox(vi_category_select, width=300),                    
+#                     widgetbox(vi_comment_input, width=300),
+#                     widgetbox(vi_name_input, width=120),
+#                     widgetbox(vi_filename_input, width=300),
+#                     widgetbox(save_vi_button, width=100),
+#                     bk.Row(widgetbox(recover_vi_button, width=150),
+#                         widgetbox(clear_vi_button, width=150))
+#                 ),
+#                 widgetbox(Spacer(width=50)),
+#                 widgetbox(vi_guideline_div, width=plot_width-350)
+#             ),
+#             widgetbox(vi_table)
 #            widgetbox(save_vi_button,width=100)
             ## Don't want this in principle :
 #            bk.Row(
 #                widgetbox(show_prev_vi_select,width=100),
 #                widgetbox(vi_info_div, width=plot_width-130)
 #                )
-        )
+    )
     if notebook:
         bk.show(the_bokehsetup)
     else:

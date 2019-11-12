@@ -13,7 +13,8 @@ function autosave_vi(title, vi_file_fields, cds_data) {
          // Record only information if a VI classification was assigned
         if ( (cds_data['VI_class_flag'][i_spec] != "-1") ||
             (cds_data['VI_comment'][i_spec].trim() != "") ||
-            (cds_data['VI_issue_flag'][i_spec].trim() != "" ) ) {
+            (cds_data['VI_issue_flag'][i_spec].trim() != "") ||
+            (cds_data['VI_z'][i_spec].trim() != "") ) {
             var row = [ i_spec.toString() ] // Store also spectrum number
             for (var j=0; j<vi_file_fields.length; j++) {
                 var entry = cds_data[vi_file_fields[j][1]][i_spec]

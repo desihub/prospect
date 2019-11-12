@@ -9,17 +9,19 @@ if (show_prev_vi_select.value == "Yes") {
     vi_info_div.text = " ";
 }
 
-if (cb_obj == ifiberslider) { // update VI buttons for current spectrum
-    vi_comment_input.value=targetinfo.data['VI_comment'][ifiber] ;
-    vi_name_input.value=targetinfo.data['VI_scanner'][ifiber] ;
-    vi_class_input.active = vi_class_labels.indexOf(targetinfo.data['VI_class_flag'][ifiber]) ; // -1 if nothing
+if (cb_obj == ifiberslider) { // update VI widgets for current spectrum
+    vi_comment_input.value = targetinfo.data['VI_comment'][ifiber]
+    vi_name_input.value = targetinfo.data['VI_scanner'][ifiber]
+    vi_class_input.active = vi_class_labels.indexOf(targetinfo.data['VI_class_flag'][ifiber]) // -1 if nothing
     var issues_on = []
-    for (var i=0; i<vi_issue_labels.length; i++) {
-        if ( (targetinfo.data['VI_issue_flag'][ifiber]).indexOf(vi_issue_labels[i]) >= 0 ) {
+    for (var i=0; i<vi_issue_slabels.length; i++) {
+        if ( (targetinfo.data['VI_issue_flag'][ifiber]).indexOf(vi_issue_slabels[i]) >= 0 ) {
             issues_on.push(i)
         }
     }
     vi_issue_input.active = issues_on
+    vi_z_input.value = targetinfo.data['VI_z'][ifiber]
+    vi_category_select.value = targetinfo.data['VI_spectype'][ifiber]
 }
 
 if(targetinfo.data['z'] != undefined && cb_obj == ifiberslider) {

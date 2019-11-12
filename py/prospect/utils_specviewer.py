@@ -20,13 +20,15 @@ from prospect import mycoaddcam
 _vi_flags = [
     # Definition of VI flags
     # Replaces former list viflags = ["Yes","No","Maybe","LowSNR","Bad"]
+    # shortlabels for "issue" flags must be a unique single-letter identifier
     {"label" : "4", "type" : "class", "description" : "Confident classification, two or more secure features"},
     {"label" : "3", "type" : "class", "description" : "Probable classification, at least one secure feature + continuum; or many weak features"},
     {"label" : "2", "type" : "class", "description" : "Possible classification, one strong emission feature, but not sure what it is"},
     {"label" : "1", "type" : "class", "description" : "Unlikely classification, one or some unidentified features"},
     {"label" : "0", "type" : "class", "description" : "Nothing there"},
-    {"label" : "Redshift", "type" : "issue", "description" : "Misidentification of redshift (pipeline)"},
-    {"label" : "Spectrum", "type" : "issue", "description" : "Bad spectrum"}
+    {"label" : "Bad redshift fit", "shortlabel" : "R", "type" : "issue", "description" : "Misidentification of redshift by pipeline fitter"},
+    {"label" : "Bad spectype fit", "shortlabel" : "C", "type" : "issue", "description" : "Misidentification of spectral category (eg. star vs QSO...)"},
+    {"label" : "Bad spectrum", "shortlabel" : "S", "type" : "issue", "description" : "Bad spectrum (eg. cosmic/skyline residuals...)"}
 ]
 
 _vi_file_fields = [
@@ -40,10 +42,19 @@ _vi_file_fields = [
     ["Redrock z", "z", "f4"],
     ["VI scanner", "VI_scanner", "S6"],
     ["VI class", "VI_class_flag", "i4"],
-    ["VI issue", "VI_issue_flag", "S6"], 
+    ["VI issue", "VI_issue_flag", "S6"],
+    ["VI z", "VI_z", "f4"],
+    ["VI spectype", "VI_spectype", "S6"],
     ["VI comment", "VI_comment", "S6"]
 ]
 
+_vi_spectypes =[
+    # List of spectral types to fill in VI categories
+    # in principle, it should match somehow redrock spectypes...
+    "STAR",
+    "GALAXY",
+    "QSO"
+]
 
 def read_vi(vifile) :
     '''

@@ -1,6 +1,6 @@
 // CustomJS, recover auto-saved VI infos from browser
 // args = title, cds_targetinfo, vi_file_fields, ifiber, 
-//   vi_comment_input, vi_name_input, vi_class_input, vi_issue_input, vi_issue_labels, vi_class_labels
+//   vi_comment_input, vi_name_input, vi_class_input, vi_issue_input, vi_issue_slabels, vi_class_labels
 
 // Return array of string values
 function CSVtoArray(text) {        
@@ -36,8 +36,8 @@ if (title in localStorage) {
             vi_name_input.value = cds_targetinfo.data['VI_scanner'][ifiber] ;
             vi_class_input.active = vi_class_labels.indexOf(cds_targetinfo.data['VI_class_flag'][ifiber]) ; // -1 if nothing
             var issues_on = []
-            for (var i=0; i<vi_issue_labels.length; i++) {
-                if ( (cds_targetinfo.data['VI_issue_flag'][ifiber]).indexOf(vi_issue_labels[i]) >= 0 ) {
+            for (var i=0; i<vi_issue_slabels.length; i++) {
+                if ( (cds_targetinfo.data['VI_issue_flag'][ifiber]).indexOf(vi_issue_slabels[i]) >= 0 ) {
                     issues_on.push(i)
                 }
             }
