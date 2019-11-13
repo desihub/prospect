@@ -26,9 +26,9 @@ _vi_flags = [
     {"label" : "2", "type" : "class", "description" : "Possible classification, one strong emission feature, but not sure what it is"},
     {"label" : "1", "type" : "class", "description" : "Unlikely classification, one or some unidentified features"},
     {"label" : "0", "type" : "class", "description" : "Nothing there"},
-    {"label" : "Bad redshift fit", "shortlabel" : "R", "type" : "issue", "description" : "Misidentification of redshift by pipeline fitter"},
-    {"label" : "Bad spectype fit", "shortlabel" : "C", "type" : "issue", "description" : "Misidentification of spectral category (eg. star vs QSO...)"},
-    {"label" : "Bad spectrum", "shortlabel" : "S", "type" : "issue", "description" : "Bad spectrum (eg. cosmic/skyline residuals...)"}
+    {"label" : "Bad redshift fit", "shortlabel" : "R", "type" : "issue", "description" : "Misestimation of redshift by pipeline fitter"},
+    {"label" : "Bad spectype fit", "shortlabel" : "C", "type" : "issue", "description" : "Misidentification of spectral category by pipeline fitter, eg. star vs QSO..."},
+    {"label" : "Bad spectrum", "shortlabel" : "S", "type" : "issue", "description" : "Bad spectrum, eg. cosmic / skyline subtraction residuals..."}
 ]
 
 _vi_file_fields = [

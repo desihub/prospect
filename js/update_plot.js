@@ -3,11 +3,11 @@
 var ifiber = ifiberslider.value
 var nsmooth = smootherslider.value
 target_info_div.text = targetinfo.data['target_info'][ifiber]
-if (show_prev_vi_select.value == "Yes") {
-    vi_info_div.text = targetinfo.data['vi_info'][ifiber];
-} else {
-    vi_info_div.text = " ";
-}
+// if (show_prev_vi_select.value == "Yes") {
+//     vi_info_div.text = targetinfo.data['vi_info'][ifiber];
+// } else {
+//     vi_info_div.text = " ";
+// }
 
 if (cb_obj == ifiberslider) { // update VI widgets for current spectrum
     vi_comment_input.value = targetinfo.data['VI_comment'][ifiber]

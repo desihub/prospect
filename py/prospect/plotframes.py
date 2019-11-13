@@ -443,6 +443,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         title = 'Night {} ExpID {} Spectrograph {}'.format(
             meta['NIGHT'], meta['EXPID'], meta['CAMERA'][1],
         )
+    if title is None : title = "specviewer"
 
     #- Reorder zcatalog to match input targets
     #- TODO: allow more than one zcatalog entry with different ZNUM per targetid
@@ -463,7 +464,6 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     if notebook:
         bk.output_notebook()
     else :
-        if title is None : title="specviewer"
         if html_dir is None : raise RuntimeError("Need html_dir")
         bk.output_file(html_dir+"/"+title+".html", title='DESI spectral viewer')
 
@@ -626,7 +626,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     # Ifiberslider's value controls which spectrum is displayed
     # These two widgets call update_plot(), later defined
     ifiberslider = Slider(start=0, end=nspec-1, value=0, step=1, title='Spectrum')
-    smootherslider = Slider(start=0, end=31, value=0, step=1.0, title='Gaussian Sigma Smooth')
+    smootherslider = Slider(start=0, end=51, value=0, step=1.0, title='Gaussian Sigma Smooth')
 
     #-----
     #- Navigation buttons
@@ -912,6 +912,15 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     vi_issue_labels = [ x["label"] for x in utils_specviewer._vi_flags if x["type"]=="issue" ]
     vi_issue_slabels = [ x["shortlabel"] for x in utils_specviewer._vi_flags if x["type"]=="issue" ]
 
+    #- VI file name
+    default_vi_filename = "desi-vi_"+title
+    if username.strip()!="" :
+        default_vi_filename += ("_"+username)
+    else :
+        default_vi_filename += "_unknown-user"
+    default_vi_filename += ".csv"
+    vi_filename_input = TextInput(value=default_vi_filename, title="VI file name :")
+    
     #- Main VI classification
     vi_class_input = RadioButtonGroup(labels=vi_class_labels)
     with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_class_code = f.read()
@@ -1006,21 +1015,18 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         for (var i=0; i<nspec; i++) {
             cds_targetinfo.data['VI_scanner'][i]=vi_name_input.value
         }
+        var newname = vi_filename_input.value
+        var pepe = newname.split("_")
+        newname = ( pepe.slice(0,pepe.length-1).join("_") ) + ("_"+vi_name_input.value+".csv")
+        vi_filename_input.value = newname
         autosave_vi(title, vi_file_fields, cds_targetinfo.data)
         """
     vi_name_callback = CustomJS(
         args=dict(cds_targetinfo=cds_targetinfo, nspec = nspec, vi_name_input=vi_name_input,
-                 title=title, vi_file_fields=vi_file_fields), 
+                 vi_filename_input=vi_filename_input, title=title, vi_file_fields=vi_file_fields), 
         code=vi_name_code )
     vi_name_input.js_on_change('value',vi_name_callback)
 
-    #- VI file name
-    if title is None :
-        default_vi_filename = "vi_result.csv"
-    else :
-        default_vi_filename = "vi_result_"+title+".csv"
-    vi_filename_input = TextInput(value=default_vi_filename, title="VI file name :")
-    
     #- Guidelines for VI flags
     vi_guideline_txt = "<B> VI guidelines </B>"
     vi_guideline_txt += "<BR /> <B> Classification flags : </B>"
@@ -1029,8 +1035,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     vi_guideline_txt += "<BR /> <B> Optional indications : </B>"
     for flag in utils_specviewer._vi_flags :
         if flag['type'] == 'issue' : 
-            vi_guideline_txt += ( "<BR />&emsp;&emsp;" + flag['label'] + 
-                                 "&emsp;[&emsp;" + flag['shortlabel'] + "&emsp;] " + flag['description'] )
+            vi_guideline_txt += ( "<BR />&emsp;&emsp;[&emsp;" + flag['label'] + 
+                                 "&emsp;(" + flag['shortlabel'] + ")&emsp;] " + flag['description'] )
     vi_guideline_div = Div(text=vi_guideline_txt)
 
     #- Save VI info to CSV file
@@ -1040,7 +1046,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     with open(os.path.join(js_dir,"download_vi.js"), 'r') as f : save_vi_code += f.read()
     save_vi_callback = CustomJS(
         args=dict(cds_targetinfo=cds_targetinfo, 
-            vi_file_fields=vi_file_fields, vi_filename_input=vi_filename_input), 
+            vi_file_fields=vi_file_fields, vi_filename=vi_filename_input.value), 
         code=save_vi_code ) 
     save_vi_button.js_on_event('button_click', save_vi_callback)
 
@@ -1064,27 +1070,29 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
 
     #- Show VI in a table
     vi_table_columns = [
-        TableColumn(field="i_fiber", title="#", width=20),
-        TableColumn(field="VI_class_flag", title="Class. flag", width=50),
-        TableColumn(field="VI_issue_flag", title="Opt. ind.", width=50),
-        TableColumn(field="VI_z", title="VI z", width=80),
+        TableColumn(field="i_fiber", title="#", width=10),
+        TableColumn(field="VI_class_flag", title="Flag", width=40),
+        TableColumn(field="VI_issue_flag", title="Opt.", width=50),
+        TableColumn(field="VI_z", title="VI z", width=50),
         TableColumn(field="VI_spectype", title="VI spectype", width=150),
         TableColumn(field="VI_comment", title="VI comment", width=200)
     ]
     vi_table = DataTable(source=cds_targetinfo, columns=vi_table_columns, index_position=None, width=500)
     vi_table.height = 10 * vi_table.row_height
     
-    # Choose to show or not previous VI
-    show_prev_vi_select = Select(title='Show previous VI', value='No', options=['Yes','No'])
-    show_prev_vi_callback = CustomJS(args=dict(vi_info_div = vi_info_div, show_prev_vi_select=show_prev_vi_select, targetinfo = cds_targetinfo, ifiberslider = ifiberslider), code="""
-        if (show_prev_vi_select.value == "Yes") {
-            vi_info_div.text = targetinfo.data['vi_info'][ifiberslider.value];
-        } else {
-            vi_info_div.text = " ";
-        }
-    """)
-    show_prev_vi_select.js_on_change('value',show_prev_vi_callback)
-    
+#     # Choose to show or not previous VI
+#     show_prev_vi_select = Select(title='Show previous VI', value='No', options=['Yes','No'])
+#     show_prev_vi_callback = CustomJS(args=dict(vi_info_div = vi_info_div, show_prev_vi_select=show_prev_vi_select, targetinfo = cds_targetinfo, ifiberslider = ifiberslider), code="""
+#         if (show_prev_vi_select.value == "Yes") {
+#             vi_info_div.text = targetinfo.data['vi_info'][ifiberslider.value];
+#         } else {
+#             vi_info_div.text = " ";
+#         }
+#     """)
+#     show_prev_vi_select.js_on_change('value',show_prev_vi_callback)
+
+
+    #-----
     #- Main js code to update plot
     with open(os.path.join(js_dir,"update_plot.js"), 'r') as f : update_plot_code = f.read()
     update_plot = CustomJS(
@@ -1094,8 +1102,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             model = cds_model,
             targetinfo = cds_targetinfo,
             target_info_div = target_info_div,
-            vi_info_div = vi_info_div,
-            show_prev_vi_select = show_prev_vi_select,
+ #           vi_info_div = vi_info_div,
+ #           show_prev_vi_select = show_prev_vi_select,
             ifiberslider = ifiberslider,
             smootherslider = smootherslider,
             zslider=zslider,
@@ -1118,44 +1126,59 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
 
 
     #-----
+    #- Bokeh setup
+    # NB widget height / width are still partly hardcoded, but not arbitrary except for Spacers
     slider_width = plot_width - 2*navigation_button_width
     navigator = bk.Row(
         widgetbox(prev_button, width=navigation_button_width+15),
         widgetbox(vi_class_input, width=60*len(vi_class_labels)),
         widgetbox(next_button, width=navigation_button_width+20),
-        widgetbox(ifiberslider, width=plot_width-(60*len(vi_class_labels)+2*navigation_button_width+40)))
+#        widgetbox(Spacer(width=plot_height//2)),
+        widgetbox(ifiberslider, width=plot_width+(plot_height//2)-(60*len(vi_class_labels)+2*navigation_button_width+35)))
     vi_widget_set = bk.Column(
         widgetbox( Div(text="VI optional indications :"), width=300 ),
-        widgetbox(vi_issue_input, width=300),
-        widgetbox(vi_z_input, width=150),
-        widgetbox(vi_category_select, width=150),                    
+        bk.Row(
+            bk.Column(
+                widgetbox(Spacer(height=20)),
+                widgetbox(vi_issue_input, width=150, height=100),
+            ),
+            bk.Column(
+                widgetbox(vi_z_input, width=150),
+                widgetbox(vi_category_select, width=150),
+            )
+        ),
         widgetbox(vi_comment_input, width=300),
         widgetbox(vi_name_input, width=150),
         widgetbox(vi_filename_input, width=300),
         widgetbox(save_vi_button, width=100),
         widgetbox(vi_table),        
-        bk.Row(widgetbox(recover_vi_button, width=150),
-            widgetbox(clear_vi_button, width=150))
+        bk.Row(
+            widgetbox(recover_vi_button, width=150),
+            widgetbox(clear_vi_button, width=150)
+        )
     )
+    plot_widget_width = (plot_width+(plot_height//2))//2 - 40
     plot_widget_set = bk.Column(
-        widgetbox(smootherslider, width=plot_width//2),
+        widgetbox(smootherslider, width=plot_widget_width),
         widgetbox(display_options_group,width=120),
         widgetbox(coaddcam_buttons, width=200),
         widgetbox(zslider, width=plot_width//2 - 110),
         widgetbox(dzslider, width=plot_width//2 - 110),
-        bk.Row(widgetbox(z_display, width=120),
-            widgetbox(zreset_button, width=100)),
+        bk.Row(
+            widgetbox(z_display, width=120),
+            widgetbox(zreset_button, width=100)
+        ),
         widgetbox(waveframe_buttons, width=120),
         widgetbox(lines_button_group, width=200),
         widgetbox(majorline_checkbox, width=120),
         widgetbox(Spacer(height=30)),
-        widgetbox(vi_guideline_div, width=plot_width-350)
+        widgetbox(vi_guideline_div, width=plot_widget_width)
     )
     the_bokehsetup = bk.Column(
         bk.Row(fig, bk.Column(imfig, zoomfig)),
         bk.Row(
             widgetbox(target_info_div, width=plot_width - 120),
-            widgetbox(reset_plotrange_button, width = 100)
+            widgetbox(reset_plotrange_button, width = 120)
         ),
         navigator,
         bk.Row(
