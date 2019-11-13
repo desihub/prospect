@@ -32,20 +32,23 @@ _vi_flags = [
 ]
 
 _vi_file_fields = [
-    # Contents of VI files: [ "field name (in VI file header)", "associated variable in cds_targetinfo", default dtype in VI file]
+    # Contents of VI files: [ 
+    #      field name (in VI file header), 
+    #      associated variable in cds_targetinfo, 
+    #      dtype in VI file ]
     # Ordered list
     ["TargetID", "targetid", "i4"],
     ["ExpID", "expid", "i4"],
     ["Spec version", "spec_version", "i4"], # TODO define
     ["Redrock version", "redrock_version", "i4"], # TODO define
-    ["Redrock spectype", "spectype", "S6"],
+    ["Redrock spectype", "spectype", "S10"],
     ["Redrock z", "z", "f4"],
-    ["VI scanner", "VI_scanner", "S6"],
-    ["VI class", "VI_class_flag", "i4"],
+    ["VI scanner", "VI_scanner", "S10"],
+    ["VI class", "VI_class_flag", "i2"],
     ["VI issue", "VI_issue_flag", "S6"],
     ["VI z", "VI_z", "f4"],
-    ["VI spectype", "VI_spectype", "S6"],
-    ["VI comment", "VI_comment", "S6"]
+    ["VI spectype", "VI_spectype", "S10"],
+    ["VI comment", "VI_comment", "S50"]
 ]
 
 _vi_spectypes =[
@@ -62,15 +65,18 @@ def read_vi(vifile) :
     Return full VI catalog, in Table format
     '''
     vi_records = [x[0] for x in _vi_file_fields]
-
+    vi_dtypes = [x[2] for x in _vi_file_fields]
+    
     if (vifile[-5:] != ".fits" and vifile[-4:] not in [".fit",".fts",".csv"]) :
         raise RuntimeError("wrong file extension")
     if vifile[-4:] == ".csv" :
         vi_info = Table.read(vifile,format='ascii.csv', names=vi_records)
+        for i,rec in enumerate(vi_records) :
+            vi_info[rec] = vi_info[rec].astype(vi_dtypes[i])
     else :
         vi_info = astropy.io.fits.getdata(vifile,1)
         if [(x in vi_info.names) for x in vi_records]!=[1 for x in vi_records] :
-            raise RuntimeError("wrong records in vi fits file")
+            raise RuntimeError("wrong record names in VI fits file")
         vi_info = Table(vi_info)
 
     return vi_info
@@ -104,8 +110,8 @@ def initialize_master_vi(mastervifile, overwrite=False) :
     '''
     log = get_logger()
     vi_records = [x[0] for x in _vi_file_fields]
-    vi_dtype = [x[2] for x in _vi_file_fields]
-    vi_info = Table(names=vi_records, dtype=tuple(vi_dtype))
+    vi_dtypes = [x[2] for x in _vi_file_fields]
+    vi_info = Table(names=vi_records, dtype=tuple(vi_dtypes))
     vi_info.write(mastervifile, format='fits', overwrite=overwrite)
     log.info("Initialized VI file : "+mastervifile+" (0 entry)")
     
