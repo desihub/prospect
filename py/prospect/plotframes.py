@@ -1009,7 +1009,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     vi_comment_input.js_on_change('value',vi_comment_callback)
 
     #- VI scanner name    
-    vi_name_input = TextInput(value=cds_targetinfo.data['VI_scanner'][0], title="Your name :")
+    vi_name_input = TextInput(value=(cds_targetinfo.data['VI_scanner'][0]).strip(), title="Your name :")
     with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_name_code = f.read()
     vi_name_code += """
         for (var i=0; i<nspec; i++) {
@@ -1046,7 +1046,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     with open(os.path.join(js_dir,"download_vi.js"), 'r') as f : save_vi_code += f.read()
     save_vi_callback = CustomJS(
         args=dict(cds_targetinfo=cds_targetinfo, 
-            vi_file_fields=vi_file_fields, vi_filename=vi_filename_input.value), 
+            vi_file_fields=vi_file_fields, vi_filename_input=vi_filename_input), 
         code=save_vi_code ) 
     save_vi_button.js_on_event('button_click', save_vi_callback)
 

@@ -1,5 +1,5 @@
 // CustomJS, download VI results to file
-//  args = cds_targetinfo, vi_file_fields, vi_filename
+//  args = cds_targetinfo, vi_file_fields, vi_filename_input
 
 var nb_fields = vi_file_fields.length
 var nspec = cds_targetinfo.data['VI_class_flag'].length
@@ -33,8 +33,9 @@ for (var j=0; j<array_to_store.length; j++) {
     csv_to_store += ( row.concat("\n") )
 }
 
+var filename = vi_filename_input.value
 var blob = new window.Blob([csv_to_store], {type: 'text/csv'})
-saveAs(blob, vi_filename)
+saveAs(blob, filename)
 
 // Old function replaced by saveAs : download(filename, csv_to_store)
 //         function download(filename, text) {
