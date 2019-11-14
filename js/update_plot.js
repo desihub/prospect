@@ -1,15 +1,21 @@
 // update_plot() CustomJS
 
+
+var d0 = new Date()
+var t0 = d0.getTime()
+
 var ifiber = ifiberslider.value
 var nsmooth = smootherslider.value
-target_info_div.text = targetinfo.data['target_info'][ifiber]
+
 // if (show_prev_vi_select.value == "Yes") {
 //     vi_info_div.text = targetinfo.data['vi_info'][ifiber];
 // } else {
 //     vi_info_div.text = " ";
 // }
 
-if (cb_obj == ifiberslider) { // update VI widgets for current spectrum
+if (cb_obj == ifiberslider) { // update VI widgets + infos for current spectrum
+
+    target_info_div.text = targetinfo.data['target_info'][ifiber]
     vi_comment_input.value = targetinfo.data['VI_comment'][ifiber]
     vi_name_input.value = targetinfo.data['VI_scanner'][ifiber]
     vi_class_input.active = vi_class_labels.indexOf(targetinfo.data['VI_class_flag'][ifiber]) // -1 if nothing
@@ -247,6 +253,7 @@ if(ymin<0) {
     fig.y_range.start = ymin * 0.6
 }
 fig.y_range.end = ymax * 1.4
+
 //
 // update target image
 //
