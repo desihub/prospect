@@ -10,9 +10,11 @@ from desispec.interpolation import resample_flux
 def mycoaddcam(spectra) :
     """"
     Merges brz spectra into a single (wave,flux)
-    takes into account noise and mis-matched wavelengths over the 3 arms
-    for now, assumes b r z bands and two overlap regions (b-r-z ordering hardcoded)
+      takes into account noise and mis-matched wavelengths over the 3 arms
+    Currently assumes b r z bands and two overlap regions
     """
+    
+    assert np.all([ band in spectra.wave.keys() for band in ['b','r','z'] ]) 
     
     # Define (arbitrarily) wavelength grid
     margin = 20 # Angstrom. Avoids using edge-of-band at overlap regions
@@ -51,6 +53,8 @@ def mycoaddcam(spectra) :
             phi1, ivar1 = resample_flux(lambd_over, spectra.wave[b1], spectra.flux[b1][ispec,:], ivar=spectra.ivar[b1][ispec,:])
             phi2, ivar2 = resample_flux(lambd_over, spectra.wave[b2], spectra.flux[b2][ispec,:], ivar=spectra.ivar[b2][ispec,:])
             ivar[ispec,w_overlap] = ivar1+ivar2
-            flux[ispec,w_overlap] = (ivar1*phi1 + ivar2*phi2)/ivar[ispec,w_overlap]
+            w_ok = np.where( ivar[ispec,w_overlap] > 0)
+            flux[ispec,w_overlap] = (phi1+phi2)/2
+            flux[ispec,w_overlap][w_ok] = (ivar1[w_ok]*phi1[w_ok] + ivar2[w_ok]*phi2[w_ok])/ivar[ispec,w_overlap][w_ok]
     
     return (wave, flux, ivar)
