@@ -995,7 +995,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     vi_category_select.js_on_change('value',vi_category_callback)
 
     #- Optional VI comment
-    vi_comment_input = TextInput(value='', title="VI comment :")
+    vi_comment_input = TextInput(value='', title="VI comment (100 char max.) :")
     with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_comment_code = f.read()
     vi_comment_code += """
         cds_targetinfo.data['VI_comment'][ifiberslider.value]=vi_comment_input.value

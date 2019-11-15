@@ -48,7 +48,7 @@ _vi_file_fields = [
     ["VI issue", "VI_issue_flag", "S6"],
     ["VI z", "VI_z", "f4"],
     ["VI spectype", "VI_spectype", "S10"],
-    ["VI comment", "VI_comment", "S50"]
+    ["VI comment", "VI_comment", "S100"]
 ]
 
 _vi_spectypes =[
