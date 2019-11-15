@@ -27,10 +27,14 @@ def parse() :
 
 def prepare_subdir(subdir, entry, template_index, template_vignette, target=None, do_expo=False) :
 
-    # A DEBUGGER !!!
+    # TODO Needs restructure !!!
     
-    spec_pages = glob.glob( subdir+"/specviewer_"+entry+"_*.html" )
-    subsets = [ x[len(subdir+"/specviewer_"+entry)+1:-5] for x in spec_pages ]
+    pattern = entry
+    if target is not None :
+        pattern = target+"_"+entry
+    
+    spec_pages = glob.glob( subdir+"/specviewer_"+pattern+"_*.html" )
+    subsets = [ x[len(subdir+"/specviewer_"+pattern)+1:-5] for x in spec_pages ]
     subsets.sort(key=int)
     img_list = glob.glob( subdir+"/vignettes/*.png" )
     nspec = len(img_list)
@@ -105,6 +109,7 @@ def main(args) :
             target_pixels[target_cat] = os.listdir( os.path.join(webdir,target_dir) )
             for pix in target_pixels[target_cat] :
                 pixel_dir = os.path.join(webdir,target_dir,pix)
+                
                 prepare_subdir(pixel_dir, pix, template_targetlist, template_vignettelist, target=target_cat )
                 log.info("Subdirectory done : "+pix)
     else : target_pixels={'BGS_ANY':None,'ELG':None,'LRG':None,'QSO':None,'MWS_ANY':None}

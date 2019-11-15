@@ -100,7 +100,9 @@ def main(args) :
             # VI "catalog" - location to define later ..
             # vifile = os.environ['HOME']+"/prospect/vilist_prototype.fits"
             # vidata = utils_specviewer.match_vi_targets(vifile, thespec.fibermap["TARGETID"])
-            titlepage = "specviewer_pix"+pixel+"_"+str(i_page)
+            titlepage = "pix"+pixel+"_"+str(i_page)
+            if args.mask is not None :
+                titlepage = args.mask+"_"+titlepage
             model = plotframes.create_model(thespec, thezb)
             html_dir = os.path.join(webdir,"pix"+pixel)
             if not os.path.exists(html_dir) : 

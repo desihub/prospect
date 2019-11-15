@@ -17,7 +17,7 @@ if (cb_obj == ifiberslider) { // update VI widgets + infos for current spectrum
 
     target_info_div.text = targetinfo.data['target_info'][ifiber]
     vi_comment_input.value = targetinfo.data['VI_comment'][ifiber]
-    vi_name_input.value = targetinfo.data['VI_scanner'][ifiber]
+    vi_name_input.value = (targetinfo.data['VI_scanner'][ifiber]).trim()
     vi_class_input.active = vi_class_labels.indexOf(targetinfo.data['VI_class_flag'][ifiber]) // -1 if nothing
     var issues_on = []
     for (var i=0; i<vi_issue_slabels.length; i++) {

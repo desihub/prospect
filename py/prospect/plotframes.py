@@ -418,7 +418,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     notebook : if True, bokeh outputs the viewer to notebook, else to a (static) html page
     vidata : VI information to be preloaded and displayed. Currently disabled.
     is_coadded : set to True if spectra are coadds
-    title : title of produced html page and bokeh figure
+    title : title used to produce html page / name bokeh figure / save VI file
     html_dir : directory to store html page
     with_noise : include noise for each spectrum
     with_coaddcam : include camera-coaddition
@@ -465,7 +465,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         bk.output_notebook()
     else :
         if html_dir is None : raise RuntimeError("Need html_dir")
-        bk.output_file(html_dir+"/"+title+".html", title='DESI spectral viewer')
+        bk.output_file(html_dir+"/specviewer_"+title+".html", title='DESI spectral viewer')
 
     #-----
     #- Gather information into ColumnDataSource objects for Bokeh
@@ -1040,7 +1040,6 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     vi_guideline_div = Div(text=vi_guideline_txt)
 
     #- Save VI info to CSV file
-    # Warning text output very sensitve for # " \  ... (standard js formatting not ok)
     save_vi_button = Button(label="Download VI", button_type="default")
     with open(os.path.join(js_dir,"FileSaver.js"), 'r') as f : save_vi_code = f.read()
     with open(os.path.join(js_dir,"download_vi.js"), 'r') as f : save_vi_code += f.read()
