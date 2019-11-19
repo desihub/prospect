@@ -8,6 +8,7 @@ Write static html files from coadded spectra, sorted by healpixels
 import os, sys, glob
 import argparse
 import numpy as np
+import random
 from astropy.table import Table
 import astropy.io.fits
 
@@ -32,6 +33,7 @@ def parse() :
     parser.add_argument('--webdir', help='Base directory for webpages', type=str, default=None)
     parser.add_argument('--vignette_smoothing', help='Smoothing of the vignette images (-1 : no smoothing)', type=float, default=10)
     parser.add_argument('--sv', help='SV targets', action='store_true')
+    parser.add_argument('--random_pixels', help='Process pixels in random order', action='store_true')
     parser.add_argument('--nmax_spectra', help='Stop the production of HTML pages once a given number of spectra are done', type=int, default=None)
     args = parser.parse_args()
     return args
@@ -56,7 +58,9 @@ def main(args) :
         pixels = [x[x.rfind("/")+1:] for x in pixels]
     else :
         pixels = np.loadtxt(args.pixel_list, dtype=str)
-
+    if args.random_pixels :
+        random.shuffle(pixels)
+        
     # Loop on pixels
     nspec_done = 0
     for pixel in pixels :
