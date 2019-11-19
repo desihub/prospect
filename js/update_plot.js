@@ -26,7 +26,7 @@ if (cb_obj == ifiberslider) { // update VI widgets + infos for current spectrum
         }
     }
     vi_issue_input.active = issues_on
-    vi_z_input.value = targetinfo.data['VI_z'][ifiber]
+    vi_z_input.value = (targetinfo.data['VI_z'][ifiber]).trim()
     vi_category_select.value = targetinfo.data['VI_spectype'][ifiber]
 }
 
