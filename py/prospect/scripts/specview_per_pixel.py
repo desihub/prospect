@@ -29,6 +29,8 @@ def parse() :
     parser.add_argument('--specprod_dir', help='overrides $DESI_SPECTRO_REDUX/$SPECPROD/', type=str, default=None)
     parser.add_argument('--pixel_list', help='ASCII file providing list of pixels', type=str, default=None)
     parser.add_argument('--mask', help='Select only objects with a given DESI target mask', type=str, default=None)
+    parser.add_argument('--gcut', help='Select only objects in a given [dereddened] g-mag range (eg --gcut 22 22.5)', nargs='+', type=float, default=None)
+    parser.add_argument('--chi2cut', help='Select only objects with Delta_chi2 (from pipeline fit) in a given range (eg --chi2cut 40 100)', nargs='+', type=float, default=None)
     parser.add_argument('--nspecperfile', help='Number of spectra in each html page', type=int, default=50)
     parser.add_argument('--webdir', help='Base directory for webpages', type=str, default=None)
     parser.add_argument('--vignette_smoothing', help='Smoothing of the vignette images (-1 : no smoothing)', type=float, default=10)
@@ -76,7 +78,7 @@ def main(args) :
             log.info("No associated zbest file found : skipping pixel")
             continue
 
-        # Mask selection
+        # Target mask selection
         if args.mask is not None :
             if args.sv :
                 w, = np.where( (spectra.fibermap['SV1_DESI_TARGET'] & desi_mask_sv1[args.mask]) )
@@ -84,6 +86,32 @@ def main(args) :
                 w, = np.where( (spectra.fibermap['DESI_TARGET'] & desi_mask[args.mask]) )
             if len(w) == 0 :
                 log.info(" * No "+args.mask+" target in this pixel")
+                continue
+            else :
+                targetids = spectra.fibermap['TARGETID'][w]
+                spectra = spectra.select(targets=targetids)
+
+        # Photometry selection
+        if args.gcut is not None :
+            assert len(args.gcut)==2 # Require range [gmin, gmax]
+            gmag = np.zeros(spectra.num_spectra())
+            w, = np.where( (spectra.fibermap['FLUX_G']>0) & (spectra.fibermap['MW_TRANSMISSION_G']>0) )
+            gmag[w] = -2.5*np.log10(spectra.fibermap['FLUX_G'][w]/spectra.fibermap['MW_TRANSMISSION_G'][w])+22.5
+            w, = np.where( (gmag>args.gcut[0]) & (gmag<args.gcut[1]) )
+            if len(w) == 0 :
+                log.info(" * No target in this pixel with g_mag in requested range")
+                continue
+            else :
+                targetids = spectra.fibermap['TARGETID'][w]
+                spectra = spectra.select(targets=targetids)
+
+        # Chi2 selection
+        if args.chi2cut is not None :
+            assert len(args.chi2cut)==2 # Require range [chi2min, chi2max]
+            thezb, kk = utils_specviewer.match_zcat_to_spectra(zbest,spectra)
+            w, = np.where( (thezb['DELTACHI2']>args.chi2cut[0]) & (thezb['DELTACHI2']<args.chi2cut[1]) )
+            if len(w) == 0 :
+                log.info(" * No target in this pixel with DeltaChi2 in requested range")
                 continue
             else :
                 targetids = spectra.fibermap['TARGETID'][w]
