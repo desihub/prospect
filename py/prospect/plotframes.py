@@ -622,7 +622,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     #- Ifiberslider and smoothing widgets
     # Ifiberslider's value controls which spectrum is displayed
     # These two widgets call update_plot(), later defined
-    ifiberslider = Slider(start=0, end=nspec-1, value=0, step=1, title='Spectrum')
+    slider_end = nspec-1 if nspec > 1 else 0.5 # Slider cannot have start=end
+    ifiberslider = Slider(start=0, end=slider_end, value=0, step=1, title='Spectrum')
     smootherslider = Slider(start=0, end=51, value=0, step=1.0, title='Gaussian Sigma Smooth')
 
     #-----
@@ -633,14 +634,14 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     prev_callback = CustomJS(
         args=dict(ifiberslider=ifiberslider),
         code="""
-        if(ifiberslider.value>0) {
+        if(ifiberslider.value>0 && ifiberslider.end>=1) {
             ifiberslider.value--
         }
         """)
     next_callback = CustomJS(
         args=dict(ifiberslider=ifiberslider, nspec=nspec),
         code="""
-        if(ifiberslider.value<nspec-1) {
+        if(ifiberslider.value<nspec-1 && ifiberslider.end>=1) {
             ifiberslider.value++
         }
         """)
