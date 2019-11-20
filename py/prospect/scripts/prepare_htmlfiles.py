@@ -25,7 +25,7 @@ def parse() :
     return args
 
 
-def prepare_subdir(subdir, entry, template_index, template_vignette, target=None, do_expo=False) :
+def prepare_subdir(subdir, entry, template_index, template_vignette, target=None, do_expo=False, info=None) :
 
     # TODO Needs restructure !!!
     
@@ -43,7 +43,7 @@ def prepare_subdir(subdir, entry, template_index, template_vignette, target=None
     elif target is None and do_expo==True :
         pagetext = template_index.render(expo=entry, subsets=subsets, nspec=nspec)
     else :
-        pagetext = template_index.render(pixel=entry, subsets=subsets, nspec=nspec, target=target)
+        pagetext = template_index.render(pixel=entry, subsets=subsets, nspec=nspec, target=target, info=info)
 
     with open( os.path.join(subdir,"index_"+entry+".html"), "w") as fh:
         fh.write(pagetext)
@@ -99,25 +99,37 @@ def main(args) :
 
     if args.targets :
         target_pixels = dict()
-        target_dict = { # TODO locate elsewhere - no hardcode
-                "BGS_ANY" : "bgs_targets",
-                "ELG" : "elg_targets",
-                "LRG" : "lrg_targets",
-                "QSO" : "qso_targets",
-                "MWS_ANY" : "mws_targets"}
-        for target_cat, target_dir in target_dict.items() :
-            target_pixels[target_cat] = os.listdir( os.path.join(webdir,target_dir) )
-            for pix in target_pixels[target_cat] :
+#        target_dict = { # TODO locate elsewhere - no hardcode  ## for v1
+#                 "BGS_ANY" : "bgs_targets",
+#                 "ELG" : "elg_targets",
+#                 "LRG" : "lrg_targets",
+#                 "QSO" : "qso_targets",
+#                 "MWS_ANY" : "mws_targets"}
+        target_list = [ ["BGS_ANY", "bgs", "All BGS targets"], ## for v2, still tmp
+                        ["MWS_ANY", "mws", "All MWS targets"],
+                        ["LRG", "lrg", "All LRG targets"],
+                        ["ELG", "elg_bluesquare", "Blue square ELGs : DeltaChi2 in [40 - 100]"],
+                        ["ELG", "elg_greencircle", "Green circle ELGs : DeltaChi2>100"],
+                        ["ELG", "elg_blackdiamond", "Black diamond ELGs : DeltaChi2<40"],
+                        ["QSO", "qso_bluesquare", "Blue square QSOs : g>22.5"],
+                        ["QSO", "qso_greencircle", "Green circle QSOs : g<22.5"] ]
+        for i in range(len(target_list)) :
+            target_dir = target_list[i][1]
+            target_cat = target_list[i][0]
+            target_pixels[target_dir] = os.listdir( os.path.join(webdir,target_dir) )
+            for pix in target_pixels[target_dir] :
                 pixel_dir = os.path.join(webdir,target_dir,pix)
                 
-                prepare_subdir(pixel_dir, pix, template_targetlist, template_vignettelist, target=target_cat )
+                prepare_subdir(pixel_dir, pix, template_targetlist, template_vignettelist, target=target_cat, info=target_list[i][2] )
                 log.info("Subdirectory done : "+pix)
+        target_pixels['ELG']=None
+        target_pixels['QSO']=None
     else : target_pixels={'BGS_ANY':None,'ELG':None,'LRG':None,'QSO':None,'MWS_ANY':None}
 
     # Main index # TODO improve template handling target-based pages
-    pagetext = template_index.render(pixels=pixels, exposures=exposures, bgs_pixels=target_pixels['BGS_ANY'], 
-            elg_pixels=target_pixels['ELG'], lrg_pixels=target_pixels['LRG'], qso_pixels=target_pixels['QSO'],
-            mws_pixels=target_pixels['MWS_ANY']) 
+    pagetext = template_index.render(pixels=pixels, exposures=exposures, bgs_pixels=target_pixels['bgs'], 
+            elg_pixels=target_pixels['ELG'], lrg_pixels=target_pixels['lrg'], qso_pixels=target_pixels['QSO'], qsob_pix=target_pixels['qso_bluesquare'], qsog_pix=target_pixels['qso_greencircle'], elgg_pix=target_pixels['elg_greencircle'], elgb_pix=target_pixels['elg_bluesquare'], elgbb_pix=target_pixels['elg_blackdiamond'],
+            mws_pixels=target_pixels['mws']) 
     indexfile = os.path.join(webdir,"index.html")
     with open(indexfile, "w") as fh:
         fh.write(pagetext)
