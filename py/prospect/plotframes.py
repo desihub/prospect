@@ -13,16 +13,18 @@ import os, sys
 import argparse
 
 import numpy as np
+import scipy.ndimage.filters
+
 from astropy.table import Table
 import astropy.io.fits
 
 import bokeh.plotting as bk
 from bokeh.models import ColumnDataSource, CDSView, IndexFilter
-from bokeh.models import CustomJS, LabelSet, Label, Span, Legend
+from bokeh.models import CustomJS, LabelSet, Label, Span, Legend, Panel, Tabs
 from bokeh.models.widgets import (
     Slider, Button, Div, CheckboxGroup, CheckboxButtonGroup, RadioButtonGroup, 
     TextInput, Select, DataTable, TableColumn)
-from bokeh.layouts import widgetbox, Spacer
+from bokeh.layouts import widgetbox, Spacer, gridplot
 import bokeh.events
 # from bokeh.layouts import row, column
 
@@ -399,7 +401,7 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
     return cds_targetinfo
 
 
-def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, is_coadded=True, title=None, html_dir=None, with_noise=True, with_coaddcam=True, sv=False):
+def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, is_coadded=True, title=None, html_dir=None, with_noise=True, with_coaddcam=True, sv=False, with_thumb_tab=True):
     '''
     Main prospect routine, creates a bokeh document from a set of spectra and fits
 
@@ -419,6 +421,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     html_dir : directory to store html page
     with_noise : include noise for each spectrum
     with_coaddcam : include camera-coaddition
+    with_thumb_tab : include tab with thumbnails of spectra in viewer
     sv : if True, will use SV1_DESI_TARGET instead of DESI_TARGET
     '''
 
@@ -1170,7 +1173,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         widgetbox(Spacer(height=30)),
         widgetbox(vi_guideline_div, width=plot_widget_width)
     )
-    the_bokehsetup = bk.Column(
+    main_bokehsetup = bk.Column(
         bk.Row(fig, bk.Column(imfig, zoomfig)),
         bk.Row(
             widgetbox(target_info_div, width=plot_width - 120),
@@ -1182,52 +1185,55 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             widgetbox(Spacer(width=40)),
             plot_widget_set
         )
-#                 widgetbox(smootherslider, width=plot_width//2),
-#                 widgetbox(Spacer(width=plot_width//2-120)),
-#                 widgetbox(display_options_group,width=120),
-#             ),
-#             bk.Row(
-#                 widgetbox(z_display, width=120),
-#                 widgetbox(zslider, width=plot_width//2 - 110),
-#                 widgetbox(dzslider, width=plot_width//2 - 110),
-#                 widgetbox(zreset_button, width=100)
-#             ),
-#             bk.Row(
-#                 widgetbox(waveframe_buttons, width=120),
-#                 widgetbox(lines_button_group, width=200),
-#                 widgetbox(majorline_checkbox, width=120),
-#                 widgetbox(Spacer(width=plot_width-640)),
-#                 widgetbox(coaddcam_buttons, width=200)
-#             ),
-#             bk.Row(Spacer(height=30)),
-#             bk.Row(
-#                 bk.Column(
-#                     widgetbox( Div(text="VI optional indications :"), width=300 ),
-#                     widgetbox(vi_issue_input, width=300),
-#                     widgetbox(vi_z_input, width=300),
-#                     widgetbox(vi_category_select, width=300),                    
-#                     widgetbox(vi_comment_input, width=300),
-#                     widgetbox(vi_name_input, width=120),
-#                     widgetbox(vi_filename_input, width=300),
-#                     widgetbox(save_vi_button, width=100),
-#                     bk.Row(widgetbox(recover_vi_button, width=150),
-#                         widgetbox(clear_vi_button, width=150))
-#                 ),
-#                 widgetbox(Spacer(width=50)),
-#                 widgetbox(vi_guideline_div, width=plot_width-350)
-#             ),
-#             widgetbox(vi_table)
-#            widgetbox(save_vi_button,width=100)
-            ## Don't want this in principle :
-#            bk.Row(
-#                widgetbox(show_prev_vi_select,width=100),
-#                widgetbox(vi_info_div, width=plot_width-130)
-#                )
     )
+    
+    if with_thumb_tab is False :
+        full_viewer = main_bokehsetup
+
+    else : # Prototype thumb gallery
+        full_viewer = Tabs()
+        
+        # Create thumbnail pictures :
+        # - coadd arms
+        # - smooth+resample to reduce size of embedded CDS
+        thumb_wave, thumb_flux, dummy = mycoaddcam.mycoaddcam(spectra)
+        resamp_factor = 15  # TODO : un-hardcode, place somewhere else
+        
+        thumb_plots = []
+        ncols_grid = 5
+        miniplot_width = ( plot_width + (plot_height//2) ) // ncols_grid
+        
+        for i_spec in range(nspec) :
+            # other option use CustomJSTransform ?
+            # (https://docs.bokeh.org/en/1.1.0/docs/user_guide/data.html)
+            x_vals = (thumb_wave[::resamp_factor])[resamp_factor:-resamp_factor]
+            y_vals = (( scipy.ndimage.filters.gaussian_filter1d(thumb_flux[i_spec,:], sigma=resamp_factor, mode='nearest') )[::resamp_factor])[resamp_factor:-resamp_factor]
+            y_ampl = np.max(y_vals) - np.min(y_vals)
+            y_min = np.min(y_vals) - 0.1*y_ampl
+            y_max = np.max(y_vals) + 0.1*y_ampl
+            mini_plot = bk.figure(plot_width=miniplot_width, plot_height=miniplot_width//2, x_range=(xmin,xmax), y_range=(y_min,y_max))
+            mini_plot.line(x_vals, y_vals, line_color='red')
+            mini_plot.xaxis.visible = False
+            mini_plot.yaxis.visible = False
+            mini_plot.min_border_left = 0
+            mini_plot.min_border_right = 0
+            mini_plot.min_border_top = 0
+            mini_plot.min_border_bottom = 0
+            thumb_callback = CustomJS(args=dict(ifiberslider = ifiberslider, i_spec=i_spec, full_viewer=full_viewer), code="""
+            full_viewer.active = 0
+            ifiberslider.value = i_spec
+            """)
+            mini_plot.js_on_event(bokeh.events.Tap, thumb_callback)
+            thumb_plots.append(mini_plot)
+        thumb_grid = gridplot(thumb_plots, toolbar_location=None, ncols=ncols_grid)
+        tab1 = Panel(child = main_bokehsetup, title='Main viewer')
+        tab2 = Panel(child = thumb_grid, title='Gallery')
+        full_viewer.tabs=[ tab1, tab2 ]
+    
     if notebook:
-        bk.show(the_bokehsetup)
+        bk.show(full_viewer)
     else:
-        bk.save(the_bokehsetup)
+        bk.save(full_viewer)
     
 
 #-------------------------------------------------------------------------
