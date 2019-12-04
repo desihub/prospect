@@ -1208,10 +1208,10 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             # (https://docs.bokeh.org/en/1.1.0/docs/user_guide/data.html)
             x_vals = (thumb_wave[::resamp_factor])[resamp_factor:-resamp_factor]
             y_vals = (( scipy.ndimage.filters.gaussian_filter1d(thumb_flux[i_spec,:], sigma=resamp_factor, mode='nearest') )[::resamp_factor])[resamp_factor:-resamp_factor]
-            y_ampl = np.max(y_vals) - np.min(y_vals)
-            y_min = np.min(y_vals) - 0.1*y_ampl
-            y_max = np.max(y_vals) + 0.1*y_ampl
-            mini_plot = bk.figure(plot_width=miniplot_width, plot_height=miniplot_width//2, x_range=(xmin,xmax), y_range=(y_min,y_max))
+            yampl = np.max(y_vals) - np.min(y_vals)
+            ymin = np.min(y_vals) - 0.1*yampl
+            ymax = np.max(y_vals) + 0.1*yampl
+            mini_plot = bk.figure(plot_width=miniplot_width, plot_height=miniplot_width//2, x_range=(xmin,xmax), y_range=(ymin,ymax))
             mini_plot.line(x_vals, y_vals, line_color='red')
             mini_plot.xaxis.visible = False
             mini_plot.yaxis.visible = False
@@ -1219,16 +1219,22 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             mini_plot.min_border_right = 0
             mini_plot.min_border_top = 0
             mini_plot.min_border_bottom = 0
-            thumb_callback = CustomJS(args=dict(ifiberslider = ifiberslider, i_spec=i_spec, full_viewer=full_viewer), code="""
-            full_viewer.active = 0
-            ifiberslider.value = i_spec
-            """)
-            mini_plot.js_on_event(bokeh.events.Tap, thumb_callback)
             thumb_plots.append(mini_plot)
-        thumb_grid = gridplot(thumb_plots, toolbar_location=None, ncols=ncols_grid)
+        
+        thumb_grid = gridplot(thumb_plots, ncols=ncols_grid, toolbar_location=None)        
         tab1 = Panel(child = main_bokehsetup, title='Main viewer')
         tab2 = Panel(child = thumb_grid, title='Gallery')
         full_viewer.tabs=[ tab1, tab2 ]
+        
+        # Dirty trick : callback functions on thumbs need to be defined AFTER the full_viewer is implemented
+        # Otherwise, at least one issue = no toolbar anymore for main fig. (apparently due to ifiberslider in callback args)
+        for i_spec in range(nspec) :
+            thumb_callback = CustomJS(args=dict(full_viewer=full_viewer, i_spec=i_spec, ifiberslider=ifiberslider), code="""
+            full_viewer.active = 0
+             ifiberslider.value = i_spec
+            """)
+            (thumb_grid.children[i_spec][0]).js_on_event(bokeh.events.Tap, thumb_callback)
+
     
     if notebook:
         bk.show(full_viewer)
