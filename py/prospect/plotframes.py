@@ -346,18 +346,20 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
             if 'NIGHT' in spectra.fibermap.keys() : txt += "Night : {}".format(row['NIGHT'])
             if 'EXPID' in spectra.fibermap.keys() : txt += "Exposure : {}".format(row['EXPID'])
             if 'FIBER' in spectra.fibermap.keys() : txt += "Fiber : {}".format(row['FIBER'])
-        if (row['FLUX_G'] > 0 and row['MW_TRANSMISSION_G'] > 0) :
-            gmag = -2.5*np.log10(row['FLUX_G']/row['MW_TRANSMISSION_G'])+22.5
-        else : gmag = 0
-        txt += '<BR /> Photometry (dereddened) : g<SUB>mag</SUB>={:.1f}'.format(gmag)
-        if zcatalog is not None:
-            txt += '<BR /> Fit result : {} z={:.4f} ± {:.4f}&emsp;&emsp; z<SUB>WARN</SUB>={}&emsp;&emsp; &Delta;&chi;<SUP>2</SUP>={:.1f}'.format(
-                zcatalog['SPECTYPE'][i],
-                zcatalog['Z'][i],
-                zcatalog['ZERR'][i],
-                zcatalog['ZWARN'][i],
-                zcatalog['DELTACHI2'][i]
-            )
+## BYPASS DIV
+#         if (row['FLUX_G'] > 0 and row['MW_TRANSMISSION_G'] > 0) :
+#             gmag = -2.5*np.log10(row['FLUX_G']/row['MW_TRANSMISSION_G'])+22.5
+#         else : gmag = 0
+#         txt += '<BR /> Photometry (dereddened) : g<SUB>mag</SUB>={:.1f}'.format(gmag)
+## BYPASS DIV
+#         if zcatalog is not None:
+#             txt += '<BR /> Fit result : {} z={:.4f} ± {:.4f}&emsp;&emsp; z<SUB>WARN</SUB>={}&emsp;&emsp; &Delta;&chi;<SUP>2</SUP>={:.1f}'.format(
+#                 zcatalog['SPECTYPE'][i],
+#                 zcatalog['Z'][i],
+#                 zcatalog['ZERR'][i],
+#                 zcatalog['ZWARN'][i],
+#                 zcatalog['DELTACHI2'][i]
+#             )
         target_info.append(txt)
         # TMP no vidata (will change it)
 #         if ( (vidata is not None) and (len(vidata[i])>0) ) :
@@ -373,9 +375,23 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
         name='target_info')
     cds_targetinfo.add(vi_info, name='vi_info')
     
+    ## BYPASS DIV : Added photometry fields ; also add several bands
+    bands = ['G','R','Z']
+    for bandname in bands :
+        mag = np.zeros(spectra.num_spectra())
+        flux = spectra.fibermap['FLUX_'+bandname]
+        extinction = spectra.fibermap['MW_TRANSMISSION_'+bandname]
+        w, = np.where( (flux>0) & (extinction>0) )
+        mag[w] = -2.5*np.log10(flux[w]/extinction[w])+22.5
+        cds_targetinfo.add(mag, name='mag_'+bandname)
+    
     if zcatalog is not None:
         cds_targetinfo.add(zcatalog['Z'], name='z')
         cds_targetinfo.add(zcatalog['SPECTYPE'].astype('U{0:d}'.format(zcatalog['SPECTYPE'].dtype.itemsize)), name='spectype')
+        # BYPASS DIV : Added fields
+        cds_targetinfo.add(zcatalog['ZERR'], name='zerr')
+        cds_targetinfo.add(zcatalog['ZWARN'], name='zwarn')
+        cds_targetinfo.add(zcatalog['DELTACHI2'], name='deltachi2')
 
     nspec = spectra.num_spectra()
     if not is_coadded and 'EXPID' in spectra.fibermap.keys() :
