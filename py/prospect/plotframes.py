@@ -693,7 +693,10 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     zslider = Slider(start=0.0, end=4.0, value=z1, step=0.01, title='Redshift rough tuning')
     dzslider = Slider(start=-0.01, end=0.01, value=dz, step=0.0001, title='Redshift fine-tuning')
     dzslider.format = "0[.]0000"
-    z_display = Div(text="<b>z<sub>disp</sub> = "+("{:.4f}").format(z+dz)+"</b>")
+    zdisp_cds = bk.ColumnDataSource(dict(z_disp=[ "{:.4f}".format(z+dz) ]), name='zdisp_cds')
+    zdisp_cols = [ TableColumn(field="z_disp", title="z_disp") ]
+    z_display = DataTable(source=zdisp_cds, columns=zdisp_cols, index_position=None, width=100, selectable=False)
+    #    z_display = Div(text="<b>z<sub>disp</sub> = "+("{:.4f}").format(z+dz)+"</b>") ## Using Div is slow !!
 
     #- Observer vs. Rest frame wavelengths
     waveframe_buttons = RadioButtonGroup(
@@ -708,7 +711,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             ifiberslider = ifiberslider,
             zslider=zslider,
             dzslider=dzslider,
-            z_display = z_display,
+#            z_display = z_display,
+            zdisp_cds = zdisp_cds,
             waveframe_buttons=waveframe_buttons,
             line_data=line_data, lines=lines, line_labels=line_labels,
             zlines=zoom_lines, zline_labels=zoom_line_labels,
@@ -716,7 +720,11 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             ),
         code="""
         var z = zslider.value + dzslider.value
-        z_display.text = "<b>z<sub>disp</sub> = " + z.toFixed(4) + "</b>"
+
+//        z_display.text = "<b>z<sub>disp</sub> = " + z.toFixed(4) + "</b>"
+        zdisp_cds.data['z_disp']=[ z.toFixed(4) ]
+        zdisp_cds.change.emit()
+
         var line_restwave = line_data.data['restwave']
         var ifiber = ifiberslider.value
         var zfit = 0.0
