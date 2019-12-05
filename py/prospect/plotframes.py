@@ -696,6 +696,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     zdisp_cds = bk.ColumnDataSource(dict(z_disp=[ "{:.4f}".format(z+dz) ]), name='zdisp_cds')
     zdisp_cols = [ TableColumn(field="z_disp", title="z_disp") ]
     z_display = DataTable(source=zdisp_cds, columns=zdisp_cols, index_position=None, width=100, selectable=False)
+    z_display.height = 2 * z_display.row_height
     #    z_display = Div(text="<b>z<sub>disp</sub> = "+("{:.4f}").format(z+dz)+"</b>") ## Using Div is slow !!
 
     #- Observer vs. Rest frame wavelengths
@@ -720,7 +721,6 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             ),
         code="""
         var z = zslider.value + dzslider.value
-
 //        z_display.text = "<b>z<sub>disp</sub> = " + z.toFixed(4) + "</b>"
         zdisp_cds.data['z_disp']=[ z.toFixed(4) ]
         zdisp_cds.change.emit()
@@ -731,22 +731,23 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         if(targetinfo.data['z'] != undefined) {
             zfit = targetinfo.data['z'][ifiber]
         }
+        var waveshift_lines = (waveframe_buttons.active == 0) ? 1+z : 1 ;
         for(var i=0; i<line_restwave.length; i++) {
-            var waveshift = (waveframe_buttons.active == 0) ? 1+z : 1 ;
-            lines[i].location = line_restwave[i] * waveshift ;
-            line_labels[i].x = line_restwave[i] * waveshift ;
-            zlines[i].location = line_restwave[i] * waveshift ;
-            zline_labels[i].x = line_restwave[i] * waveshift ;
+            lines[i].location = line_restwave[i] * waveshift_lines
+            line_labels[i].x = line_restwave[i] * waveshift_lines
+            zlines[i].location = line_restwave[i] * waveshift_lines
+            zline_labels[i].x = line_restwave[i] * waveshift_lines
         }
-        
         function shift_plotwave(cds_spec, waveshift) {
             var data = cds_spec.data
             var origwave = data['origwave']
             var plotwave = data['plotwave']
-            for (var j=0; j<plotwave.length; j++) {
-                plotwave[j] = origwave[j] * waveshift ;
+            if ( plotwave[0] != origwave[0] * waveshift ) { // Avoid redo calculation if not needed
+                for (var j=0; j<plotwave.length; j++) {
+                    plotwave[j] = origwave[j] * waveshift ;
+                }
+                cds_spec.change.emit()
             }
-            cds_spec.change.emit()
         }
         
         var waveshift_spec = (waveframe_buttons.active == 0) ? 1 : 1/(1+z) ;
