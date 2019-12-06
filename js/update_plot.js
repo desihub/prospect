@@ -15,7 +15,25 @@ var nsmooth = smootherslider.value
 
 if (cb_obj == ifiberslider) { // update VI widgets + infos for current spectrum
 
-    target_info_div.text = targetinfo.data['target_info'][ifiber]
+    // BYPASS DIV !!!
+    // Code can clearly be better written... todo later...
+//    target_info_div.text = targetinfo.data['target_info'][ifiber]
+    targ_disp_cds.data['TARGETING'] = [ targetinfo.data['target_info'][ifiber] ]
+    targ_disp_cds.data['mag_G'] = [ targetinfo.data['mag_G'][ifiber].toFixed(2) ]
+    targ_disp_cds.data['mag_R'] = [ targetinfo.data['mag_R'][ifiber].toFixed(2) ]
+    targ_disp_cds.data['mag_Z'] = [ targetinfo.data['mag_Z'][ifiber].toFixed(2) ]
+    targ_disp_cds.data['mag_W1'] = [ targetinfo.data['mag_W1'][ifiber].toFixed(2) ]
+    targ_disp_cds.data['mag_W2'] = [ targetinfo.data['mag_W2'][ifiber].toFixed(2) ]
+    targ_disp_cds.change.emit()
+    if(targetinfo.data['z'] != undefined) {
+        zcat_disp_cds.data['SPECTYPE'] = [ targetinfo.data['spectype'][ifiber] ]
+        zcat_disp_cds.data['Z'] = [ targetinfo.data['z'][ifiber].toFixed(4) ]
+        zcat_disp_cds.data['ZERR'] = [ targetinfo.data['zerr'][ifiber].toFixed(4) ]
+        zcat_disp_cds.data['ZWARN'] = [ targetinfo.data['zwarn'][ifiber] ]
+        zcat_disp_cds.data['DeltaChi2'] = [ targetinfo.data['deltachi2'][ifiber].toFixed(1) ]
+        zcat_disp_cds.change.emit()
+    }
+    
     vi_comment_input.value = targetinfo.data['VI_comment'][ifiber]
     vi_name_input.value = (targetinfo.data['VI_scanner'][ifiber]).trim()
     vi_class_input.active = vi_class_labels.indexOf(targetinfo.data['VI_class_flag'][ifiber]) // -1 if nothing
@@ -26,7 +44,7 @@ if (cb_obj == ifiberslider) { // update VI widgets + infos for current spectrum
         }
     }
     vi_issue_input.active = issues_on
-    vi_z_input.value = targetinfo.data['VI_z'][ifiber]
+    vi_z_input.value = (targetinfo.data['VI_z'][ifiber]).trim()
     vi_category_select.value = targetinfo.data['VI_spectype'][ifiber]
 }
 

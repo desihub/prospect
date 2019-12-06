@@ -13,16 +13,18 @@ import os, sys
 import argparse
 
 import numpy as np
+import scipy.ndimage.filters
+
 from astropy.table import Table
 import astropy.io.fits
 
 import bokeh.plotting as bk
 from bokeh.models import ColumnDataSource, CDSView, IndexFilter
-from bokeh.models import CustomJS, LabelSet, Label, Span, Legend
+from bokeh.models import CustomJS, LabelSet, Label, Span, Legend, Panel, Tabs
 from bokeh.models.widgets import (
     Slider, Button, Div, CheckboxGroup, CheckboxButtonGroup, RadioButtonGroup, 
     TextInput, Select, DataTable, TableColumn)
-from bokeh.layouts import widgetbox, Spacer
+from bokeh.layouts import widgetbox, Spacer, gridplot
 import bokeh.events
 # from bokeh.layouts import row, column
 
@@ -338,24 +340,27 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
             target_bit_names = ' '.join(desi_mask_sv1.names(row['SV1_DESI_TARGET']))
         else :
             target_bit_names = ' '.join(desi_mask.names(row['DESI_TARGET']))
-        txt = 'Target {}: {} '.format(row['TARGETID'], target_bit_names)
+        txt = 'TargetID {}: {} '.format(row['TARGETID'], target_bit_names)
         if not is_coadded :
-            txt += '<BR />'
+            ## BYPASS DIV
+            #           txt += '<BR />'
             if 'NIGHT' in spectra.fibermap.keys() : txt += "Night : {}".format(row['NIGHT'])
             if 'EXPID' in spectra.fibermap.keys() : txt += "Exposure : {}".format(row['EXPID'])
             if 'FIBER' in spectra.fibermap.keys() : txt += "Fiber : {}".format(row['FIBER'])
-        if (row['FLUX_G'] > 0 and row['MW_TRANSMISSION_G'] > 0) :
-            gmag = -2.5*np.log10(row['FLUX_G']/row['MW_TRANSMISSION_G'])+22.5
-        else : gmag = 0
-        txt += '<BR /> Photometry (dereddened) : g<SUB>mag</SUB>={:.1f}'.format(gmag)
-        if zcatalog is not None:
-            txt += '<BR /> Fit result : {} z={:.4f} ± {:.4f}&emsp;&emsp; z<SUB>WARN</SUB>={}&emsp;&emsp; &Delta;&chi;<SUP>2</SUP>={:.1f}'.format(
-                zcatalog['SPECTYPE'][i],
-                zcatalog['Z'][i],
-                zcatalog['ZERR'][i],
-                zcatalog['ZWARN'][i],
-                zcatalog['DELTACHI2'][i]
-            )
+## BYPASS DIV
+#         if (row['FLUX_G'] > 0 and row['MW_TRANSMISSION_G'] > 0) :
+#             gmag = -2.5*np.log10(row['FLUX_G']/row['MW_TRANSMISSION_G'])+22.5
+#         else : gmag = 0
+#         txt += '<BR /> Photometry (dereddened) : g<SUB>mag</SUB>={:.1f}'.format(gmag)
+## BYPASS DIV
+#         if zcatalog is not None:
+#             txt += '<BR /> Fit result : {} z={:.4f} ± {:.4f}&emsp;&emsp; z<SUB>WARN</SUB>={}&emsp;&emsp; &Delta;&chi;<SUP>2</SUP>={:.1f}'.format(
+#                 zcatalog['SPECTYPE'][i],
+#                 zcatalog['Z'][i],
+#                 zcatalog['ZERR'][i],
+#                 zcatalog['ZWARN'][i],
+#                 zcatalog['DELTACHI2'][i]
+#             )
         target_info.append(txt)
         # TMP no vidata (will change it)
 #         if ( (vidata is not None) and (len(vidata[i])>0) ) :
@@ -371,9 +376,25 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
         name='target_info')
     cds_targetinfo.add(vi_info, name='vi_info')
     
+    ## BYPASS DIV : Added photometry fields ; also add several bands
+    bands = ['G','R','Z', 'W1', 'W2']
+    for bandname in bands :
+        mag = np.zeros(spectra.num_spectra())
+        flux = spectra.fibermap['FLUX_'+bandname]
+        extinction = np.ones(len(flux))
+        if ('MW_TRANSMISSION_'+bandname) in spectra.fibermap.keys() :
+            extinction = spectra.fibermap['MW_TRANSMISSION_'+bandname]
+        w, = np.where( (flux>0) & (extinction>0) )
+        mag[w] = -2.5*np.log10(flux[w]/extinction[w])+22.5
+        cds_targetinfo.add(mag, name='mag_'+bandname)
+    
     if zcatalog is not None:
         cds_targetinfo.add(zcatalog['Z'], name='z')
         cds_targetinfo.add(zcatalog['SPECTYPE'].astype('U{0:d}'.format(zcatalog['SPECTYPE'].dtype.itemsize)), name='spectype')
+        # BYPASS DIV : Added fields
+        cds_targetinfo.add(zcatalog['ZERR'], name='zerr')
+        cds_targetinfo.add(zcatalog['ZWARN'], name='zwarn')
+        cds_targetinfo.add(zcatalog['DELTACHI2'], name='deltachi2')
 
     nspec = spectra.num_spectra()
     if not is_coadded and 'EXPID' in spectra.fibermap.keys() :
@@ -395,14 +416,11 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
     cds_targetinfo.add([" " for i in range(nspec)], name='VI_z')
     cds_targetinfo.add([" " for i in range(nspec)], name='VI_spectype')
     cds_targetinfo.add([" " for i in range(nspec)], name='VI_comment')
-
-    # spectrum nb are 1 -> N instead of 0 -> N-1 :
-    cds_targetinfo.add([i+1 for i in range(nspec)], name='i_fiber')
     
     return cds_targetinfo
 
 
-def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, is_coadded=True, title=None, html_dir=None, with_noise=True, with_coaddcam=True, sv=False):
+def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, is_coadded=True, title=None, html_dir=None, with_noise=True, with_coaddcam=True, sv=False, with_thumb_tab=True):
     '''
     Main prospect routine, creates a bokeh document from a set of spectra and fits
 
@@ -422,6 +440,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     html_dir : directory to store html page
     with_noise : include noise for each spectrum
     with_coaddcam : include camera-coaddition
+    with_thumb_tab : include tab with thumbnails of spectra in viewer
     sv : if True, will use SV1_DESI_TARGET instead of DESI_TARGET
     '''
 
@@ -625,7 +644,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     #- Ifiberslider and smoothing widgets
     # Ifiberslider's value controls which spectrum is displayed
     # These two widgets call update_plot(), later defined
-    ifiberslider = Slider(start=0, end=nspec-1, value=0, step=1, title='Spectrum')
+    slider_end = nspec-1 if nspec > 1 else 0.5 # Slider cannot have start=end
+    ifiberslider = Slider(start=0, end=slider_end, value=0, step=1, title='Spectrum')
     smootherslider = Slider(start=0, end=51, value=0, step=1.0, title='Gaussian Sigma Smooth')
 
     #-----
@@ -636,14 +656,14 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     prev_callback = CustomJS(
         args=dict(ifiberslider=ifiberslider),
         code="""
-        if(ifiberslider.value>0) {
+        if(ifiberslider.value>0 && ifiberslider.end>=1) {
             ifiberslider.value--
         }
         """)
     next_callback = CustomJS(
         args=dict(ifiberslider=ifiberslider, nspec=nspec),
         code="""
-        if(ifiberslider.value<nspec-1) {
+        if(ifiberslider.value<nspec-1 && ifiberslider.end>=1) {
             ifiberslider.value++
         }
         """)
@@ -692,7 +712,11 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     zslider = Slider(start=0.0, end=4.0, value=z1, step=0.01, title='Redshift rough tuning')
     dzslider = Slider(start=-0.01, end=0.01, value=dz, step=0.0001, title='Redshift fine-tuning')
     dzslider.format = "0[.]0000"
-    z_display = Div(text="<b>z<sub>disp</sub> = "+("{:.4f}").format(z+dz)+"</b>")
+    zdisp_cds = bk.ColumnDataSource(dict(z_disp=[ "{:.4f}".format(z+dz) ]), name='zdisp_cds')
+    zdisp_cols = [ TableColumn(field="z_disp", title="z_disp") ]
+    z_display = DataTable(source=zdisp_cds, columns=zdisp_cols, index_position=None, width=70, selectable=False)
+    z_display.height = 2 * z_display.row_height
+    #    z_display = Div(text="<b>z<sub>disp</sub> = "+("{:.4f}").format(z+dz)+"</b>") ## Using Div is slow !!
 
     #- Observer vs. Rest frame wavelengths
     waveframe_buttons = RadioButtonGroup(
@@ -707,7 +731,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             ifiberslider = ifiberslider,
             zslider=zslider,
             dzslider=dzslider,
-            z_display = z_display,
+#            z_display = z_display,
+            zdisp_cds = zdisp_cds,
             waveframe_buttons=waveframe_buttons,
             line_data=line_data, lines=lines, line_labels=line_labels,
             zlines=zoom_lines, zline_labels=zoom_line_labels,
@@ -715,29 +740,33 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             ),
         code="""
         var z = zslider.value + dzslider.value
-        z_display.text = "<b>z<sub>disp</sub> = " + z.toFixed(4) + "</b>"
+//        z_display.text = "<b>z<sub>disp</sub> = " + z.toFixed(4) + "</b>"
+        zdisp_cds.data['z_disp']=[ z.toFixed(4) ]
+        zdisp_cds.change.emit()
+
         var line_restwave = line_data.data['restwave']
         var ifiber = ifiberslider.value
         var zfit = 0.0
         if(targetinfo.data['z'] != undefined) {
             zfit = targetinfo.data['z'][ifiber]
         }
+        var waveshift_lines = (waveframe_buttons.active == 0) ? 1+z : 1 ;
         for(var i=0; i<line_restwave.length; i++) {
-            var waveshift = (waveframe_buttons.active == 0) ? 1+z : 1 ;
-            lines[i].location = line_restwave[i] * waveshift ;
-            line_labels[i].x = line_restwave[i] * waveshift ;
-            zlines[i].location = line_restwave[i] * waveshift ;
-            zline_labels[i].x = line_restwave[i] * waveshift ;
+            lines[i].location = line_restwave[i] * waveshift_lines
+            line_labels[i].x = line_restwave[i] * waveshift_lines
+            zlines[i].location = line_restwave[i] * waveshift_lines
+            zline_labels[i].x = line_restwave[i] * waveshift_lines
         }
-        
         function shift_plotwave(cds_spec, waveshift) {
             var data = cds_spec.data
             var origwave = data['origwave']
             var plotwave = data['plotwave']
-            for (var j=0; j<plotwave.length; j++) {
-                plotwave[j] = origwave[j] * waveshift ;
+            if ( plotwave[0] != origwave[0] * waveshift ) { // Avoid redo calculation if not needed
+                for (var j=0; j<plotwave.length; j++) {
+                    plotwave[j] = origwave[j] * waveshift ;
+                }
+                cds_spec.change.emit()
             }
-            cds_spec.change.emit()
         }
         
         var waveshift_spec = (waveframe_buttons.active == 0) ? 1 : 1/(1+z) ;
@@ -858,7 +887,28 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
 
     #-----
     # Display object-related informations
-    target_info_div = Div(text=cds_targetinfo.data['target_info'][0])
+    ## BYPASS DIV
+#    target_info_div = Div(text=cds_targetinfo.data['target_info'][0])
+    tmp_dict = dict()
+    tmp_dict['TARGETING'] = [ cds_targetinfo.data['target_info'][0] ]
+    targ_disp_cols = [ TableColumn(field='TARGETING', title='TARGETING', width=plot_width-120-50-5*50) ] # TODO non-hardcode width
+    for band in ['G', 'R', 'Z', 'W1', 'W2'] :
+        tmp_dict['mag_'+band] = [ "{:.2f}".format(cds_targetinfo.data['mag_'+band][0]) ]
+        targ_disp_cols.append( TableColumn(field='mag_'+band, title='mag_'+band, width=50) )
+    targ_disp_cds = bk.ColumnDataSource(tmp_dict, name='targ_disp_cds')
+    targ_display = DataTable(source = targ_disp_cds, columns=targ_disp_cols,index_position=None, selectable=False) # width=...
+    targ_display.height = 2 * targ_display.row_height
+    if zcatalog is not None :
+        tmp_dict = dict(SPECTYPE = [ cds_targetinfo.data['spectype'][0] ],
+                        Z = [ "{:.4f}".format(cds_targetinfo.data['z'][0]) ],
+                        ZERR = [ "{:.4f}".format(cds_targetinfo.data['zerr'][0]) ],
+                        ZWARN = [ cds_targetinfo.data['zwarn'][0] ],
+                        DeltaChi2 = [ "{:.1f}".format(cds_targetinfo.data['deltachi2'][0]) ])
+        zcat_disp_cds = bk.ColumnDataSource(tmp_dict, name='zcat_disp_cds')
+        zcat_disp_cols = [ TableColumn(field=x, title=x, width=w) for x,w in [ ('SPECTYPE',100), ('Z',50) , ('ZERR',50), ('ZWARN',50), ('DeltaChi2',50) ] ]
+        zcat_display = DataTable(source=zcat_disp_cds, columns=zcat_disp_cols, index_position=None, selectable=False, width=400) # width=...
+        zcat_display.height = 2 * zcat_display.row_height
+
     vi_info_div = Div(text=" ") # consistent with show_prev_vi="No" by default
 
     #-----
@@ -1069,14 +1119,13 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
 
     #- Show VI in a table
     vi_table_columns = [
-        TableColumn(field="i_fiber", title="#", width=10),
         TableColumn(field="VI_class_flag", title="Flag", width=40),
         TableColumn(field="VI_issue_flag", title="Opt.", width=50),
         TableColumn(field="VI_z", title="VI z", width=50),
         TableColumn(field="VI_spectype", title="VI spectype", width=150),
         TableColumn(field="VI_comment", title="VI comment", width=200)
     ]
-    vi_table = DataTable(source=cds_targetinfo, columns=vi_table_columns, index_position=None, width=500)
+    vi_table = DataTable(source=cds_targetinfo, columns=vi_table_columns, width=500)
     vi_table.height = 10 * vi_table.row_height
     
 #     # Choose to show or not previous VI
@@ -1100,7 +1149,10 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             coaddcam_spec = cds_coaddcam_spec,
             model = cds_model,
             targetinfo = cds_targetinfo,
-            target_info_div = target_info_div,
+#            target_info_div = target_info_div,
+## BYPASS DIV
+            zcat_disp_cds = zcat_disp_cds,
+            targ_disp_cds = targ_disp_cds,
  #           vi_info_div = vi_info_div,
  #           show_prev_vi_select = show_prev_vi_select,
             ifiberslider = ifiberslider,
@@ -1158,25 +1210,31 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     )
     plot_widget_width = (plot_width+(plot_height//2))//2 - 40
     plot_widget_set = bk.Column(
+        widgetbox( Div(text="Pipeline fit : ") ),
+        widgetbox(zcat_display, width=plot_widget_width),
+        bk.Row(
+            widgetbox(zslider, width=plot_width//2 - 110),
+            widgetbox(z_display, width=120)
+        ),
+        bk.Row(
+            widgetbox(dzslider, width=plot_width//2 - 110),
+            widgetbox(zreset_button, width=100)
+        ),
         widgetbox(smootherslider, width=plot_widget_width),
         widgetbox(display_options_group,width=120),
         widgetbox(coaddcam_buttons, width=200),
-        widgetbox(zslider, width=plot_width//2 - 110),
-        widgetbox(dzslider, width=plot_width//2 - 110),
-        bk.Row(
-            widgetbox(z_display, width=120),
-            widgetbox(zreset_button, width=100)
-        ),
         widgetbox(waveframe_buttons, width=120),
         widgetbox(lines_button_group, width=200),
         widgetbox(majorline_checkbox, width=120),
         widgetbox(Spacer(height=30)),
         widgetbox(vi_guideline_div, width=plot_widget_width)
     )
-    the_bokehsetup = bk.Column(
+    main_bokehsetup = bk.Column(
         bk.Row(fig, bk.Column(imfig, zoomfig)),
         bk.Row(
-            widgetbox(target_info_div, width=plot_width - 120),
+## BYPASS DIV
+#            widgetbox(target_info_div, width=plot_width - 120),
+            widgetbox(targ_display, width=plot_width - 120),
             widgetbox(reset_plotrange_button, width = 120)
         ),
         navigator,
@@ -1185,52 +1243,61 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             widgetbox(Spacer(width=40)),
             plot_widget_set
         )
-#                 widgetbox(smootherslider, width=plot_width//2),
-#                 widgetbox(Spacer(width=plot_width//2-120)),
-#                 widgetbox(display_options_group,width=120),
-#             ),
-#             bk.Row(
-#                 widgetbox(z_display, width=120),
-#                 widgetbox(zslider, width=plot_width//2 - 110),
-#                 widgetbox(dzslider, width=plot_width//2 - 110),
-#                 widgetbox(zreset_button, width=100)
-#             ),
-#             bk.Row(
-#                 widgetbox(waveframe_buttons, width=120),
-#                 widgetbox(lines_button_group, width=200),
-#                 widgetbox(majorline_checkbox, width=120),
-#                 widgetbox(Spacer(width=plot_width-640)),
-#                 widgetbox(coaddcam_buttons, width=200)
-#             ),
-#             bk.Row(Spacer(height=30)),
-#             bk.Row(
-#                 bk.Column(
-#                     widgetbox( Div(text="VI optional indications :"), width=300 ),
-#                     widgetbox(vi_issue_input, width=300),
-#                     widgetbox(vi_z_input, width=300),
-#                     widgetbox(vi_category_select, width=300),                    
-#                     widgetbox(vi_comment_input, width=300),
-#                     widgetbox(vi_name_input, width=120),
-#                     widgetbox(vi_filename_input, width=300),
-#                     widgetbox(save_vi_button, width=100),
-#                     bk.Row(widgetbox(recover_vi_button, width=150),
-#                         widgetbox(clear_vi_button, width=150))
-#                 ),
-#                 widgetbox(Spacer(width=50)),
-#                 widgetbox(vi_guideline_div, width=plot_width-350)
-#             ),
-#             widgetbox(vi_table)
-#            widgetbox(save_vi_button,width=100)
-            ## Don't want this in principle :
-#            bk.Row(
-#                widgetbox(show_prev_vi_select,width=100),
-#                widgetbox(vi_info_div, width=plot_width-130)
-#                )
     )
+    
+    if with_thumb_tab is False :
+        full_viewer = main_bokehsetup
+
+    else : # Prototype thumb gallery
+        full_viewer = Tabs()
+        
+        # Create thumbnail pictures :
+        # - coadd arms
+        # - smooth+resample to reduce size of embedded CDS
+        thumb_wave, thumb_flux, dummy = mycoaddcam.mycoaddcam(spectra)
+        resamp_factor = 15  # TODO : un-hardcode, place somewhere else
+        
+        thumb_plots = []
+        ncols_grid = 5
+        miniplot_width = ( plot_width + (plot_height//2) ) // ncols_grid
+        
+        for i_spec in range(nspec) :
+            # other option use CustomJSTransform ?
+            # (https://docs.bokeh.org/en/1.1.0/docs/user_guide/data.html)
+            x_vals = (thumb_wave[::resamp_factor])[resamp_factor:-resamp_factor]
+            y_vals = (( scipy.ndimage.filters.gaussian_filter1d(thumb_flux[i_spec,:], sigma=resamp_factor, mode='nearest') )[::resamp_factor])[resamp_factor:-resamp_factor]
+            yampl = np.max(y_vals) - np.min(y_vals)
+            ymin = np.min(y_vals) - 0.1*yampl
+            ymax = np.max(y_vals) + 0.1*yampl
+            mini_plot = bk.figure(plot_width=miniplot_width, plot_height=miniplot_width//2, x_range=(xmin,xmax), y_range=(ymin,ymax))
+            mini_plot.line(x_vals, y_vals, line_color='red')
+            mini_plot.xaxis.visible = False
+            mini_plot.yaxis.visible = False
+            mini_plot.min_border_left = 0
+            mini_plot.min_border_right = 0
+            mini_plot.min_border_top = 0
+            mini_plot.min_border_bottom = 0
+            thumb_plots.append(mini_plot)
+        
+        thumb_grid = gridplot(thumb_plots, ncols=ncols_grid, toolbar_location=None)        
+        tab1 = Panel(child = main_bokehsetup, title='Main viewer')
+        tab2 = Panel(child = thumb_grid, title='Gallery')
+        full_viewer.tabs=[ tab1, tab2 ]
+        
+        # Dirty trick : callback functions on thumbs need to be defined AFTER the full_viewer is implemented
+        # Otherwise, at least one issue = no toolbar anymore for main fig. (apparently due to ifiberslider in callback args)
+        for i_spec in range(nspec) :
+            thumb_callback = CustomJS(args=dict(full_viewer=full_viewer, i_spec=i_spec, ifiberslider=ifiberslider), code="""
+            full_viewer.active = 0
+             ifiberslider.value = i_spec
+            """)
+            (thumb_grid.children[i_spec][0]).js_on_event(bokeh.events.Tap, thumb_callback)
+
+    
     if notebook:
-        bk.show(the_bokehsetup)
+        bk.show(full_viewer)
     else:
-        bk.save(the_bokehsetup)
+        bk.save(full_viewer)
     
 
 #-------------------------------------------------------------------------
