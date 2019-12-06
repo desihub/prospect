@@ -884,7 +884,31 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
 
     #-----
     # Display object-related informations
-    target_info_div = Div(text=cds_targetinfo.data['target_info'][0])
+    ## BYPASS DIV
+#    target_info_div = Div(text=cds_targetinfo.data['target_info'][0])
+    ## First try : make 3 DataTables; maybe we can do only 1 or 2... we'll see...
+    targ_disp_cds = bk.ColumnDataSource(dict(TARGET=[ cds_targetinfo.data['target_info'][0] ]), name='targ_disp_cds')
+    targ_disp_cols = [ TableColumn(field='TARGET', title='TARGET') ]
+    targ_display = DataTable(source = targ_disp_cds, columns=targ_disp_cols,index_position=None, selectable=False) # width=...
+    targ_display.height = 2 * targ_display.row_height
+    if zcatalog is not None :
+        tmp_dict = dict(SPECTYPE = [ cds_targetinfo.data['spectype'][0] ],
+                        Z = [ cds_targetinfo.data['z'][0] ],
+                        ZERR = [ cds_targetinfo.data['zerr'][0] ],
+                        ZWARN = [ cds_targetinfo.data['zwarn'][0] ],
+                        DeltaChi2 = [ cds_targetinfo.data['deltachi2'][0] ])
+        zcat_disp_cds = bk.ColumnDataSource(tmp_dict, name='zcat_disp_cds')
+        zcat_disp_cols = [ TableColumn(field=x, title=x) for x in ['Z', 'ZERR', 'ZWARN', 'DeltaChi2'] ]
+        zcat_display = DataTable(source=zcat_disp_cds, columns=zcat_disp_cols, index_position=None, selectable=False) # width=...
+        zcat_display.height = 2 * zcat_display.row_height
+    tmp_dict = dict()
+    for band in ['G', 'R', 'Z'] :
+        tmp_dict['mag_'+band] = [ cds_targetinfo.data['mag_'+band][0] ]
+    photo_disp_cds = bk.ColumnDataSource(tmp_dict, name='photo_disp_cds')
+    photo_disp_cols = [ TableColumn(field='mag_'+x, title='mag_'+x) for x in ['G', 'R', 'Z'] ]
+    photo_display = DataTable(source = photo_disp_cds, columns=photo_disp_cols,  index_position=None, selectable=False) # width=...)
+    photo_display.height = 2 * photo_display.row_height
+
     vi_info_div = Div(text=" ") # consistent with show_prev_vi="No" by default
 
     #-----
@@ -1125,7 +1149,11 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             coaddcam_spec = cds_coaddcam_spec,
             model = cds_model,
             targetinfo = cds_targetinfo,
-            target_info_div = target_info_div,
+#            target_info_div = target_info_div,
+## BYPASS DIV
+            zcat_disp_cds = zcat_disp_cds,
+            targ_disp_cds = targ_disp_cds,
+            photo_disp_cds = photo_disp_cds,
  #           vi_info_div = vi_info_div,
  #           show_prev_vi_select = show_prev_vi_select,
             ifiberslider = ifiberslider,
@@ -1201,7 +1229,13 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     main_bokehsetup = bk.Column(
         bk.Row(fig, bk.Column(imfig, zoomfig)),
         bk.Row(
-            widgetbox(target_info_div, width=plot_width - 120),
+## BYPASS DIV
+#            widgetbox(target_info_div, width=plot_width - 120),
+            bk.Column(
+                widgetbox(targ_display, width=plot_width - 120),
+                widgetbox(zcat_display),
+                widgetbox(photo_display)
+            ),
             widgetbox(reset_plotrange_button, width = 120)
         ),
         navigator,
