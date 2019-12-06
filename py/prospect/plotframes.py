@@ -340,9 +340,10 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
             target_bit_names = ' '.join(desi_mask_sv1.names(row['SV1_DESI_TARGET']))
         else :
             target_bit_names = ' '.join(desi_mask.names(row['DESI_TARGET']))
-        txt = 'Target {}: {} '.format(row['TARGETID'], target_bit_names)
+        txt = 'TargetID {}: {} '.format(row['TARGETID'], target_bit_names)
         if not is_coadded :
-            txt += '<BR />'
+            ## BYPASS DIV
+            #           txt += '<BR />'
             if 'NIGHT' in spectra.fibermap.keys() : txt += "Night : {}".format(row['NIGHT'])
             if 'EXPID' in spectra.fibermap.keys() : txt += "Exposure : {}".format(row['EXPID'])
             if 'FIBER' in spectra.fibermap.keys() : txt += "Fiber : {}".format(row['FIBER'])
@@ -711,7 +712,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     dzslider.format = "0[.]0000"
     zdisp_cds = bk.ColumnDataSource(dict(z_disp=[ "{:.4f}".format(z+dz) ]), name='zdisp_cds')
     zdisp_cols = [ TableColumn(field="z_disp", title="z_disp") ]
-    z_display = DataTable(source=zdisp_cds, columns=zdisp_cols, index_position=None, width=100, selectable=False)
+    z_display = DataTable(source=zdisp_cds, columns=zdisp_cols, index_position=None, width=70, selectable=False)
     z_display.height = 2 * z_display.row_height
     #    z_display = Div(text="<b>z<sub>disp</sub> = "+("{:.4f}").format(z+dz)+"</b>") ## Using Div is slow !!
 
@@ -886,28 +887,25 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     # Display object-related informations
     ## BYPASS DIV
 #    target_info_div = Div(text=cds_targetinfo.data['target_info'][0])
-    ## First try : make 3 DataTables; maybe we can do only 1 or 2... we'll see...
-    targ_disp_cds = bk.ColumnDataSource(dict(TARGET=[ cds_targetinfo.data['target_info'][0] ]), name='targ_disp_cds')
-    targ_disp_cols = [ TableColumn(field='TARGET', title='TARGET') ]
+    tmp_dict = dict()
+    tmp_dict['TARGETING'] = [ cds_targetinfo.data['target_info'][0] ]
+    targ_disp_cols = [ TableColumn(field='TARGETING', title='TARGETING', width=plot_width-120-50-3*50) ] # TODO non-hardcode width
+    for band in ['G', 'R', 'Z'] :
+        tmp_dict['mag_'+band] = [ "{:.2f}".format(cds_targetinfo.data['mag_'+band][0]) ]
+        targ_disp_cols.append( TableColumn(field='mag_'+band, title='mag_'+band, width=50) )
+    targ_disp_cds = bk.ColumnDataSource(tmp_dict, name='targ_disp_cds')
     targ_display = DataTable(source = targ_disp_cds, columns=targ_disp_cols,index_position=None, selectable=False) # width=...
     targ_display.height = 2 * targ_display.row_height
     if zcatalog is not None :
         tmp_dict = dict(SPECTYPE = [ cds_targetinfo.data['spectype'][0] ],
-                        Z = [ cds_targetinfo.data['z'][0] ],
-                        ZERR = [ cds_targetinfo.data['zerr'][0] ],
+                        Z = [ "{:.4f}".format(cds_targetinfo.data['z'][0]) ],
+                        ZERR = [ "{:.4f}".format(cds_targetinfo.data['zerr'][0]) ],
                         ZWARN = [ cds_targetinfo.data['zwarn'][0] ],
-                        DeltaChi2 = [ cds_targetinfo.data['deltachi2'][0] ])
+                        DeltaChi2 = [ "{:.1f}".format(cds_targetinfo.data['deltachi2'][0]) ])
         zcat_disp_cds = bk.ColumnDataSource(tmp_dict, name='zcat_disp_cds')
-        zcat_disp_cols = [ TableColumn(field=x, title=x) for x in ['Z', 'ZERR', 'ZWARN', 'DeltaChi2'] ]
-        zcat_display = DataTable(source=zcat_disp_cds, columns=zcat_disp_cols, index_position=None, selectable=False) # width=...
+        zcat_disp_cols = [ TableColumn(field=x, title=x, width=w) for x,w in [ ('SPECTYPE',100), ('Z',50) , ('ZERR',50), ('ZWARN',50), ('DeltaChi2',50) ] ]
+        zcat_display = DataTable(source=zcat_disp_cds, columns=zcat_disp_cols, index_position=None, selectable=False, width=400) # width=...
         zcat_display.height = 2 * zcat_display.row_height
-    tmp_dict = dict()
-    for band in ['G', 'R', 'Z'] :
-        tmp_dict['mag_'+band] = [ cds_targetinfo.data['mag_'+band][0] ]
-    photo_disp_cds = bk.ColumnDataSource(tmp_dict, name='photo_disp_cds')
-    photo_disp_cols = [ TableColumn(field='mag_'+x, title='mag_'+x) for x in ['G', 'R', 'Z'] ]
-    photo_display = DataTable(source = photo_disp_cds, columns=photo_disp_cols,  index_position=None, selectable=False) # width=...)
-    photo_display.height = 2 * photo_display.row_height
 
     vi_info_div = Div(text=" ") # consistent with show_prev_vi="No" by default
 
@@ -1153,7 +1151,6 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
 ## BYPASS DIV
             zcat_disp_cds = zcat_disp_cds,
             targ_disp_cds = targ_disp_cds,
-            photo_disp_cds = photo_disp_cds,
  #           vi_info_div = vi_info_div,
  #           show_prev_vi_select = show_prev_vi_select,
             ifiberslider = ifiberslider,
@@ -1211,15 +1208,19 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     )
     plot_widget_width = (plot_width+(plot_height//2))//2 - 40
     plot_widget_set = bk.Column(
+        widgetbox( Div(text="Pipeline fit : ") ),
+        widgetbox(zcat_display, width=plot_widget_width),
+        bk.Row(
+            widgetbox(zslider, width=plot_width//2 - 110),
+            widgetbox(z_display, width=120)
+        ),
+        bk.Row(
+            widgetbox(dzslider, width=plot_width//2 - 110),
+            widgetbox(zreset_button, width=100)
+        ),
         widgetbox(smootherslider, width=plot_widget_width),
         widgetbox(display_options_group,width=120),
         widgetbox(coaddcam_buttons, width=200),
-        widgetbox(zslider, width=plot_width//2 - 110),
-        widgetbox(dzslider, width=plot_width//2 - 110),
-        bk.Row(
-            widgetbox(z_display, width=120),
-            widgetbox(zreset_button, width=100)
-        ),
         widgetbox(waveframe_buttons, width=120),
         widgetbox(lines_button_group, width=200),
         widgetbox(majorline_checkbox, width=120),
@@ -1231,11 +1232,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         bk.Row(
 ## BYPASS DIV
 #            widgetbox(target_info_div, width=plot_width - 120),
-            bk.Column(
-                widgetbox(targ_display, width=plot_width - 120),
-                widgetbox(zcat_display),
-                widgetbox(photo_display)
-            ),
+            widgetbox(Spacer(width=20)),
+            widgetbox(targ_display, width=plot_width - 120),
             widgetbox(reset_plotrange_button, width = 120)
         ),
         navigator,
