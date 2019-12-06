@@ -14,7 +14,7 @@
 
 <ul>
 {% for subset in subsets %}
-<li><a href="specviewer_{{ target }}_{{ pixel }}_{{ subset }}.html"> View subset {{ subset }}</a></li>
+<li><a href="{{ basename }}_{{ subset }}.html"> View subset {{ subset }}</a></li>
 {% endfor %}
 </ul>
 

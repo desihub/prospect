@@ -31,19 +31,23 @@ def prepare_subdir(subdir, entry, template_index, template_vignette, target=None
     
     pattern = entry
     if target is not None :
-        pattern = target+"_"+entry
+        pattern = target+"*"+entry
     
     spec_pages = glob.glob( subdir+"/specviewer_"+pattern+"_*.html" )
-    subsets = [ x[len(subdir+"/specviewer_"+pattern)+1:-5] for x in spec_pages ]
-    subsets.sort(key=int)
+#     subsets = [ x[len(subdir+"/specviewer_"+pattern)+1:-5] for x in spec_pages ]
+#     subsets.sort(key=int)
+    subsets = [str(x+1) for x in range(len(spec_pages))]
     img_list = glob.glob( subdir+"/vignettes/*.png" )
+    pp = [x for x in spec_pages if "_1.html" in x]
+    pp=pp[0]
+    basename = pp[len(subdir)+1:-7]
     nspec = len(img_list)
     if target is None and do_expo==False :
         pagetext = template_index.render(pixel=entry, subsets=subsets, nspec=nspec)
     elif target is None and do_expo==True :
         pagetext = template_index.render(expo=entry, subsets=subsets, nspec=nspec)
     else :
-        pagetext = template_index.render(pixel=entry, subsets=subsets, nspec=nspec, target=target, info=info)
+        pagetext = template_index.render(pixel=entry, subsets=subsets, nspec=nspec, target=target, info=info, basename=basename)
 
     with open( os.path.join(subdir,"index_"+entry+".html"), "w") as fh:
         fh.write(pagetext)
