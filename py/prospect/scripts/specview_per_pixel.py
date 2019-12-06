@@ -146,6 +146,12 @@ def main(args) :
             # vifile = os.environ['HOME']+"/prospect/vilist_prototype.fits"
             # vidata = utils_specviewer.match_vi_targets(vifile, thespec.fibermap["TARGETID"])
             titlepage = "pix"+pixel+"_"+str(i_page)
+            if args.gcut is not None :
+                titlepage = "gcut-"+str(args.gcut[0])+"-"+str(args.gcut[1])+"_"+titlepage
+            if args.rcut is not None :
+                titlepage = "rcut-"+str(args.rcut[0])+"-"+str(args.rcut[1])+"_"+titlepage
+            if args.chi2cut is not None :
+                titlepage = "chi2cut-"+str(args.chi2cut[0])+"-"+str(args.chi2cut[1])+"_"+titlepage
             if args.mask is not None :
                 titlepage = args.mask+"_"+titlepage
             model = plotframes.create_model(thespec, thezb)

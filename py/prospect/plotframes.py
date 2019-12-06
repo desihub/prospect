@@ -377,11 +377,13 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
     cds_targetinfo.add(vi_info, name='vi_info')
     
     ## BYPASS DIV : Added photometry fields ; also add several bands
-    bands = ['G','R','Z']
+    bands = ['G','R','Z', 'W1', 'W2']
     for bandname in bands :
         mag = np.zeros(spectra.num_spectra())
         flux = spectra.fibermap['FLUX_'+bandname]
-        extinction = spectra.fibermap['MW_TRANSMISSION_'+bandname]
+        extinction = np.ones(len(flux))
+        if ('MW_TRANSMISSION_'+bandname) in spectra.fibermap.keys() :
+            extinction = spectra.fibermap['MW_TRANSMISSION_'+bandname]
         w, = np.where( (flux>0) & (extinction>0) )
         mag[w] = -2.5*np.log10(flux[w]/extinction[w])+22.5
         cds_targetinfo.add(mag, name='mag_'+bandname)
@@ -889,8 +891,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
 #    target_info_div = Div(text=cds_targetinfo.data['target_info'][0])
     tmp_dict = dict()
     tmp_dict['TARGETING'] = [ cds_targetinfo.data['target_info'][0] ]
-    targ_disp_cols = [ TableColumn(field='TARGETING', title='TARGETING', width=plot_width-120-50-3*50) ] # TODO non-hardcode width
-    for band in ['G', 'R', 'Z'] :
+    targ_disp_cols = [ TableColumn(field='TARGETING', title='TARGETING', width=plot_width-120-50-5*50) ] # TODO non-hardcode width
+    for band in ['G', 'R', 'Z', 'W1', 'W2'] :
         tmp_dict['mag_'+band] = [ "{:.2f}".format(cds_targetinfo.data['mag_'+band][0]) ]
         targ_disp_cols.append( TableColumn(field='mag_'+band, title='mag_'+band, width=50) )
     targ_disp_cds = bk.ColumnDataSource(tmp_dict, name='targ_disp_cds')
@@ -1232,7 +1234,6 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         bk.Row(
 ## BYPASS DIV
 #            widgetbox(target_info_div, width=plot_width - 120),
-            widgetbox(Spacer(width=20)),
             widgetbox(targ_display, width=plot_width - 120),
             widgetbox(reset_plotrange_button, width = 120)
         ),

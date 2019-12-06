@@ -42,6 +42,29 @@
   <p> Not available
 {% endif %}
 
+<h3> Green circle BGS (r smaller than 19.5)  </h3>
+{% if bgsg_pix is not none %}
+  <ul>
+  {% for pix in bgsg_pix %}
+  <li><a href="bgs_greencircle/{{ pix }}/index_{{ pix }}.html">{{ pix }}</a></li>
+  {% endfor %}
+  </ul>
+{% else %}
+  <p> Not available
+{% endif %}
+
+<h3> Blue square BGS (r larger than 19.5)  </h3>
+{% if bgsb_pix is not none %}
+  <ul>
+  {% for pix in bgsb_pix %}
+  <li><a href="bgs_bluesquare/{{ pix }}/index_{{ pix }}.html">{{ pix }}</a></li>
+  {% endfor %}
+  </ul>
+{% else %}
+  <p> Not available
+{% endif %}      
+
+
 <h3> ELG targets </h3>
 {% if elg_pixels is not none %}
   <ul>

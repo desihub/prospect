@@ -105,8 +105,9 @@ def main(args) :
 #                 "LRG" : "lrg_targets",
 #                 "QSO" : "qso_targets",
 #                 "MWS_ANY" : "mws_targets"}
-        target_list = [ ["BGS_ANY", "bgs", "All BGS targets"], ## for v2, still tmp
-                        ["MWS_ANY", "mws", "All MWS targets"],
+        target_list = [ ["MWS_ANY", "mws", "All MWS targets"], ## for v2, still tmp
+                        ["BGS_ANY", "bgs_bluesquare", "Blue square BGS : r>19.5"],
+                        ["BGS_ANY", "bgs_greencircle", "Green circle BGS : r<19.5"],
                         ["LRG", "lrg", "All LRG targets"],
                         ["ELG", "elg_bluesquare", "Blue square ELGs : DeltaChi2 in [40 - 100]"],
                         ["ELG", "elg_greencircle", "Green circle ELGs : DeltaChi2>100"],
@@ -124,11 +125,12 @@ def main(args) :
                 log.info("Subdirectory done : "+pix)
         target_pixels['ELG']=None
         target_pixels['QSO']=None
+        target_pixels['BGS_ANY']=None
     else : target_pixels={'BGS_ANY':None,'ELG':None,'LRG':None,'QSO':None,'MWS_ANY':None}
 
     # Main index # TODO improve template handling target-based pages
-    pagetext = template_index.render(pixels=pixels, exposures=exposures, bgs_pixels=target_pixels['bgs'], 
-            elg_pixels=target_pixels['ELG'], lrg_pixels=target_pixels['lrg'], qso_pixels=target_pixels['QSO'], qsob_pix=target_pixels['qso_bluesquare'], qsog_pix=target_pixels['qso_greencircle'], elgg_pix=target_pixels['elg_greencircle'], elgb_pix=target_pixels['elg_bluesquare'], elgbb_pix=target_pixels['elg_blackdiamond'],
+    pagetext = template_index.render(pixels=pixels, exposures=exposures, bgs_pixels=target_pixels['BGS_ANY'], 
+            elg_pixels=target_pixels['ELG'], lrg_pixels=target_pixels['lrg'], qso_pixels=target_pixels['QSO'], qsob_pix=target_pixels['qso_bluesquare'], qsog_pix=target_pixels['qso_greencircle'], elgg_pix=target_pixels['elg_greencircle'], elgb_pix=target_pixels['elg_bluesquare'], elgbb_pix=target_pixels['elg_blackdiamond'],bgsb_pix=target_pixels['bgs_bluesquare'], bgsg_pix=target_pixels['bgs_greencircle'], 
             mws_pixels=target_pixels['mws']) 
     indexfile = os.path.join(webdir,"index.html")
     with open(indexfile, "w") as fh:
