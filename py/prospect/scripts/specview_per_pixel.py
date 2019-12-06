@@ -30,6 +30,7 @@ def parse() :
     parser.add_argument('--pixel_list', help='ASCII file providing list of pixels', type=str, default=None)
     parser.add_argument('--mask', help='Select only objects with a given DESI target mask', type=str, default=None)
     parser.add_argument('--gcut', help='Select only objects in a given [dereddened] g-mag range (eg --gcut 22 22.5)', nargs='+', type=float, default=None)
+    parser.add_argument('--rcut', help='Select only objects in a given [dereddened] r-mag range (eg --rcut 18 19.5)', nargs='+', type=float, default=None)
     parser.add_argument('--chi2cut', help='Select only objects with Delta_chi2 (from pipeline fit) in a given range (eg --chi2cut 40 100)', nargs='+', type=float, default=None)
     parser.add_argument('--nspecperfile', help='Number of spectra in each html page', type=int, default=50)
     parser.add_argument('--webdir', help='Base directory for webpages', type=str, default=None)
@@ -100,6 +101,18 @@ def main(args) :
             w, = np.where( (gmag>args.gcut[0]) & (gmag<args.gcut[1]) )
             if len(w) == 0 :
                 log.info(" * No target in this pixel with g_mag in requested range")
+                continue
+            else :
+                targetids = spectra.fibermap['TARGETID'][w]
+                spectra = spectra.select(targets=targetids)
+        if args.rcut is not None :
+            assert len(args.rcut)==2 # Require range [rmin, rmax]
+            rmag = np.zeros(spectra.num_spectra())
+            w, = np.where( (spectra.fibermap['FLUX_R']>0) & (spectra.fibermap['MW_TRANSMISSION_R']>0) )
+            rmag[w] = -2.5*np.log10(spectra.fibermap['FLUX_R'][w]/spectra.fibermap['MW_TRANSMISSION_R'][w])+22.5
+            w, = np.where( (rmag>args.rcut[0]) & (rmag<args.rcut[1]) )
+            if len(w) == 0 :
+                log.info(" * No target in this pixel with r_mag in requested range")
                 continue
             else :
                 targetids = spectra.fibermap['TARGETID'][w]
