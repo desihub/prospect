@@ -526,8 +526,9 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     plot_width=800
     plot_height=400
     tools = 'pan,box_zoom,wheel_zoom,save'
+    tooltips_fig = [("wave","$x"),("flux","$y")]
     fig = bk.figure(height=plot_height, width=plot_width, title=title,
-        tools=tools, toolbar_location='above', y_range=(ymin, ymax), x_range=(xmin, xmax))
+        tools=tools, toolbar_location='above', tooltips=tooltips_fig, y_range=(ymin, ymax), x_range=(xmin, xmax))
     fig.toolbar.active_drag = fig.tools[0]    #- pan zoom (previously box)
     fig.toolbar.active_scroll = fig.tools[2]  #- wheel zoom
     fig.xaxis.axis_label = 'Wavelength [Å]'
