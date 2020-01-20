@@ -420,7 +420,7 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
     return cds_targetinfo
 
 
-def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, is_coadded=True, title=None, html_dir=None, with_noise=True, with_coaddcam=True, sv=False, with_thumb_tab=True):
+def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, sv=False, with_thumb_tab=True):
     '''
     Main prospect routine, creates a bokeh document from a set of spectra and fits
 
@@ -438,6 +438,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     is_coadded : set to True if spectra are coadds
     title : title used to produce html page / name bokeh figure / save VI file
     html_dir : directory to store html page
+    with_imaging : include thumb image from legacysurvey.org
     with_noise : include noise for each spectrum
     with_coaddcam : include camera-coaddition
     with_thumb_tab : include tab with thumbnails of spectra in viewer
@@ -610,23 +611,27 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
 
     #-----
     #- Targeting image
-    imfig = bk.figure(width=plot_height//2, height=plot_height//2,
-                      x_range=(0, 256), y_range=(0, 256),
-                      x_axis_location=None, y_axis_location=None,
-                      output_backend="webgl",
-                      toolbar_location=None, tools=[])
-    imfig.min_border_left = 0
-    imfig.min_border_right = 0
-    imfig.min_border_top = 0
-    imfig.min_border_bottom = 0
+    if with_imaging :
+        imfig = bk.figure(width=plot_height//2, height=plot_height//2,
+                          x_range=(0, 256), y_range=(0, 256),
+                          x_axis_location=None, y_axis_location=None,
+                          output_backend="webgl",
+                          toolbar_location=None, tools=[])
+        imfig.min_border_left = 0
+        imfig.min_border_right = 0
+        imfig.min_border_top = 0
+        imfig.min_border_bottom = 0
 
-    imfig_urls = _viewer_urls(spectra)
-    imfig_source = ColumnDataSource(data=dict(url=[imfig_urls[0][0]],
-                                              txt=[imfig_urls[0][2]]))
+        imfig_urls = _viewer_urls(spectra)
+        imfig_source = ColumnDataSource(data=dict(url=[imfig_urls[0][0]],
+                                                  txt=[imfig_urls[0][2]]))
 
-    imfig_img = imfig.image_url('url', source=imfig_source, x=1, y=1, w=256, h=256, anchor='bottom_left')
-    imfig_txt = imfig.text(10, 256-30, text='txt', source=imfig_source,
-                           text_color='yellow', text_font_size='8pt')
+        imfig_img = imfig.image_url('url', source=imfig_source, x=1, y=1, w=256, h=256, anchor='bottom_left')
+        imfig_txt = imfig.text(10, 256-30, text='txt', source=imfig_source,
+                               text_color='yellow', text_font_size='8pt')
+    else : 
+        imfig = Spacer(width=plot_height//2, height=plot_height//2)
+        imfig_source = imfig_urls = None
 
     #-----
     #- Emission and absorption lines
@@ -823,10 +828,11 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
 
     #-----
     #- Targeting image callback
-    imfig_callback = CustomJS(args=dict(urls=imfig_urls,
-                                        ifiberslider=ifiberslider),
-                              code='''window.open(urls[ifiberslider.value][1], "_blank");''')
-    imfig.js_on_event('tap', imfig_callback)
+    if with_imaging :
+        imfig_callback = CustomJS(args=dict(urls=imfig_urls,
+                                            ifiberslider=ifiberslider),
+                                  code='''window.open(urls[ifiberslider.value][1], "_blank");''')
+        imfig.js_on_event('tap', imfig_callback)
 
    
     #-----
