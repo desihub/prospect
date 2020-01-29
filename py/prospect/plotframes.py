@@ -915,7 +915,10 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         zcat_disp_cols = [ TableColumn(field=x, title=x, width=w) for x,w in [ ('SPECTYPE',100), ('Z',50) , ('ZERR',50), ('ZWARN',50), ('DeltaChi2',50) ] ]
         zcat_display = DataTable(source=zcat_disp_cds, columns=zcat_disp_cols, index_position=None, selectable=False, width=400) # width=...
         zcat_display.height = 2 * zcat_display.row_height
-
+    else :
+        zcat_display = Div(text="Not available ")
+        zcat_disp_cds = None
+        
     vi_info_div = Div(text=" ") # consistent with show_prev_vi="No" by default
 
     #-----
@@ -1273,6 +1276,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             # (https://docs.bokeh.org/en/1.1.0/docs/user_guide/data.html)
             x_vals = (thumb_wave[::resamp_factor])[resamp_factor:-resamp_factor]
             y_vals = (( scipy.ndimage.filters.gaussian_filter1d(thumb_flux[i_spec,:], sigma=resamp_factor, mode='nearest') )[::resamp_factor])[resamp_factor:-resamp_factor]
+            x_vals = x_vals[~np.isnan(y_vals)]
+            y_vals = y_vals[~np.isnan(y_vals)]            
             yampl = np.max(y_vals) - np.min(y_vals)
             ymin = np.min(y_vals) - 0.1*yampl
             ymax = np.max(y_vals) + 0.1*yampl
