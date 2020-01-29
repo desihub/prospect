@@ -420,7 +420,7 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
     return cds_targetinfo
 
 
-def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, sv=False, with_thumb_tab=True):
+def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, sv=False, with_thumb_tab=True, with_vi_widgets=True):
     '''
     Main prospect routine, creates a bokeh document from a set of spectra and fits
 
@@ -442,6 +442,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     with_noise : include noise for each spectrum
     with_coaddcam : include camera-coaddition
     with_thumb_tab : include tab with thumbnails of spectra in viewer
+    with_vi_widgets : include widgets used to enter VI informations
     sv : if True, will use SV1_DESI_TARGET instead of DESI_TARGET
     '''
 
@@ -1189,35 +1190,37 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     #-----
     #- Bokeh setup
     # NB widget height / width are still partly hardcoded, but not arbitrary except for Spacers
+    
     slider_width = plot_width - 2*navigation_button_width
     navigator = bk.Row(
         widgetbox(prev_button, width=navigation_button_width+15),
-        widgetbox(vi_class_input, width=60*len(vi_class_labels)),
         widgetbox(next_button, width=navigation_button_width+20),
-#        widgetbox(Spacer(width=plot_height//2)),
-        widgetbox(ifiberslider, width=plot_width+(plot_height//2)-(60*len(vi_class_labels)+2*navigation_button_width+35)))
-    vi_widget_set = bk.Column(
-        widgetbox( Div(text="VI optional indications :"), width=300 ),
-        bk.Row(
-            bk.Column(
-                widgetbox(Spacer(height=20)),
-                widgetbox(vi_issue_input, width=150, height=100),
-            ),
-            bk.Column(
-                widgetbox(vi_z_input, width=150),
-                widgetbox(vi_category_select, width=150),
-            )
-        ),
-        widgetbox(vi_comment_input, width=300),
-        widgetbox(vi_name_input, width=150),
-        widgetbox(vi_filename_input, width=300),
-        widgetbox(save_vi_button, width=100),
-        widgetbox(vi_table),        
-        bk.Row(
-            widgetbox(recover_vi_button, width=150),
-            widgetbox(clear_vi_button, width=150)
-        )
+        widgetbox(ifiberslider, width=plot_width+(plot_height//2)-(60*len(vi_class_labels)+2*navigation_button_width+35))
     )
+    if with_vi_widgets :
+        navigator.children.insert(1, widgetbox(vi_class_input, width=60*len(vi_class_labels)) )
+        vi_widget_set = bk.Column(
+            widgetbox( Div(text="VI optional indications :"), width=300 ),
+            bk.Row(
+                bk.Column(
+                    widgetbox(Spacer(height=20)),
+                    widgetbox(vi_issue_input, width=150, height=100),
+                ),
+                bk.Column(
+                    widgetbox(vi_z_input, width=150),
+                    widgetbox(vi_category_select, width=150),
+                )
+            ),
+            widgetbox(vi_comment_input, width=300),
+            widgetbox(vi_name_input, width=150),
+            widgetbox(vi_filename_input, width=300),
+            widgetbox(save_vi_button, width=100),
+            widgetbox(vi_table),        
+            bk.Row(
+                widgetbox(recover_vi_button, width=150),
+                widgetbox(clear_vi_button, width=150)
+            )
+        )
     plot_widget_width = (plot_width+(plot_height//2))//2 - 40
     plot_widget_set = bk.Column(
         widgetbox( Div(text="Pipeline fit : ") ),
@@ -1235,24 +1238,26 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         widgetbox(coaddcam_buttons, width=200),
         widgetbox(waveframe_buttons, width=120),
         widgetbox(lines_button_group, width=200),
-        widgetbox(majorline_checkbox, width=120),
-        widgetbox(Spacer(height=30)),
-        widgetbox(vi_guideline_div, width=plot_widget_width)
+        widgetbox(majorline_checkbox, width=120)
     )
-    main_bokehsetup = bk.Column(
-        bk.Row(fig, bk.Column(imfig, zoomfig)),
-        bk.Row(
-## BYPASS DIV
-#            widgetbox(target_info_div, width=plot_width - 120),
-            widgetbox(targ_display, width=plot_width - 120),
-            widgetbox(reset_plotrange_button, width = 120)
-        ),
-        navigator,
-        bk.Row(
+    if with_vi_widgets :
+        plot_widget_set.children.append( widgetbox(Spacer(height=30)) )
+        plot_widget_set.children.append( widgetbox(vi_guideline_div, width=plot_widget_width) )
+        full_widget_set = bk.Row(
             vi_widget_set,
             widgetbox(Spacer(width=40)),
             plot_widget_set
         )
+    else : full_widget_set = plot_widget_set
+    
+    main_bokehsetup = bk.Column(
+        bk.Row(fig, bk.Column(imfig, zoomfig)),
+        bk.Row(
+            widgetbox(targ_display, width=plot_width - 120),
+            widgetbox(reset_plotrange_button, width = 120)
+        ),
+        navigator,
+        full_widget_set
     )
     
     if with_thumb_tab is False :
