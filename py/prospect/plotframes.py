@@ -420,6 +420,45 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
     return cds_targetinfo
 
 
+def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, resamp_factor=15, ncols_grid=5, titles=None) :
+    '''
+    Create a bokeh gridplot of thumbnail pictures from spectra
+    - coadd arms
+    - smooth+resample to reduce size of embedded CDS, according to resamp_factor
+    - titles : optional list of titles for each thumb
+    '''
+
+    if thumb_height is None : thumb_height = thumb_width//2
+    if titles is not None : assert len(titles) == spectra.num_spectra()
+    thumb_wave, thumb_flux, dummy = mycoaddcam.mycoaddcam(spectra)
+    
+    thumb_plots = []
+    for i_spec in range(spectra.num_spectra()) :
+        # other option use CustomJSTransform ?
+        # (https://docs.bokeh.org/en/1.1.0/docs/user_guide/data.html)
+        x_vals = (thumb_wave[::resamp_factor])[resamp_factor:-resamp_factor]
+        y_vals = scipy.ndimage.filters.gaussian_filter1d(thumb_flux[i_spec,:], sigma=resamp_factor, mode='nearest') 
+        y_vals = (y_vals[::resamp_factor])[resamp_factor:-resamp_factor]
+        x_vals = x_vals[~np.isnan(y_vals)] # TODO - should we keep that in the end ?
+        y_vals = y_vals[~np.isnan(y_vals)]            
+        yampl = np.max(y_vals) - np.min(y_vals)
+        ymin = np.min(y_vals) - 0.1*yampl
+        ymax = np.max(y_vals) + 0.1*yampl
+        plot_title = None
+        if titles is not None : plot_title = titles[i_spec]
+        mini_plot = bk.figure(plot_width=thumb_width, plot_height=thumb_height, x_range=x_range, y_range=(ymin,ymax), title=plot_title)
+        mini_plot.line(x_vals, y_vals, line_color='red')
+        mini_plot.xaxis.visible = False
+        mini_plot.yaxis.visible = False
+        mini_plot.min_border_left = 0
+        mini_plot.min_border_right = 0
+        mini_plot.min_border_top = 0
+        mini_plot.min_border_bottom = 0
+        thumb_plots.append(mini_plot)
+
+    return gridplot(thumb_plots, ncols=ncols_grid, toolbar_location=None)
+
+
 def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, sv=False, with_thumb_tab=True, with_vi_widgets=True):
     '''
     Main prospect routine, creates a bokeh document from a set of spectra and fits
@@ -1262,41 +1301,12 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     
     if with_thumb_tab is False :
         full_viewer = main_bokehsetup
-
-    else : # Prototype thumb gallery
+    else :
         full_viewer = Tabs()
-        
-        # Create thumbnail pictures :
-        # - coadd arms
-        # - smooth+resample to reduce size of embedded CDS
-        thumb_wave, thumb_flux, dummy = mycoaddcam.mycoaddcam(spectra)
-        resamp_factor = 15  # TODO : un-hardcode, place somewhere else
-        
-        thumb_plots = []
-        ncols_grid = 5
+        ncols_grid = 5 # TODO un-hardcode
+        titles = None # TODO define
         miniplot_width = ( plot_width + (plot_height//2) ) // ncols_grid
-        
-        for i_spec in range(nspec) :
-            # other option use CustomJSTransform ?
-            # (https://docs.bokeh.org/en/1.1.0/docs/user_guide/data.html)
-            x_vals = (thumb_wave[::resamp_factor])[resamp_factor:-resamp_factor]
-            y_vals = (( scipy.ndimage.filters.gaussian_filter1d(thumb_flux[i_spec,:], sigma=resamp_factor, mode='nearest') )[::resamp_factor])[resamp_factor:-resamp_factor]
-            x_vals = x_vals[~np.isnan(y_vals)]
-            y_vals = y_vals[~np.isnan(y_vals)]            
-            yampl = np.max(y_vals) - np.min(y_vals)
-            ymin = np.min(y_vals) - 0.1*yampl
-            ymax = np.max(y_vals) + 0.1*yampl
-            mini_plot = bk.figure(plot_width=miniplot_width, plot_height=miniplot_width//2, x_range=(xmin,xmax), y_range=(ymin,ymax))
-            mini_plot.line(x_vals, y_vals, line_color='red')
-            mini_plot.xaxis.visible = False
-            mini_plot.yaxis.visible = False
-            mini_plot.min_border_left = 0
-            mini_plot.min_border_right = 0
-            mini_plot.min_border_top = 0
-            mini_plot.min_border_bottom = 0
-            thumb_plots.append(mini_plot)
-        
-        thumb_grid = gridplot(thumb_plots, ncols=ncols_grid, toolbar_location=None)        
+        thumb_grid = grid_thumbs(spectra, miniplot_width, x_range=(xmin,xmax), ncols_grid=ncols_grid, titles=titles)
         tab1 = Panel(child = main_bokehsetup, title='Main viewer')
         tab2 = Panel(child = thumb_grid, title='Gallery')
         full_viewer.tabs=[ tab1, tab2 ]
@@ -1310,7 +1320,6 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             """)
             (thumb_grid.children[i_spec][0]).js_on_event(bokeh.events.Tap, thumb_callback)
 
-    
     if notebook:
         bk.show(full_viewer)
     else:
