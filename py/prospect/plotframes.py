@@ -456,7 +456,7 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
         mini_plot.min_border_bottom = 0
         thumb_plots.append(mini_plot)
 
-    return gridplot(thumb_plots, ncols=ncols_grid, toolbar_location=None)
+    return gridplot(thumb_plots, ncols=ncols_grid, toolbar_location=None, sizing_mode='scale_width')
 
 
 def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, sv=False, with_thumb_tab=True, with_vi_widgets=True, with_thumb_only_page=False):
@@ -573,6 +573,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     tooltips_fig = [("wave","$x"),("flux","$y")]
     fig = bk.figure(height=plot_height, width=plot_width, title=title,
         tools=tools, toolbar_location='above', tooltips=tooltips_fig, y_range=(ymin, ymax), x_range=(xmin, xmax))
+    fig.sizing_mode = 'stretch_width'
     fig.toolbar.active_drag = fig.tools[0]    #- pan zoom (previously box)
     fig.toolbar.active_scroll = fig.tools[2]  #- wheel zoom
     fig.xaxis.axis_label = 'Wavelength [Å]'
@@ -1293,13 +1294,14 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     else : full_widget_set = plot_widget_set
     
     main_bokehsetup = bk.Column(
-        bk.Row(fig, bk.Column(imfig, zoomfig)),
+        bk.Row(fig, bk.Column(imfig, zoomfig), sizing_mode='stretch_width'),
         bk.Row(
             widgetbox(targ_display, width=plot_width - 120),
             widgetbox(reset_plotrange_button, width = 120)
         ),
         navigator,
-        full_widget_set
+        full_widget_set,
+        sizing_mode='stretch_width'
     )
     
     if with_thumb_tab is False :
