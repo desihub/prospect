@@ -62,9 +62,11 @@ def main(args) :
     
     exposures = exposure_db(specprod_dir, filetype=args.filetype)
     if args.exposure_list is not None :
-        expo_subset = np.loadtxt(args.exposure_list, dtype=str, comment='#')
+        expo_subset = np.loadtxt(args.exposure_list, dtype=str, comments='#')
         expo_subset = [ x.rjust(8, "0") for x in expo_subset] # ASCII list of exposures does not need zero-padding
         exposures = [ x for x in exposures if x[0] in expo_subset ]
+        missing_expos = [ x[0] for x in exposures if x[0] not in expo_subset ]
+        for x in missing_expos : log.info("Missing exposure, cannot be processed : "+x)
     log.info(str(len(exposures))+" exposures to be processed")
         
     # Loop on exposures
@@ -91,8 +93,8 @@ def main(args) :
                     os.makedirs(html_dir)
                     #os.mkdir( os.path.join(html_dir, "vignettes") )
                 plotframes.plotspectra(frames, nspec=args.nspecperfile, startspec=i_start, 
-                            with_noise=True, with_coaddcam=False, sv=False, is_coadded=False, 
-                            title=titlepage, html_dir=html_dir, sv=True, with_thumb_only_page=True)
+                            with_noise=True, with_coaddcam=False, is_coadded=False, 
+                            title=titlepage, html_dir=html_dir, sv=False, with_thumb_only_page=True)
                 
             # Stop running if needed, only once a full exposure is completed
             nspec_done += nspec_expo

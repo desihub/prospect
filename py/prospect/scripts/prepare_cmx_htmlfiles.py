@@ -27,7 +27,8 @@ def main(args) :
 
     webdir = args.webdir
     template_dir = args.template_dir
-    if template_dir is None : template_dir="../templates" # TMP, to define better.
+    if template_dir is None : 
+        template_dir = os.path.join(os.path.dirname(__file__),os.pardir,os.pardir,os.pardir,"templates")
 
     env = Environment(loader=FileSystemLoader(template_dir))
     template_index = env.get_template('template_index.html')
