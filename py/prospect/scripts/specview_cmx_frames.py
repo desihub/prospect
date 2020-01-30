@@ -2,7 +2,7 @@
 prospect.scripts.specview_cmx_frames
 ===================================
 
-Write static html files from "sframe" files in CMX data
+Write static html files from "[s/c/..]frame" files in CMX data
 Don't know if this will be used for SV (once frames are superseeded by spectra)
 """
 
@@ -25,9 +25,9 @@ def parse() :
     parser.add_argument('--specprod_dir', help='Location of directory tree (data in specprod_dir/exposures/)', type=str)
     parser.add_argument('--exposure_list', help='ASCII file providing list of exposures', type=str, default=None)
     parser.add_argument('--nspecperfile', help='Number of spectra in each html page', type=int, default=50)
-    parser.add_argument('--webdir', help='Base directory for webpages', type=str, default=None)
+    parser.add_argument('--webdir', help='Base directory for webpages', type=str)
     parser.add_argument('--nmax_spectra', help='Stop the production of HTML pages once a given number of spectra are done', type=int, default=None)
-    parser.add_argument('--vignette_smoothing', help='Smoothing of the vignette images (-1 : no smoothing)', type=float, default=10)
+    parser.add_argument('--filetype', help='File category (currently only sframe supported)', type=str, default='sframe')
     args = parser.parse_args()
     return args
 
@@ -58,12 +58,13 @@ def main(args) :
     log = get_logger()
     specprod_dir = args.specprod_dir
     webdir = args.webdir
-    if webdir is None : webdir = os.environ["DESI_WWW"]+"/users/armengau/cmx/exposures"
-
-    exposures = exposure_db(specprod_dir)
+    assert args.filetype == 'sframe' # TODO - Currently only sframe supported
+    
+    exposures = exposure_db(specprod_dir, filetype=args.filetype)
     if args.exposure_list is not None :
-        expo_subset = np.loadtxt(args.exposure_list, dtype=str)
-        exposures = [ x for x in exposures if x[0] in expo_subset or x[0].lstrip("0") in expo_subset ]
+        expo_subset = np.loadtxt(args.exposure_list, dtype=str, comment='#')
+        expo_subset = [ x.rjust(8, "0") for x in expo_subset] # ASCII list of exposures does not need zero-padding
+        exposures = [ x for x in exposures if x[0] in expo_subset ]
     log.info(str(len(exposures))+" exposures to be processed")
         
     # Loop on exposures
@@ -74,7 +75,7 @@ def main(args) :
         fdir = os.path.join( specprod_dir, 'exposures', night, exposure )
         
         for spectrograph_num in spectrographs :
-            frames = [ desispec.io.read_frame(os.path.join(fdir,"sframe-"+band+spectrograph_num+"-"+exposure+".fits")) for band in ['b','r','z'] ]
+            frames = [ desispec.io.read_frame(os.path.join(fdir,args.filetype+"-"+band+spectrograph_num+"-"+exposure+".fits")) for band in ['b','r','z'] ]
             # Handle several html pages per pixel : sort by FIBER
             nspec_expo = len(frames[0].fibermap)
             log.info("Spectrograph number "+spectrograph_num+" : "+str(nspec_expo)+" spectra")
@@ -90,14 +91,9 @@ def main(args) :
                     os.makedirs(html_dir)
                     #os.mkdir( os.path.join(html_dir, "vignettes") )
                 plotframes.plotspectra(frames, nspec=args.nspecperfile, startspec=i_start, 
-                                        with_noise=True, with_coaddcam=False, sv=False, is_coadded=False, title=titlepage, html_dir=html_dir)
-
-                # not elegant .. Should be useless now ?
-#                 spec = plotframes.frames2spectra(frames, nspec=args.nspecperfile, startspec=i_start)
-#                 for i_spec in range(spec.num_spectra()) :
-#                     saveplot = html_dir+"/vignettes/expo"+exposure+"_"+str(i_page)+"_"+str(i_spec)+".png"
-#                     utils_specviewer.miniplot_spectrum(spec, i_spec, model=None, coaddcam=False, saveplot=saveplot, smoothing = args.vignette_smoothing)
-
+                            with_noise=True, with_coaddcam=False, sv=False, is_coadded=False, 
+                            title=titlepage, html_dir=html_dir, sv=True, with_thumb_only_page=True)
+                
             # Stop running if needed, only once a full exposure is completed
             nspec_done += nspec_expo
             if args.nmax_spectra is not None :

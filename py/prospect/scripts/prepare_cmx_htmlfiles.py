@@ -14,9 +14,10 @@ from jinja2 import Environment, FileSystemLoader
 
 def parse() :
 
-    parser = argparse.ArgumentParser(description="Write html index pages")
+    parser = argparse.ArgumentParser(description="Write html index pages for CMX exposures")
     parser.add_argument('--webdir', help='Base directory for webpages', type=str)
     parser.add_argument('--template_dir', help='Template directory', type=str, default=None)
+    parser.add_argument('--nspecperfile', help='Number of spectra in each prospect html page', type=int, default=50)
     args = parser.parse_args()
     return args
 
@@ -36,14 +37,15 @@ def main(args) :
     for expo in exposures :
         expo_dir = os.path.join(webdir,"exposures",expo)
         
-        available_subsets = []
+        available_subsets = {}
         for specnum in ["0","1","2","3","4","5","6","7","8","9"] :
             subsets = []
-            for i_sub in range(1,11) :
-                if os.path.exists(expo_dir+"/specviewer_"+expo+"_spectro"+specnum+"_"+str(i_sub)+".html") :
-                    subsets.append(str(i_sub))
-            available_subsets.append(subsets)
-        pagetext = template_expolist.render(expo=expo, subsets_0=available_subsets[0], subsets_1=available_subsets[1], subsets_2=available_subsets[2], subsets_3=available_subsets[3], subsets_4=available_subsets[4], subsets_5=available_subsets[5], subsets_6=available_subsets[6], subsets_7=available_subsets[7], subsets_8=available_subsets[8], subsets_9=available_subsets[9])
+            i_sub = 1
+            while os.path.exists(expo_dir+"/specviewer_"+expo+"_spectro"+specnum+"_"+str(i_sub)+".html") :
+                subsets.append(str(i_sub))
+                i_sub += 1
+            available_subsets[specnum] = subsets
+        pagetext = template_expolist.render(expo=expo, subset_dict=available_subsets, nspecperfile=args.nspecperfile)
 
         with open( os.path.join(expo_dir,"index_"+expo+".html"), "w") as fh:
             fh.write(pagetext)

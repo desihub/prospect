@@ -10,105 +10,25 @@
 <br> Divided into spectrographs / fiber.
 <br><a href="../../index.html">Back to main index</a>
 
-<h3> Spectrograph 0 </h3>
-<ul>
-{% for i_subset in subsets_0 %}
-{% set i_sub = i_subset | int %}
-{% set fibermin = 0+(i_sub-1)*50 %}
-{% set fibermax = 0+(i_sub)*50-1 %}
-<li><a href="specviewer_{{ expo }}_spectro0_{{ i_subset }}.html"> View fibers {{ fibermin }} to {{ fibermax }}</a></li>
-{% endfor %}
-</ul>
-
-<h3> Spectrograph 1 </h3>
-<ul>
-{% for i_subset in subsets_1 %}
-{% set i_sub = i_subset | int %}
-{% set fibermin = 500+(i_sub-1)*50 %}
-{% set fibermax = 500+(i_sub)*50-1 %}
-<li><a href="specviewer_{{ expo }}_spectro1_{{ i_subset }}.html"> View fibers {{ fibermin }} to {{ fibermax }}</a></li>
-{% endfor %}
-</ul>
-
-<h3> Spectrograph 2 </h3>
-<ul>
-{% for i_subset in subsets_2 %}
-{% set i_sub = i_subset | int %}
-{% set fibermin = 1000+(i_sub-1)*50 %}
-{% set fibermax = 1000+(i_sub)*50-1 %}
-<li><a href="specviewer_{{ expo }}_spectro2_{{ i_subset }}.html"> View fibers {{ fibermin }} to {{ fibermax }}</a></li>
-{% endfor %}
-</ul>
-
-<h3> Spectrograph 3 </h3>
-<ul>
-{% for i_subset in subsets_3 %}
-{% set i_sub = i_subset | int %}
-{% set fibermin = 1500+(i_sub-1)*50 %}
-{% set fibermax = 1500+(i_sub)*50-1 %}
-<li><a href="specviewer_{{ expo }}_spectro3_{{ i_subset }}.html"> View fibers {{ fibermin }} to {{ fibermax }}</a></li>
-{% endfor %}
-</ul>
-
-<h3> Spectrograph 4 </h3>
-<ul>
-{% for i_subset in subsets_4 %}
-{% set i_sub = i_subset | int %}
-{% set fibermin = 2000+(i_sub-1)*50 %}
-{% set fibermax = 2000+(i_sub)*50-1 %}
-<li><a href="specviewer_{{ expo }}_spectro4_{{ i_subset }}.html"> View fibers {{ fibermin }} to {{ fibermax }}</a></li>
-{% endfor %}
-</ul>
-
-<h3> Spectrograph 5 </h3>
-<ul>
-{% for i_subset in subsets_5 %}
-{% set i_sub = i_subset | int %}
-{% set fibermin = 2500+(i_sub-1)*50 %}
-{% set fibermax = 2500+(i_sub)*50-1 %}
-<li><a href="specviewer_{{ expo }}_spectro5_{{ i_subset }}.html"> View fibers {{ fibermin }} to {{ fibermax }}</a></li>
-{% endfor %}
-</ul>
-
-<h3> Spectrograph 6 </h3>
-<ul>
-{% for i_subset in subsets_6 %}
-{% set i_sub = i_subset | int %}
-{% set fibermin = 3000+(i_sub-1)*50 %}
-{% set fibermax = 3000+(i_sub)*50-1 %}
-<li><a href="specviewer_{{ expo }}_spectro6_{{ i_subset }}.html"> View fibers {{ fibermin }} to {{ fibermax }}</a></li>
-{% endfor %}
-</ul>
-
-<h3> Spectrograph 7 </h3>
-<ul>
-{% for i_subset in subsets_7 %}
-{% set i_sub = i_subset | int %}
-{% set fibermin = 3500+(i_sub-1)*50 %}
-{% set fibermax = 3500+(i_sub)*50-1 %}
-<li><a href="specviewer_{{ expo }}_spectro7_{{ i_subset }}.html"> View fibers {{ fibermin }} to {{ fibermax }}</a></li>
-{% endfor %}
-</ul>
-
-<h3> Spectrograph 8 </h3>
-<ul>
-{% for i_subset in subsets_8 %}
-{% set i_sub = i_subset | int %}
-{% set fibermin = 4000+(i_sub-1)*50 %}
-{% set fibermax = 4000+(i_sub)*50-1 %}
-<li><a href="specviewer_{{ expo }}_spectro8_{{ i_subset }}.html"> View fibers {{ fibermin }} to {{ fibermax }}</a></li>
-{% endfor %}
-</ul>
-
-<h3> Spectrograph 9 </h3>
-<ul>
-{% for i_subset in subsets_9 %}
-{% set i_sub = i_subset | int %}
-{% set fibermin = 4500+(i_sub-1)*50 %}
-{% set fibermax = 4500+(i_sub)*50-1 %}
-<li><a href="specviewer_{{ expo }}_spectro9_{{ i_subset }}.html"> View fibers {{ fibermin }} to {{ fibermax }}</a></li>
-{% endfor %}
-</ul>
+{% for specnum in ["0","1","2","3","4","5","6","7","8","9"] %}
+    {% set i_spec = specnum | int %}
+    <h3> Spectrograph {{ specnum }} </h3>
+    <ul>
+    {% for i_subset in subset_dict[specnum] %}
+        {% set i_sub = i_subset | int %}
+        {# Assigment of fiber numbers to spectrographs is still hard-coded #}
+        {% set fibermin = 500*(i_spec)+(i_sub-1)*nspecperfile %}
+        {% set fibermax = 500*(i_spec)+(i_sub)*nspecperfile-1 %}
+        {% if fibermax > 500*(i_spec+1)-1 %}
+            {% set fibermax = 500*(i_spec+1)-1 %}
+        {% endif %}
+        <li>Fibers {{ fibermin }} to {{ fibermax }} : 
+            <a href="thumbs_specviewer_{{ expo }}_spectro{{ specnum }}_{{ i_subset }}.html"> View thumb gallery</a> -
+            <a href="specviewer_{{ expo }}_spectro{{ specnum }}_{{ i_subset }}.html"> Full viewer </a>
+        </li>
+    {% endfor %}
+    </ul>
+{% endfor %} 
 
 </BODY>
 </HTML>
