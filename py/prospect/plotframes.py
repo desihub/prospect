@@ -459,7 +459,7 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
     return gridplot(thumb_plots, ncols=ncols_grid, toolbar_location=None)
 
 
-def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, sv=False, with_thumb_tab=True, with_vi_widgets=True):
+def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, sv=False, with_thumb_tab=True, with_vi_widgets=True, with_thumb_only_page=False):
     '''
     Main prospect routine, creates a bokeh document from a set of spectra and fits
 
@@ -482,6 +482,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     with_coaddcam : include camera-coaddition
     with_thumb_tab : include tab with thumbnails of spectra in viewer
     with_vi_widgets : include widgets used to enter VI informations
+    with_thumb_only_page (requires notebook==False) : also create a light html page including only the thumb gallery
     sv : if True, will use SV1_DESI_TARGET instead of DESI_TARGET
     '''
 
@@ -522,10 +523,12 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     #-----
     #- Initialize Bokeh output
     if notebook:
+        assert with_thumb_only_page == False
         bk.output_notebook()
     else :
         if html_dir is None : raise RuntimeError("Need html_dir")
-        bk.output_file(html_dir+"/specviewer_"+title+".html", title='DESI spectral viewer')
+        html_page = os.path.join(html_dir, "specviewer_"+title+".html")
+        bk.output_file(html_page, title='DESI spectral viewer')
 
     #-----
     #- Gather information into ColumnDataSource objects for Bokeh
@@ -1324,6 +1327,24 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         bk.show(full_viewer)
     else:
         bk.save(full_viewer)
+
+    #-----
+    #- "Light" Bokeh setup including only the thumbnail gallery
+    if with_thumb_only_page :
+        thumb_page = html_page.replace("specviewer_"+title, "thumbs_specviewer_"+title)
+        bk.output_file(thumb_page, title='DESI spectral viewer - thumbnail gallery')
+        ncols_grid = 5 # TODO un-hardcode
+        titles = None # TODO define
+        miniplot_width = ( plot_width + (plot_height//2) ) // ncols_grid
+        thumb_grid = grid_thumbs(spectra, miniplot_width, x_range=(xmin,xmax), ncols_grid=ncols_grid, titles=titles)
+        thumb_viewer = bk.Column(
+            widgetbox( Div(text=
+                           " <h3> Thumbnail gallery for DESI spectra in "+title+" </h3>" +
+                           " <p> Click <a href='specviewer_"+title+".html'>here</a> to access the spectral viewer corresponding to these spectra. </p>"
+                          ), width=plot_width ),
+            widgetbox( thumb_grid )
+        )
+        bk.save(thumb_viewer)
     
 
 #-------------------------------------------------------------------------
