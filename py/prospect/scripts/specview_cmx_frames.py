@@ -13,6 +13,7 @@ import numpy as np
 import desispec.io
 from desiutil.log import get_logger
 from desitarget.targetmask import desi_mask
+from desitarget.cmx.cmx_targetmask import cmx_mask
 import desispec.spectra
 import desispec.frame
 
@@ -27,7 +28,7 @@ def parse() :
     parser.add_argument('--nspecperfile', help='Number of spectra in each html page', type=int, default=50)
     parser.add_argument('--webdir', help='Base directory for webpages', type=str)
     parser.add_argument('--nmax_spectra', help='Stop the production of HTML pages once a given number of spectra are done', type=int, default=None)
-    parser.add_argument('--filetype', help='File category (currently only sframe supported)', type=str, default='sframe')
+    parser.add_argument('--filetype', help='File category (currently sframe/cframe supported)', type=str, default='sframe')
     args = parser.parse_args()
     return args
 
@@ -94,7 +95,7 @@ def main(args) :
                     #os.mkdir( os.path.join(html_dir, "vignettes") )
                 plotframes.plotspectra(frames, nspec=args.nspecperfile, startspec=i_start, 
                             with_noise=True, with_coaddcam=False, is_coadded=False, 
-                            title=titlepage, html_dir=html_dir, sv=False, with_thumb_only_page=True)
+                            title=titlepage, html_dir=html_dir, mask_type='CMX_TARGET', with_thumb_only_page=True)
                 
             # Stop running if needed, only once a full exposure is completed
             nspec_done += nspec_expo

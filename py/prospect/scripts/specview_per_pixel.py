@@ -15,7 +15,8 @@ import astropy.io.fits
 import desispec.io
 from desiutil.log import get_logger
 from desitarget.targetmask import desi_mask
-from desitarget.sv1.sv1_targetmask import desi_mask as desi_mask_sv1
+from desitarget.cmx.cmx_targetmask import cmx_mask
+from desitarget.sv1.sv1_targetmask import desi_mask as sv1_desi_mask
 import desispec.spectra
 import desispec.frame
 
@@ -35,7 +36,7 @@ def parse() :
     parser.add_argument('--nspecperfile', help='Number of spectra in each html page', type=int, default=50)
     parser.add_argument('--webdir', help='Base directory for webpages', type=str, default=None)
     parser.add_argument('--vignette_smoothing', help='Smoothing of the vignette images (-1 : no smoothing)', type=float, default=10)
-    parser.add_argument('--sv', help='SV targets', action='store_true')
+    parser.add_argument('--mask_type', help='Mask category : DESI_TARGET,SV1_DESI_TARGET,CMX_TARGET', type=str, default='DESI_TARGET')
     parser.add_argument('--random_pixels', help='Process pixels in random order', action='store_true')
     parser.add_argument('--nmax_spectra', help='Stop the production of HTML pages once a given number of spectra are done', type=int, default=None)
     args = parser.parse_args()
@@ -50,11 +51,14 @@ def main(args) :
     webdir = args.webdir
     if webdir is None : webdir = os.environ["DESI_WWW"]+"/users/armengau/svdc2019c" # TMP, for test
     if args.mask is not None :
-        if args.sv :
-            assert ( args.mask in desi_mask_sv1.names() )
-        else :
+        assert args.mask_type in ['SV1_DESI_TARGET', 'DESI_TARGET', 'CMX_TARGET']
+        if args.mask_type ==  'SV1_DESI_TARGET' :
+            assert ( args.mask in sv1_desi_mask.names() )
+        elif args.mask_type == 'DESI_TARGET' :
             assert ( args.mask in desi_mask.names() ) 
-
+        elif args.mask_type == 'CMX_TARGET' :
+            assert ( args.mask in cmx_mask.names() )
+            
     # TODO - Selection on pixels based on existing specviewer pages
     if args.pixel_list is None :
         pixels = glob.glob( os.path.join(specprod_dir,"spectra-64/*/*") )
@@ -81,10 +85,12 @@ def main(args) :
 
         # Target mask selection
         if args.mask is not None :
-            if args.sv :
-                w, = np.where( (spectra.fibermap['SV1_DESI_TARGET'] & desi_mask_sv1[args.mask]) )
-            else :
+            if args.mask_type == 'SV1_DESI_TARGET' :
+                w, = np.where( (spectra.fibermap['SV1_DESI_TARGET'] & sv1_desi_mask[args.mask]) )
+            elif args.mask_type == 'DESI_TARGET' :
                 w, = np.where( (spectra.fibermap['DESI_TARGET'] & desi_mask[args.mask]) )
+            elif args.mask_type == 'CMX_TARGET' :
+                w, = np.where( (spectra.fibermap['CMX_TARGET'] & cmx_mask[args.mask]) )                
             if len(w) == 0 :
                 log.info(" * No "+args.mask+" target in this pixel")
                 continue
@@ -160,7 +166,7 @@ def main(args) :
                 os.makedirs(html_dir)
                 os.mkdir(html_dir+"/vignettes")
             
-            plotframes.plotspectra(thespec, zcatalog=zbest, model_from_zcat=True, vidata=None, model=None, title=titlepage, html_dir=html_dir, is_coadded=True, sv=args.sv)
+            plotframes.plotspectra(thespec, zcatalog=zbest, model_from_zcat=True, vidata=None, model=None, title=titlepage, html_dir=html_dir, is_coadded=True, mask_type=args.mask_type)
             for i_spec in range(thespec.num_spectra()) :
                 saveplot = html_dir+"/vignettes/pix"+pixel+"_"+str(i_page)+"_"+str(i_spec)+".png"
                 utils_specviewer.miniplot_spectrum(thespec, i_spec, model=model, saveplot=saveplot, smoothing = args.vignette_smoothing)

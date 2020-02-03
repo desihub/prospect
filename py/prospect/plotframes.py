@@ -30,7 +30,8 @@ import bokeh.events
 
 import desispec.io
 from desitarget.targetmask import desi_mask
-from desitarget.sv1.sv1_targetmask import desi_mask as desi_mask_sv1
+from desitarget.cmx.cmx_targetmask import cmx_mask
+from desitarget.sv1.sv1_targetmask import desi_mask as sv1_desi_mask
 import desispec.spectra
 import desispec.frame
 
@@ -330,16 +331,19 @@ def make_cds_model(model) :
 
     return cds_model
 
-def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
+def make_cds_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=" ") :
     """ Creates column data source for target-related metadata, from zcatalog, fibermap and VI files """
 
+    assert mask_type in ['SV1_DESI_TARGET', 'DESI_TARGET', 'CMX_TARGET']
     target_info = list()
     vi_info = list()
     for i, row in enumerate(spectra.fibermap):
-        if sv :
-            target_bit_names = ' '.join(desi_mask_sv1.names(row['SV1_DESI_TARGET']))
-        else :
+        if mask_type == 'SV1_DESI_TARGET' :
+            target_bit_names = ' '.join(sv1_desi_mask.names(row['SV1_DESI_TARGET']))
+        elif mask_type == 'DESI_TARGET' :
             target_bit_names = ' '.join(desi_mask.names(row['DESI_TARGET']))
+        elif mask_type == 'CMX_TARGET' :
+            target_bit_names = ' '.join(cmx_mask.names(row['CMX_TARGET']))
         txt = 'TargetID {}: {} '.format(row['TARGETID'], target_bit_names)
         if not is_coadded :
             ## BYPASS DIV
@@ -459,7 +463,7 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
     return gridplot(thumb_plots, ncols=ncols_grid, toolbar_location=None, sizing_mode='scale_width')
 
 
-def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, sv=False, with_thumb_tab=True, with_vi_widgets=True, with_thumb_only_page=False):
+def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, mask_type='DESI_TARGET', with_thumb_tab=True, with_vi_widgets=True, with_thumb_only_page=False):
     '''
     Main prospect routine, creates a bokeh document from a set of spectra and fits
 
@@ -483,7 +487,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     with_thumb_tab : include tab with thumbnails of spectra in viewer
     with_vi_widgets : include widgets used to enter VI informations
     with_thumb_only_page (requires notebook==False) : also create a light html page including only the thumb gallery
-    sv : if True, will use SV1_DESI_TARGET instead of DESI_TARGET
+    mask_type : mask type to identify target categories from the fibermap. Available : DESI_TARGET,
+        SV1_DESI_TARGET, CMX_TARGET. Default : DESI_TARGET.
     '''
 
     #- If inputs are frames, convert to a spectra object
@@ -545,7 +550,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         username = os.environ['USER']
     else :
         username = " "
-    cds_targetinfo = make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=username)
+    cds_targetinfo = make_cds_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=username)
 
 
     #-------------------------
@@ -1294,7 +1299,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     else : full_widget_set = plot_widget_set
     
     main_bokehsetup = bk.Column(
-        bk.Row(fig, bk.Column(imfig, zoomfig), sizing_mode='stretch_width'),
+        bk.Row(fig, bk.Column(imfig, zoomfig), Spacer(width=20), sizing_mode='stretch_width'),
         bk.Row(
             widgetbox(targ_display, width=plot_width - 120),
             widgetbox(reset_plotrange_button, width = 120)
