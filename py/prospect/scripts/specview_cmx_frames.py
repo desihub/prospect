@@ -24,6 +24,7 @@ def parse() :
 
     parser = argparse.ArgumentParser(description='Create exposure-based static html pages from CMX frames')
     parser.add_argument('--specprod_dir', help='Location of directory tree (data in specprod_dir/exposures/)', type=str)
+    parser.add_argument('--exposure', help='Name of single exposure to be processed',type=str, default=None)
     parser.add_argument('--exposure_list', help='ASCII file providing list of exposures', type=str, default=None)
     parser.add_argument('--nspecperfile', help='Number of spectra in each html page', type=int, default=50)
     parser.add_argument('--webdir', help='Base directory for webpages', type=str)
@@ -33,16 +34,22 @@ def parse() :
     return args
 
 
-def exposure_db(specprod_dir, filetype='sframe') :
+def exposure_db(specprod_dir, filetype='sframe', expo_subset=None) :
     '''
     Returns list of [ expo, night, spectros ] available in specprod_dir/exposures tree, 
         with b,r,z frames whose name matches filetype
         spectros = list of spectrograph numbers from 0 to 9
+        expo_subset : list; if None, all available exposures will be included in the list
     '''
     exposures = list()
+    if expo_subset is not None :
+        # List of exposures (eg from an ASCII file) does not need zero-padding
+        expo_subset = [ x.rjust(8, "0") for x in expo_subset]
     for night in os.listdir( os.path.join(specprod_dir,'exposures') ) :
         for expo in os.listdir( os.path.join(specprod_dir,'exposures',night) ) :
             if not os.path.isdir( os.path.join(specprod_dir,'exposures',night,expo) ) : continue
+            if expo_subset is not None :
+                if expo not in expo_subset : continue
             files_avail = os.listdir( os.path.join(specprod_dir,'exposures',night,expo) )
             spectro_avail = []
             for spectro_num in [str(i) for i in range(10)] :
@@ -59,14 +66,20 @@ def main(args) :
     log = get_logger()
     specprod_dir = args.specprod_dir
     webdir = args.webdir
-    assert args.filetype == 'sframe' # TODO - Currently only sframe supported
+    assert args.filetype in ['sframe', 'cframe']
     
-    exposures = exposure_db(specprod_dir, filetype=args.filetype)
+    expo_subset = None
     if args.exposure_list is not None :
+        assert args.exposure is None
         expo_subset = np.loadtxt(args.exposure_list, dtype=str, comments='#')
-        expo_subset = [ x.rjust(8, "0") for x in expo_subset] # ASCII list of exposures does not need zero-padding
-        exposures = [ x for x in exposures if x[0] in expo_subset ]
-        missing_expos = [ x[0] for x in exposures if x[0] not in expo_subset ]
+    if args.exposure is not None :
+        assert args.exposure_list is None
+        expo_subset = [ args.exposure ]
+    exposures = exposure_db(specprod_dir, filetype=args.filetype, expo_subset=expo_subset)
+
+    if expo_subset is not None :
+        tmplist = [ x[0] for x in exposures ]
+        missing_expos = [ x for x in expo_subset if x.rjust(8, "0") not in tmplist ]
         for x in missing_expos : log.info("Missing exposure, cannot be processed : "+x)
     log.info(str(len(exposures))+" exposures to be processed")
         
@@ -88,7 +101,7 @@ def main(args) :
 
                 log.info(" * Page "+str(i_page)+" / "+str(nbpages))
                 i_start = (i_page-1)*args.nspecperfile
-                titlepage = exposure+"_spectro"+spectrograph_num+"_"+str(i_page)
+                titlepage = "expo"exposure+"_spectro"+spectrograph_num+"_"+str(i_page)
                 html_dir = os.path.join(webdir,exposure)
                 if not os.path.exists(html_dir) : 
                     os.makedirs(html_dir)
