@@ -122,7 +122,7 @@ def page_subset(fdir, exposure, frametype, spectrographs, html_dir, titlepage_pr
             the_indices = sort_indices[(i_page-1)*nspecperfile:i_page*nspecperfile]            
             thespec = myspecselect.myspecselect(spectra, indices=the_indices)
             titlepage = titlepage_prefix+"_spectro"+spectrograph_num+"_"+str(i_page)
-            plotframes.plotspectra(thespec, with_noise=True, with_coaddcam=False, is_coadded=False, 
+            plotframes.plotspectra(thespec, with_noise=True, with_coaddcam=True, is_coadded=False, 
                         title=titlepage, html_dir=html_dir, mask_type='CMX_TARGET', with_thumb_only_page=True)
         nspec_done += nspec_expo
         
