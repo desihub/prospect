@@ -106,6 +106,6 @@ def myspecselect(thespec, nights=None, bands=None, targets=None, fibers=None, ex
     ret = desispec.spectra.Spectra(keep_bands, keep_wave, keep_flux, keep_ivar, 
         mask=keep_mask, resolution_data=keep_res, 
         fibermap=thespec.fibermap[keep], meta=thespec.meta, extra=keep_extra,
-        single=thespec._single)
+        single=thespec._single, scores=thespec.scores[keep])
 
     return ret

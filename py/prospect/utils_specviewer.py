@@ -235,16 +235,17 @@ def miniplot_spectrum(spectra, i_spec, model=None, saveplot=None, smoothing=-1, 
 
 
 
-def frames2spectra(frames, nspec=None, startspec=None):
+def frames2spectra(frames, nspec=None, startspec=None, with_scores=False):
     '''Convert input list of Frames into Spectra object
-
-    Do no propagate resolution, scores
+    with_score : if true, propagate scores
+    Do no propagate resolution
     '''
     bands = list()
     wave = dict()
     flux = dict()
     ivar = dict()
     mask = dict()
+    
     for fr in frames:
         fibermap = fr.fibermap
         band = fr.meta['CAMERA'][0]
@@ -259,9 +260,16 @@ def frames2spectra(frames, nspec=None, startspec=None):
             ivar[band] = ivar[band][startspec:nspec+startspec]
             mask[band] = mask[band][startspec:nspec+startspec]
             fibermap = fr.fibermap[startspec:nspec+startspec]
+    
+    merged_scores = None
+    if with_scores :
+        scores_columns = frames[0].scores.columns
+        for i in range(1,len(frames)) : 
+            scores_columns += frames[i].scores.columns
+        merged_scores = astropy.io.fits.FITS_rec.from_columns(scores_columns)
 
     spectra = desispec.spectra.Spectra(
-        bands, wave, flux, ivar, mask, fibermap=fibermap, meta=fr.meta
+        bands, wave, flux, ivar, mask, fibermap=fibermap, meta=fr.meta, scores=merged_scores
     )
     return spectra
 
@@ -303,7 +311,7 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
             return 0
         else :
             targetids = spectra.fibermap['TARGETID'][w]
-            spectra = spectra.select(targets=targetids)
+            spectra = myspecselect.myspecselect(spectra, targets=targetids)
     if rmag_cut is not None :
         assert len(rmag_cut)==2 # Require range [rmin, rmax]
         rmag = np.zeros(spectra.num_spectra())
@@ -315,11 +323,11 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
             return 0
         else :
             targetids = spectra.fibermap['TARGETID'][w]
-            spectra = spectra.select(targets=targetids)
+            spectra = myspecselect.myspecselect(spectra, targets=targetids)
 
     # SNR selection ## TODO check it !! May not work ...
     if snr_cut is not None :
-        assert ( (len(snr_cut)==2) & (spectra.scores is not None) )
+        assert ( (len(snr_cut)==2) and (spectra.scores is not None) )
         for band in ['B','R','Z'] :
             w, = np.where( (spectra.scores['MEDIAN_CALIB_SNR_'+band]>snr_cut[0]) & (spectra.scores['MEDIAN_CALIB_SNR_'+band]<snr_cut[1]) )
             if len(w) == 0 :
@@ -327,7 +335,7 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
                 return 0
             else :
                 targetids = spectra.fibermap['TARGETID'][w]
-                spectra = spectra.select(targets=targetids)
+                spectra = myspecselect.myspecselect(spectra, targets=targetids)
     
     # Chi2 selection
     if chi2cut is not None :
@@ -340,6 +348,6 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
             return 0
         else :
             targetids = spectra.fibermap['TARGETID'][w]
-            spectra = spectra.select(targets=targetids)
+            spectra = myspecselect.myspecselect(spectra, targets=targetids)
 
     return spectra

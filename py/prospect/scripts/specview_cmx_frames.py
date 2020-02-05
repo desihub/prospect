@@ -35,6 +35,8 @@ def parse() :
     parser.add_argument('--nmax_spectra', help='Stop the production of HTML pages once a given number of spectra are done', type=int, default=None)
     parser.add_argument('--frametype', help='Input frame category (currently sframe/cframe supported)', type=str, default='cframe')
     parser.add_argument('--mask', help='Select only objects with a given CMX_TARGET target mask', type=str, default=None)
+    parser.add_argument('--snrcut', help='Select only objects in a given range for MEDIAN_CALIB_SNR_B+R+Z', nargs='+', type=float, default=None)
+
     args = parser.parse_args()
     return args
 
@@ -96,7 +98,7 @@ def tile_db(specprod_dir, frametype='cframe', tile_subset=None, night_subset=Non
     return tiles_db
 
 
-def page_subset(fdir, exposure, frametype, spectrographs, html_dir, titlepage_prefix, mask, log, nspecperfile) :
+def page_subset(fdir, exposure, frametype, spectrographs, html_dir, titlepage_prefix, mask, log, nspecperfile, snr_cut) :
     '''
     Running prospect from frames : loop over spectrographs for a given exposure
     '''
@@ -104,11 +106,11 @@ def page_subset(fdir, exposure, frametype, spectrographs, html_dir, titlepage_pr
     nspec_done = 0
     for spectrograph_num in spectrographs :
         frames = [ desispec.io.read_frame(os.path.join(fdir,frametype+"-"+band+spectrograph_num+"-"+exposure+".fits")) for band in ['b','r','z'] ]
-        spectra = utils_specviewer.frames2spectra(frames)
+        spectra = utils_specviewer.frames2spectra(frames, with_scores=True)
         # Selection
-        if mask != None :
+        if (mask != None) or (snr_cut != None) :
             spectra = utils_specviewer.specviewer_selection(spectra, log=log,
-                        mask=mask, mask_type='CMX_TARGET')
+                        mask=mask, mask_type='CMX_TARGET', snr_cut=snr_cut)
             if spectra == 0 : continue
 
         # Handle several html pages per exposure - sort by fiberid
@@ -192,7 +194,7 @@ def main(args) :
         if not os.path.exists(html_dir) : 
             os.makedirs(html_dir)
         
-        nspec_added = page_subset(fdir, the_subset['exposure'], args.frametype, the_subset['spectrographs'], html_dir, titlepage_prefix, args.mask, log, args.nspecperfile)
+        nspec_added = page_subset(fdir, the_subset['exposure'], args.frametype, the_subset['spectrographs'], html_dir, titlepage_prefix, args.mask, log, args.nspecperfile, args.snrcut)
                 
         # Stop running if needed, only once a full exposure is completed
         nspec_done += nspec_added
