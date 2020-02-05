@@ -19,6 +19,8 @@ import desispec.frame
 
 from prospect import plotframes
 from prospect import utils_specviewer
+from prospect import myspecselect
+
 
 def parse() :
 
@@ -29,16 +31,17 @@ def parse() :
     parser.add_argument('--nspecperfile', help='Number of spectra in each html page', type=int, default=50)
     parser.add_argument('--webdir', help='Base directory for webpages', type=str)
     parser.add_argument('--nmax_spectra', help='Stop the production of HTML pages once a given number of spectra are done', type=int, default=None)
-    parser.add_argument('--filetype', help='File category (currently sframe/cframe supported)', type=str, default='sframe')
+    parser.add_argument('--filetype', help='File category (currently sframe/cframe supported)', type=str, default='cframe')
+    parser.add_argument('--mask', help='Select only objects with a given CMX_TARGET target mask', type=str, default=None)
     args = parser.parse_args()
     return args
 
 
-def exposure_db(specprod_dir, filetype='sframe', expo_subset=None) :
+def exposure_db(specprod_dir, filetype='cframe', expo_subset=None) :
     '''
     Returns list of [ expo, night, spectros ] available in specprod_dir/exposures tree, 
         with b,r,z frames whose name matches filetype
-        spectros = list of spectrograph numbers from 0 to 9
+        spectros = list of spectrograph numbers from 0 to 9 (only those with 3 bands available are kept)
         expo_subset : list; if None, all available exposures will be included in the list
     '''
     exposures = list()
@@ -60,7 +63,8 @@ def exposure_db(specprod_dir, filetype='sframe', expo_subset=None) :
                 exposures.append( [expo, night, spectro_avail] )
     return exposures
 
-        
+
+
 def main(args) :
     
     log = get_logger()
@@ -92,22 +96,31 @@ def main(args) :
         
         for spectrograph_num in spectrographs :
             frames = [ desispec.io.read_frame(os.path.join(fdir,args.filetype+"-"+band+spectrograph_num+"-"+exposure+".fits")) for band in ['b','r','z'] ]
-            # Handle several html pages per pixel : sort by FIBER
-            nspec_expo = len(frames[0].fibermap)
+            spectra = utils_specviewer.frames2spectra(frames)
+            # Selection
+            if args.mask != None :
+                spectra = utils_specviewer.specviewer_selection(spectra, log=log,
+                            mask=args.mask, mask_type='CMX_TARGET')
+                if spectra == 0 : continue
+
+            # Handle several html pages per exposure - sort by fiberid
+            nspec_expo = spectra.num_spectra()
             log.info("Spectrograph number "+spectrograph_num+" : "+str(nspec_expo)+" spectra")
-            sort_indices = np.argsort(frames[0].fibermap["TARGETID"])
+            sort_indices = np.argsort(frames[0].fibermap["FIBER"])
             nbpages = int(np.ceil((nspec_expo/args.nspecperfile)))
             for i_page in range(1,1+nbpages) :
 
                 log.info(" * Page "+str(i_page)+" / "+str(nbpages))
-                i_start = (i_page-1)*args.nspecperfile
-                titlepage = "expo"exposure+"_spectro"+spectrograph_num+"_"+str(i_page)
-                html_dir = os.path.join(webdir,exposure)
+                the_indices = sort_indices[(i_page-1)*args.nspecperfile:i_page*args.nspecperfile]            
+                thespec = myspecselect.myspecselect(spectra, indices=the_indices)
+                titlepage = "expo"+exposure+"_spectro"+spectrograph_num+"_"+str(i_page)
+                html_dir = os.path.join(webdir,"exposures",exposure)
+                if args.mask != None :
+                    titlepage = args.mask+"_"+titlepage
+                    html_dir = os.path.join(webdir, args.mask, exposure)
                 if not os.path.exists(html_dir) : 
                     os.makedirs(html_dir)
-                    #os.mkdir( os.path.join(html_dir, "vignettes") )
-                plotframes.plotspectra(frames, nspec=args.nspecperfile, startspec=i_start, 
-                            with_noise=True, with_coaddcam=False, is_coadded=False, 
+                plotframes.plotspectra(thespec, with_noise=True, with_coaddcam=False, is_coadded=False, 
                             title=titlepage, html_dir=html_dir, mask_type='CMX_TARGET', with_thumb_only_page=True)
                 
             # Stop running if needed, only once a full exposure is completed

@@ -31,7 +31,7 @@ def myspecselect(thespec, nights=None, bands=None, targets=None, fibers=None, ex
 
     keep_nights = None
     if nights is None:
-        keep_nights = [ True for x in thespec.fibermap["NIGHT"] ]
+        keep_nights = [ True for x in range(thespec.num_spectra()) ]
     else:
         keep_nights = [ (x in nights) for x in thespec.fibermap["NIGHT"] ]
     if sum(keep_nights) == 0:
@@ -39,7 +39,7 @@ def myspecselect(thespec, nights=None, bands=None, targets=None, fibers=None, ex
 
     keep_targets = None
     if targets is None:
-        keep_targets = [ True for x in thespec.fibermap["TARGETID"] ]
+        keep_targets = [ True for x in range(thespec.num_spectra()) ]
     else:
         keep_targets = [ (x in targets) for x in thespec.fibermap["TARGETID"] ]
     if sum(keep_targets) == 0:
@@ -47,7 +47,7 @@ def myspecselect(thespec, nights=None, bands=None, targets=None, fibers=None, ex
 
     keep_fibers = None
     if fibers is None:
-        keep_fibers = [ True for x in thespec.fibermap["FIBER"] ]
+        keep_fibers = [ True for x in range(thespec.num_spectra()) ]
     else:
         keep_fibers = [ (x in fibers) for x in thespec.fibermap["FIBER"] ]
     if sum(keep_fibers) == 0:
@@ -55,7 +55,7 @@ def myspecselect(thespec, nights=None, bands=None, targets=None, fibers=None, ex
 
     keep_expids = None
     if expids is None:
-        keep_expids = [ True for x in thespec.fibermap["EXPID"] ]
+        keep_expids = [ True for x in range(thespec.num_spectra()) ]
     else:
         keep_expids = [ (x in expids) for x in thespec.fibermap["EXPID"] ]
     if sum(keep_expids) == 0:

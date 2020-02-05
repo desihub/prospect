@@ -15,7 +15,13 @@ matplotlib.use('Agg') # No DISPLAY
 import matplotlib.pyplot as plt
 
 from desiutil.log import get_logger
+import desispec.spectra
+import desispec.frame
+from desitarget.targetmask import desi_mask
+from desitarget.cmx.cmx_targetmask import cmx_mask
+from desitarget.sv1.sv1_targetmask import desi_mask as sv1_desi_mask
 from prospect import mycoaddcam
+from prospect import myspecselect
 
 _vi_flags = [
     # Definition of VI flags
@@ -225,5 +231,115 @@ def miniplot_spectrum(spectra, i_spec, model=None, saveplot=None, smoothing=-1, 
     plt.clf()
         
     return
+
+
+
+
+def frames2spectra(frames, nspec=None, startspec=None):
+    '''Convert input list of Frames into Spectra object
+
+    Do no propagate resolution, scores
+    '''
+    bands = list()
+    wave = dict()
+    flux = dict()
+    ivar = dict()
+    mask = dict()
+    for fr in frames:
+        fibermap = fr.fibermap
+        band = fr.meta['CAMERA'][0]
+        bands.append(band)
+        wave[band] = fr.wave
+        flux[band] = fr.flux
+        ivar[band] = fr.ivar
+        mask[band] = fr.mask
+        if nspec is not None :
+            if startspec is None : startspec = 0
+            flux[band] = flux[band][startspec:nspec+startspec]
+            ivar[band] = ivar[band][startspec:nspec+startspec]
+            mask[band] = mask[band][startspec:nspec+startspec]
+            fibermap = fr.fibermap[startspec:nspec+startspec]
+
+    spectra = desispec.spectra.Spectra(
+        bands, wave, flux, ivar, mask, fibermap=fibermap, meta=fr.meta
+    )
+    return spectra
+
+
+def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=None, rmag_cut=None, chi2cut=None, zbest=None, snr_cut=None) :
+    '''
+    Simple sub-selection on spectra based on meta-data.
+        Implemented cuts based on : target mask ; photo mag (g, r) ; chi2 from fit ; SNR (in spectra.scores, BRZ)
+    '''
     
+    # Target mask selection
+    if mask is not None :
+        assert mask_type in ['SV1_DESI_TARGET', 'DESI_TARGET', 'CMX_TARGET']
+        if mask_type == 'SV1_DESI_TARGET' :
+            assert ( mask in sv1_desi_mask.names() )            
+            w, = np.where( (spectra.fibermap['SV1_DESI_TARGET'] & sv1_desi_mask[mask]) )
+        elif mask_type == 'DESI_TARGET' :
+            assert ( mask in desi_mask.names() ) 
+            w, = np.where( (spectra.fibermap['DESI_TARGET'] & desi_mask[mask]) )
+        elif mask_type == 'CMX_TARGET' :
+            assert ( mask in cmx_mask.names() )
+            w, = np.where( (spectra.fibermap['CMX_TARGET'] & cmx_mask[mask]) )                
+        if len(w) == 0 :
+            if log is not None : log.info(" * No spectra with mask "+mask)
+            return 0
+        else :
+            targetids = spectra.fibermap['TARGETID'][w]
+            spectra = myspecselect.myspecselect(spectra, targets=targetids)
+
+    # Photometry selection
+    if gmag_cut is not None :
+        assert len(gmag_cut)==2 # Require range [gmin, gmax]
+        gmag = np.zeros(spectra.num_spectra())
+        w, = np.where( (spectra.fibermap['FLUX_G']>0) & (spectra.fibermap['MW_TRANSMISSION_G']>0) )
+        gmag[w] = -2.5*np.log10(spectra.fibermap['FLUX_G'][w]/spectra.fibermap['MW_TRANSMISSION_G'][w])+22.5
+        w, = np.where( (gmag>gmag_cut[0]) & (gmag<gmag_cut[1]) )
+        if len(w) == 0 :
+            if log is not None : log.info(" * No spectra with g_mag in requested range")
+            return 0
+        else :
+            targetids = spectra.fibermap['TARGETID'][w]
+            spectra = spectra.select(targets=targetids)
+    if rmag_cut is not None :
+        assert len(rmag_cut)==2 # Require range [rmin, rmax]
+        rmag = np.zeros(spectra.num_spectra())
+        w, = np.where( (spectra.fibermap['FLUX_R']>0) & (spectra.fibermap['MW_TRANSMISSION_R']>0) )
+        rmag[w] = -2.5*np.log10(spectra.fibermap['FLUX_R'][w]/spectra.fibermap['MW_TRANSMISSION_R'][w])+22.5
+        w, = np.where( (rmag>rmag_cut[0]) & (rmag<rmag_cut[1]) )
+        if len(w) == 0 :
+            if log is not None : log.info(" * No spectra with r_mag in requested range")
+            return 0
+        else :
+            targetids = spectra.fibermap['TARGETID'][w]
+            spectra = spectra.select(targets=targetids)
+
+    # SNR selection ## TODO check it !! May not work ...
+    if snr_cut is not None :
+        assert ( (len(snr_cut)==2) & (spectra.scores is not None) )
+        for band in ['B','R','Z'] :
+            w, = np.where( (spectra.scores['MEDIAN_CALIB_SNR_'+band]>snr_cut[0]) & (spectra.scores['MEDIAN_CALIB_SNR_'+band]<snr_cut[1]) )
+            if len(w) == 0 :
+                if log is not None : log.info(" * No spectra with MEDIAN_CALIB_SNR_"+band+" in requested range")
+                return 0
+            else :
+                targetids = spectra.fibermap['TARGETID'][w]
+                spectra = spectra.select(targets=targetids)
     
+    # Chi2 selection
+    if chi2cut is not None :
+        assert len(chi2cut)==2 # Require range [chi2min, chi2max]
+        assert (zbest is not None)
+        thezb, kk = match_zcat_to_spectra(zbest,spectra)
+        w, = np.where( (thezb['DELTACHI2']>chi2cut[0]) & (thezb['DELTACHI2']<chi2cut[1]) )
+        if len(w) == 0 :
+            if log is not None : log.info(" * No target in this pixel with DeltaChi2 in requested range")
+            return 0
+        else :
+            targetids = spectra.fibermap['TARGETID'][w]
+            spectra = spectra.select(targets=targetids)
+
+    return spectra

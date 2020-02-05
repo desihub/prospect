@@ -154,36 +154,6 @@ def coadd_targets(spectra, targetids=None):
             meta=spectra.meta)
 
 
-def frames2spectra(frames, nspec=None, startspec=None):
-    '''Convert input list of Frames into Spectra object
-
-    Do no propagate resolution, scores
-    '''
-    bands = list()
-    wave = dict()
-    flux = dict()
-    ivar = dict()
-    mask = dict()
-    for fr in frames:
-        fibermap = fr.fibermap
-        band = fr.meta['CAMERA'][0]
-        bands.append(band)
-        wave[band] = fr.wave
-        flux[band] = fr.flux
-        ivar[band] = fr.ivar
-        mask[band] = fr.mask
-        if nspec is not None :
-            if startspec is None : startspec = 0
-            flux[band] = flux[band][startspec:nspec+startspec]
-            ivar[band] = ivar[band][startspec:nspec+startspec]
-            mask[band] = mask[band][startspec:nspec+startspec]
-            fibermap = fr.fibermap[startspec:nspec+startspec]
-
-    spectra = desispec.spectra.Spectra(
-        bands, wave, flux, ivar, mask, fibermap=fibermap, meta=fr.meta
-    )
-    return spectra
-
 def create_model(spectra, zbest):
     '''
     Returns model_wave[nwave], model_flux[nspec, nwave], row matched to zbest,
@@ -493,7 +463,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
 
     #- If inputs are frames, convert to a spectra object
     if isinstance(spectra, list) and isinstance(spectra[0], desispec.frame.Frame):
-        spectra = frames2spectra(spectra, nspec=nspec, startspec=startspec)
+        spectra = utils_specviewer.frames2spectra(spectra, nspec=nspec, startspec=startspec)
         frame_input = True
     else:
         frame_input = False
