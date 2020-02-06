@@ -235,17 +235,18 @@ def miniplot_spectrum(spectra, i_spec, model=None, saveplot=None, smoothing=-1, 
 
 
 
-def frames2spectra(frames, nspec=None, startspec=None, with_scores=False):
+def frames2spectra(frames, nspec=None, startspec=None, with_scores=False, with_resolution_data=False):
     '''Convert input list of Frames into Spectra object
     with_score : if true, propagate scores
-    Do no propagate resolution
+    with_resolution_data: if true, propagate resolution
     '''
     bands = list()
     wave = dict()
     flux = dict()
     ivar = dict()
     mask = dict()
-    
+    res = dict()
+        
     for fr in frames:
         fibermap = fr.fibermap
         band = fr.meta['CAMERA'][0]
@@ -254,11 +255,13 @@ def frames2spectra(frames, nspec=None, startspec=None, with_scores=False):
         flux[band] = fr.flux
         ivar[band] = fr.ivar
         mask[band] = fr.mask
+        res[band] = fr.resolution_data
         if nspec is not None :
             if startspec is None : startspec = 0
             flux[band] = flux[band][startspec:nspec+startspec]
             ivar[band] = ivar[band][startspec:nspec+startspec]
             mask[band] = mask[band][startspec:nspec+startspec]
+            res[band] = res[band][startspec:nspec+startspec,:,:]
             fibermap = fr.fibermap[startspec:nspec+startspec]
     
     merged_scores = None
@@ -268,8 +271,10 @@ def frames2spectra(frames, nspec=None, startspec=None, with_scores=False):
             scores_columns += frames[i].scores.columns
         merged_scores = astropy.io.fits.FITS_rec.from_columns(scores_columns)
 
+    if not with_resolution_data : res = None
+    
     spectra = desispec.spectra.Spectra(
-        bands, wave, flux, ivar, mask, fibermap=fibermap, meta=fr.meta, scores=merged_scores
+        bands, wave, flux, ivar, mask, fibermap=fibermap, meta=fr.meta, scores=merged_scores, resolution_data=res
     )
     return spectra
 
@@ -351,3 +356,118 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
             spectra = myspecselect.myspecselect(spectra, targets=targetids)
 
     return spectra
+
+
+def _coadd(wave, flux, ivar, rdat):
+    '''
+    Return weighted coadd of spectra
+
+    Parameters
+    ----------
+    wave : 1D[nwave] array of wavelengths
+    flux : 2D[nspec, nwave] array of flux densities
+    ivar : 2D[nspec, nwave] array of inverse variances of `flux`
+    rdat : 3D[nspec, ndiag, nwave] sparse diagonals of resolution matrix
+
+    Returns
+    -------
+        coadded spectrum (wave, outflux, outivar, outrdat)
+    '''
+    nspec, nwave = flux.shape
+    unweightedflux = np.zeros(nwave, dtype=flux.dtype)
+    weightedflux = np.zeros(nwave, dtype=flux.dtype)
+    weights = np.zeros(nwave, dtype=flux.dtype)
+    outrdat = np.zeros(rdat[0].shape, dtype=rdat.dtype)
+    for i in range(nspec):
+        unweightedflux += flux[i]
+        weightedflux += flux[i] * ivar[i]
+        weights += ivar[i]
+        outrdat += rdat[i] * ivar[i]
+
+    isbad = (weights == 0)
+    outflux = weightedflux / (weights + isbad)
+    outflux[isbad] = unweightedflux[isbad] / nspec
+
+    outrdat /= (weights + isbad)
+    outivar = weights
+
+    return wave, outflux, outivar, outrdat
+
+def coadd_targets(spectra, targetids=None):
+    '''
+    Coadds individual exposures of the same targets; returns new Spectra object
+
+    Parameters
+    ----------
+    spectra : :class:`desispec.spectra.Spectra`
+    targetids : (optional) array-like subset of target IDs to keep
+
+    Returns
+    -------
+    coadded_spectra : :class:`desispec.spectra.Spectra` where individual
+        spectra of each target have been combined into a single spectrum
+        per camera.
+
+    Note: coadds per camera but not across cameras.
+    '''
+    if targetids is None:
+        targetids = spectra.target_ids()
+
+    #- Create output arrays to fill
+    ntargets = spectra.num_targets()
+    wave = dict()
+    flux = dict()
+    ivar = dict()
+    rdat = dict()
+    if spectra.mask is None:
+        mask = None
+    else:
+        mask = dict()
+    for channel in spectra.bands:
+        wave[channel] = spectra.wave[channel].copy()
+        nwave = len(wave[channel])
+        flux[channel] = np.zeros((ntargets, nwave))
+        ivar[channel] = np.zeros((ntargets, nwave))
+        ndiag = spectra.resolution_data[channel].shape[1]
+        rdat[channel] = np.zeros((ntargets, ndiag, nwave))
+        if mask is not None:
+            mask[channel] = np.zeros((ntargets, nwave), dtype=spectra.mask[channel].dtype)
+
+    #- Loop over targets, coadding all spectra for each target
+    fibermap = Table(dtype=spectra.fibermap.dtype)
+    for i, targetid in enumerate(targetids):
+        ii = np.where(spectra.fibermap['TARGETID'] == targetid)[0]
+        fibermap.add_row(spectra.fibermap[ii[0]])
+        for channel in spectra.bands:
+            if len(ii) > 1:
+                outwave, outflux, outivar, outrdat = _coadd(
+                    spectra.wave[channel],
+                    spectra.flux[channel][ii],
+                    spectra.ivar[channel][ii],
+                    spectra.resolution_data[channel][ii]
+                    )
+                if mask is not None:
+                    outmask = spectra.mask[channel][ii[0]]
+                    for j in range(1, len(ii)):
+                        outmask |= spectra.mask[channel][ii[j]]
+            else:
+                outwave, outflux, outivar, outrdat = (
+                    spectra.wave[channel],
+                    spectra.flux[channel][ii[0]],
+                    spectra.ivar[channel][ii[0]],
+                    spectra.resolution_data[channel][ii[0]]
+                    )
+                if mask is not None:
+                    outmask = spectra.mask[channel][ii[0]]
+
+            flux[channel][i] = outflux
+            ivar[channel][i] = outivar
+            rdat[channel][i] = outrdat
+            if mask is not None:
+                mask[channel][i] = outmask
+
+    return desispec.spectra.Spectra(spectra.bands, wave, flux, ivar,
+            mask=mask, resolution_data=rdat, fibermap=fibermap,
+            meta=spectra.meta)
+
+

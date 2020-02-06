@@ -103,9 +103,12 @@ def myspecselect(thespec, nights=None, bands=None, targets=None, fibers=None, ex
             for ex in thespec.extra[b].items():
                 keep_extra[b][ex[0]] = ex[1][keep,:]
 
+    keep_scores = None
+    if thespec.scores is not None : keep_scores = thespec.scores[keep]
+    
     ret = desispec.spectra.Spectra(keep_bands, keep_wave, keep_flux, keep_ivar, 
         mask=keep_mask, resolution_data=keep_res, 
         fibermap=thespec.fibermap[keep], meta=thespec.meta, extra=keep_extra,
-        single=thespec._single, scores=thespec.scores[keep])
+        single=thespec._single, scores=keep_scores)
 
     return ret
