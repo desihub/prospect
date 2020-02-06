@@ -10,7 +10,7 @@
 <h3> Sets of spectra sorted by exposure </h3>
 {% if exposures is not none %}
   <ul>
-  {% for expo in exposures %}
+  {% for expo in exposures | sort %}
   <li><a href="exposures/{{ expo }}/index_{{ expo }}.html">{{ expo }}</a></li>
   {% endfor %}
   </ul>

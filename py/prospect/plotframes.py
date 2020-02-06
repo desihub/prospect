@@ -30,7 +30,8 @@ import bokeh.events
 
 import desispec.io
 from desitarget.targetmask import desi_mask
-from desitarget.sv1.sv1_targetmask import desi_mask as desi_mask_sv1
+from desitarget.cmx.cmx_targetmask import cmx_mask
+from desitarget.sv1.sv1_targetmask import desi_mask as sv1_desi_mask
 import desispec.spectra
 import desispec.frame
 
@@ -38,150 +39,6 @@ import desispec.frame
 from prospect import utils_specviewer
 from prospect import mycoaddcam
 from astropy.table import Table
-
-
-def _coadd(wave, flux, ivar, rdat):
-    '''
-    Return weighted coadd of spectra
-
-    Parameters
-    ----------
-    wave : 1D[nwave] array of wavelengths
-    flux : 2D[nspec, nwave] array of flux densities
-    ivar : 2D[nspec, nwave] array of inverse variances of `flux`
-    rdat : 3D[nspec, ndiag, nwave] sparse diagonals of resolution matrix
-
-    Returns
-    -------
-        coadded spectrum (wave, outflux, outivar, outrdat)
-    '''
-    nspec, nwave = flux.shape
-    unweightedflux = np.zeros(nwave, dtype=flux.dtype)
-    weightedflux = np.zeros(nwave, dtype=flux.dtype)
-    weights = np.zeros(nwave, dtype=flux.dtype)
-    outrdat = np.zeros(rdat[0].shape, dtype=rdat.dtype)
-    for i in range(nspec):
-        unweightedflux += flux[i]
-        weightedflux += flux[i] * ivar[i]
-        weights += ivar[i]
-        outrdat += rdat[i] * ivar[i]
-
-    isbad = (weights == 0)
-    outflux = weightedflux / (weights + isbad)
-    outflux[isbad] = unweightedflux[isbad] / nspec
-
-    outrdat /= (weights + isbad)
-    outivar = weights
-
-    return wave, outflux, outivar, outrdat
-
-def coadd_targets(spectra, targetids=None):
-    '''
-    Coadds individual exposures of the same targets; returns new Spectra object
-
-    Parameters
-    ----------
-    spectra : :class:`desispec.spectra.Spectra`
-    targetids : (optional) array-like subset of target IDs to keep
-
-    Returns
-    -------
-    coadded_spectra : :class:`desispec.spectra.Spectra` where individual
-        spectra of each target have been combined into a single spectrum
-        per camera.
-
-    Note: coadds per camera but not across cameras.
-    '''
-    if targetids is None:
-        targetids = spectra.target_ids()
-
-    #- Create output arrays to fill
-    ntargets = spectra.num_targets()
-    wave = dict()
-    flux = dict()
-    ivar = dict()
-    rdat = dict()
-    if spectra.mask is None:
-        mask = None
-    else:
-        mask = dict()
-    for channel in spectra.bands:
-        wave[channel] = spectra.wave[channel].copy()
-        nwave = len(wave[channel])
-        flux[channel] = np.zeros((ntargets, nwave))
-        ivar[channel] = np.zeros((ntargets, nwave))
-        ndiag = spectra.resolution_data[channel].shape[1]
-        rdat[channel] = np.zeros((ntargets, ndiag, nwave))
-        if mask is not None:
-            mask[channel] = np.zeros((ntargets, nwave), dtype=spectra.mask[channel].dtype)
-
-    #- Loop over targets, coadding all spectra for each target
-    fibermap = Table(dtype=spectra.fibermap.dtype)
-    for i, targetid in enumerate(targetids):
-        ii = np.where(spectra.fibermap['TARGETID'] == targetid)[0]
-        fibermap.add_row(spectra.fibermap[ii[0]])
-        for channel in spectra.bands:
-            if len(ii) > 1:
-                outwave, outflux, outivar, outrdat = _coadd(
-                    spectra.wave[channel],
-                    spectra.flux[channel][ii],
-                    spectra.ivar[channel][ii],
-                    spectra.resolution_data[channel][ii]
-                    )
-                if mask is not None:
-                    outmask = spectra.mask[channel][ii[0]]
-                    for j in range(1, len(ii)):
-                        outmask |= spectra.mask[channel][ii[j]]
-            else:
-                outwave, outflux, outivar, outrdat = (
-                    spectra.wave[channel],
-                    spectra.flux[channel][ii[0]],
-                    spectra.ivar[channel][ii[0]],
-                    spectra.resolution_data[channel][ii[0]]
-                    )
-                if mask is not None:
-                    outmask = spectra.mask[channel][ii[0]]
-
-            flux[channel][i] = outflux
-            ivar[channel][i] = outivar
-            rdat[channel][i] = outrdat
-            if mask is not None:
-                mask[channel][i] = outmask
-
-    return desispec.spectra.Spectra(spectra.bands, wave, flux, ivar,
-            mask=mask, resolution_data=rdat, fibermap=fibermap,
-            meta=spectra.meta)
-
-
-def frames2spectra(frames, nspec=None, startspec=None):
-    '''Convert input list of Frames into Spectra object
-
-    Do no propagate resolution, scores
-    '''
-    bands = list()
-    wave = dict()
-    flux = dict()
-    ivar = dict()
-    mask = dict()
-    for fr in frames:
-        fibermap = fr.fibermap
-        band = fr.meta['CAMERA'][0]
-        bands.append(band)
-        wave[band] = fr.wave
-        flux[band] = fr.flux
-        ivar[band] = fr.ivar
-        mask[band] = fr.mask
-        if nspec is not None :
-            if startspec is None : startspec = 0
-            flux[band] = flux[band][startspec:nspec+startspec]
-            ivar[band] = ivar[band][startspec:nspec+startspec]
-            mask[band] = mask[band][startspec:nspec+startspec]
-            fibermap = fr.fibermap[startspec:nspec+startspec]
-
-    spectra = desispec.spectra.Spectra(
-        bands, wave, flux, ivar, mask, fibermap=fibermap, meta=fr.meta
-    )
-    return spectra
 
 def create_model(spectra, zbest):
     '''
@@ -330,16 +187,19 @@ def make_cds_model(model) :
 
     return cds_model
 
-def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
+def make_cds_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=" ") :
     """ Creates column data source for target-related metadata, from zcatalog, fibermap and VI files """
 
+    assert mask_type in ['SV1_DESI_TARGET', 'DESI_TARGET', 'CMX_TARGET']
     target_info = list()
     vi_info = list()
     for i, row in enumerate(spectra.fibermap):
-        if sv :
-            target_bit_names = ' '.join(desi_mask_sv1.names(row['SV1_DESI_TARGET']))
-        else :
+        if mask_type == 'SV1_DESI_TARGET' :
+            target_bit_names = ' '.join(sv1_desi_mask.names(row['SV1_DESI_TARGET']))
+        elif mask_type == 'DESI_TARGET' :
             target_bit_names = ' '.join(desi_mask.names(row['DESI_TARGET']))
+        elif mask_type == 'CMX_TARGET' :
+            target_bit_names = ' '.join(cmx_mask.names(row['CMX_TARGET']))
         txt = 'TargetID {}: {} '.format(row['TARGETID'], target_bit_names)
         if not is_coadded :
             ## BYPASS DIV
@@ -420,7 +280,46 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=" ") :
     return cds_targetinfo
 
 
-def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, is_coadded=True, title=None, html_dir=None, with_noise=True, with_coaddcam=True, sv=False, with_thumb_tab=True):
+def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, resamp_factor=15, ncols_grid=5, titles=None) :
+    '''
+    Create a bokeh gridplot of thumbnail pictures from spectra
+    - coadd arms
+    - smooth+resample to reduce size of embedded CDS, according to resamp_factor
+    - titles : optional list of titles for each thumb
+    '''
+
+    if thumb_height is None : thumb_height = thumb_width//2
+    if titles is not None : assert len(titles) == spectra.num_spectra()
+    thumb_wave, thumb_flux, dummy = mycoaddcam.mycoaddcam(spectra)
+    
+    thumb_plots = []
+    for i_spec in range(spectra.num_spectra()) :
+        # other option use CustomJSTransform ?
+        # (https://docs.bokeh.org/en/1.1.0/docs/user_guide/data.html)
+        x_vals = (thumb_wave[::resamp_factor])[resamp_factor:-resamp_factor]
+        y_vals = scipy.ndimage.filters.gaussian_filter1d(thumb_flux[i_spec,:], sigma=resamp_factor, mode='nearest') 
+        y_vals = (y_vals[::resamp_factor])[resamp_factor:-resamp_factor]
+        x_vals = x_vals[~np.isnan(y_vals)] # TODO - should we keep that in the end ?
+        y_vals = y_vals[~np.isnan(y_vals)]            
+        yampl = np.max(y_vals) - np.min(y_vals)
+        ymin = np.min(y_vals) - 0.1*yampl
+        ymax = np.max(y_vals) + 0.1*yampl
+        plot_title = None
+        if titles is not None : plot_title = titles[i_spec]
+        mini_plot = bk.figure(plot_width=thumb_width, plot_height=thumb_height, x_range=x_range, y_range=(ymin,ymax), title=plot_title)
+        mini_plot.line(x_vals, y_vals, line_color='red')
+        mini_plot.xaxis.visible = False
+        mini_plot.yaxis.visible = False
+        mini_plot.min_border_left = 0
+        mini_plot.min_border_right = 0
+        mini_plot.min_border_top = 0
+        mini_plot.min_border_bottom = 0
+        thumb_plots.append(mini_plot)
+
+    return gridplot(thumb_plots, ncols=ncols_grid, toolbar_location=None, sizing_mode='scale_width')
+
+
+def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, mask_type='DESI_TARGET', with_thumb_tab=True, with_vi_widgets=True, with_thumb_only_page=False):
     '''
     Main prospect routine, creates a bokeh document from a set of spectra and fits
 
@@ -438,15 +337,19 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     is_coadded : set to True if spectra are coadds
     title : title used to produce html page / name bokeh figure / save VI file
     html_dir : directory to store html page
+    with_imaging : include thumb image from legacysurvey.org
     with_noise : include noise for each spectrum
     with_coaddcam : include camera-coaddition
     with_thumb_tab : include tab with thumbnails of spectra in viewer
-    sv : if True, will use SV1_DESI_TARGET instead of DESI_TARGET
+    with_vi_widgets : include widgets used to enter VI informations
+    with_thumb_only_page (requires notebook==False) : also create a light html page including only the thumb gallery
+    mask_type : mask type to identify target categories from the fibermap. Available : DESI_TARGET,
+        SV1_DESI_TARGET, CMX_TARGET. Default : DESI_TARGET.
     '''
 
     #- If inputs are frames, convert to a spectra object
     if isinstance(spectra, list) and isinstance(spectra[0], desispec.frame.Frame):
-        spectra = frames2spectra(spectra, nspec=nspec, startspec=startspec)
+        spectra = utils_specviewer.frames2spectra(spectra, nspec=nspec, startspec=startspec)
         frame_input = True
     else:
         frame_input = False
@@ -481,10 +384,12 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     #-----
     #- Initialize Bokeh output
     if notebook:
+        assert with_thumb_only_page == False
         bk.output_notebook()
     else :
         if html_dir is None : raise RuntimeError("Need html_dir")
-        bk.output_file(html_dir+"/specviewer_"+title+".html", title='DESI spectral viewer')
+        html_page = os.path.join(html_dir, "specviewer_"+title+".html")
+        bk.output_file(html_page, title='DESI spectral viewer')
 
     #-----
     #- Gather information into ColumnDataSource objects for Bokeh
@@ -501,7 +406,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         username = os.environ['USER']
     else :
         username = " "
-    cds_targetinfo = make_cds_targetinfo(spectra, zcatalog, is_coadded, sv, username=username)
+    cds_targetinfo = make_cds_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=username)
 
 
     #-------------------------
@@ -526,8 +431,10 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     plot_width=800
     plot_height=400
     tools = 'pan,box_zoom,wheel_zoom,save'
+    tooltips_fig = [("wave","$x"),("flux","$y")]
     fig = bk.figure(height=plot_height, width=plot_width, title=title,
-        tools=tools, toolbar_location='above', y_range=(ymin, ymax), x_range=(xmin, xmax))
+        tools=tools, toolbar_location='above', tooltips=tooltips_fig, y_range=(ymin, ymax), x_range=(xmin, xmax))
+    fig.sizing_mode = 'stretch_width'
     fig.toolbar.active_drag = fig.tools[0]    #- pan zoom (previously box)
     fig.toolbar.active_scroll = fig.tools[2]  #- wheel zoom
     fig.xaxis.axis_label = 'Wavelength [Å]'
@@ -609,23 +516,27 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
 
     #-----
     #- Targeting image
-    imfig = bk.figure(width=plot_height//2, height=plot_height//2,
-                      x_range=(0, 256), y_range=(0, 256),
-                      x_axis_location=None, y_axis_location=None,
-                      output_backend="webgl",
-                      toolbar_location=None, tools=[])
-    imfig.min_border_left = 0
-    imfig.min_border_right = 0
-    imfig.min_border_top = 0
-    imfig.min_border_bottom = 0
+    if with_imaging :
+        imfig = bk.figure(width=plot_height//2, height=plot_height//2,
+                          x_range=(0, 256), y_range=(0, 256),
+                          x_axis_location=None, y_axis_location=None,
+                          output_backend="webgl",
+                          toolbar_location=None, tools=[])
+        imfig.min_border_left = 0
+        imfig.min_border_right = 0
+        imfig.min_border_top = 0
+        imfig.min_border_bottom = 0
 
-    imfig_urls = _viewer_urls(spectra)
-    imfig_source = ColumnDataSource(data=dict(url=[imfig_urls[0][0]],
-                                              txt=[imfig_urls[0][2]]))
+        imfig_urls = _viewer_urls(spectra)
+        imfig_source = ColumnDataSource(data=dict(url=[imfig_urls[0][0]],
+                                                  txt=[imfig_urls[0][2]]))
 
-    imfig_img = imfig.image_url('url', source=imfig_source, x=1, y=1, w=256, h=256, anchor='bottom_left')
-    imfig_txt = imfig.text(10, 256-30, text='txt', source=imfig_source,
-                           text_color='yellow', text_font_size='8pt')
+        imfig_img = imfig.image_url('url', source=imfig_source, x=1, y=1, w=256, h=256, anchor='bottom_left')
+        imfig_txt = imfig.text(10, 256-30, text='txt', source=imfig_source,
+                               text_color='yellow', text_font_size='8pt')
+    else : 
+        imfig = Spacer(width=plot_height//2, height=plot_height//2)
+        imfig_source = imfig_urls = None
 
     #-----
     #- Emission and absorption lines
@@ -822,10 +733,11 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
 
     #-----
     #- Targeting image callback
-    imfig_callback = CustomJS(args=dict(urls=imfig_urls,
-                                        ifiberslider=ifiberslider),
-                              code='''window.open(urls[ifiberslider.value][1], "_blank");''')
-    imfig.js_on_event('tap', imfig_callback)
+    if with_imaging :
+        imfig_callback = CustomJS(args=dict(urls=imfig_urls,
+                                            ifiberslider=ifiberslider),
+                                  code='''window.open(urls[ifiberslider.value][1], "_blank");''')
+        imfig.js_on_event('tap', imfig_callback)
 
    
     #-----
@@ -908,7 +820,10 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         zcat_disp_cols = [ TableColumn(field=x, title=x, width=w) for x,w in [ ('SPECTYPE',100), ('Z',50) , ('ZERR',50), ('ZWARN',50), ('DeltaChi2',50) ] ]
         zcat_display = DataTable(source=zcat_disp_cds, columns=zcat_disp_cols, index_position=None, selectable=False, width=400) # width=...
         zcat_display.height = 2 * zcat_display.row_height
-
+    else :
+        zcat_display = Div(text="Not available ")
+        zcat_disp_cds = None
+        
     vi_info_div = Div(text=" ") # consistent with show_prev_vi="No" by default
 
     #-----
@@ -1179,35 +1094,37 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     #-----
     #- Bokeh setup
     # NB widget height / width are still partly hardcoded, but not arbitrary except for Spacers
+    
     slider_width = plot_width - 2*navigation_button_width
     navigator = bk.Row(
         widgetbox(prev_button, width=navigation_button_width+15),
-        widgetbox(vi_class_input, width=60*len(vi_class_labels)),
         widgetbox(next_button, width=navigation_button_width+20),
-#        widgetbox(Spacer(width=plot_height//2)),
-        widgetbox(ifiberslider, width=plot_width+(plot_height//2)-(60*len(vi_class_labels)+2*navigation_button_width+35)))
-    vi_widget_set = bk.Column(
-        widgetbox( Div(text="VI optional indications :"), width=300 ),
-        bk.Row(
-            bk.Column(
-                widgetbox(Spacer(height=20)),
-                widgetbox(vi_issue_input, width=150, height=100),
-            ),
-            bk.Column(
-                widgetbox(vi_z_input, width=150),
-                widgetbox(vi_category_select, width=150),
-            )
-        ),
-        widgetbox(vi_comment_input, width=300),
-        widgetbox(vi_name_input, width=150),
-        widgetbox(vi_filename_input, width=300),
-        widgetbox(save_vi_button, width=100),
-        widgetbox(vi_table),        
-        bk.Row(
-            widgetbox(recover_vi_button, width=150),
-            widgetbox(clear_vi_button, width=150)
-        )
+        widgetbox(ifiberslider, width=plot_width+(plot_height//2)-(60*len(vi_class_labels)+2*navigation_button_width+35))
     )
+    if with_vi_widgets :
+        navigator.children.insert(1, widgetbox(vi_class_input, width=60*len(vi_class_labels)) )
+        vi_widget_set = bk.Column(
+            widgetbox( Div(text="VI optional indications :"), width=300 ),
+            bk.Row(
+                bk.Column(
+                    widgetbox(Spacer(height=20)),
+                    widgetbox(vi_issue_input, width=150, height=100),
+                ),
+                bk.Column(
+                    widgetbox(vi_z_input, width=150),
+                    widgetbox(vi_category_select, width=150),
+                )
+            ),
+            widgetbox(vi_comment_input, width=300),
+            widgetbox(vi_name_input, width=150),
+            widgetbox(vi_filename_input, width=300),
+            widgetbox(save_vi_button, width=100),
+            widgetbox(vi_table),        
+            bk.Row(
+                widgetbox(recover_vi_button, width=150),
+                widgetbox(clear_vi_button, width=150)
+            )
+        )
     plot_widget_width = (plot_width+(plot_height//2))//2 - 40
     plot_widget_set = bk.Column(
         widgetbox( Div(text="Pipeline fit : ") ),
@@ -1225,61 +1142,37 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         widgetbox(coaddcam_buttons, width=200),
         widgetbox(waveframe_buttons, width=120),
         widgetbox(lines_button_group, width=200),
-        widgetbox(majorline_checkbox, width=120),
-        widgetbox(Spacer(height=30)),
-        widgetbox(vi_guideline_div, width=plot_widget_width)
+        widgetbox(majorline_checkbox, width=120)
     )
-    main_bokehsetup = bk.Column(
-        bk.Row(fig, bk.Column(imfig, zoomfig)),
-        bk.Row(
-## BYPASS DIV
-#            widgetbox(target_info_div, width=plot_width - 120),
-            widgetbox(targ_display, width=plot_width - 120),
-            widgetbox(reset_plotrange_button, width = 120)
-        ),
-        navigator,
-        bk.Row(
+    if with_vi_widgets :
+        plot_widget_set.children.append( widgetbox(Spacer(height=30)) )
+        plot_widget_set.children.append( widgetbox(vi_guideline_div, width=plot_widget_width) )
+        full_widget_set = bk.Row(
             vi_widget_set,
             widgetbox(Spacer(width=40)),
             plot_widget_set
         )
+    else : full_widget_set = plot_widget_set
+    
+    main_bokehsetup = bk.Column(
+        bk.Row(fig, bk.Column(imfig, zoomfig), Spacer(width=20), sizing_mode='stretch_width'),
+        bk.Row(
+            widgetbox(targ_display, width=plot_width - 120),
+            widgetbox(reset_plotrange_button, width = 120)
+        ),
+        navigator,
+        full_widget_set,
+        sizing_mode='stretch_width'
     )
     
     if with_thumb_tab is False :
         full_viewer = main_bokehsetup
-
-    else : # Prototype thumb gallery
+    else :
         full_viewer = Tabs()
-        
-        # Create thumbnail pictures :
-        # - coadd arms
-        # - smooth+resample to reduce size of embedded CDS
-        thumb_wave, thumb_flux, dummy = mycoaddcam.mycoaddcam(spectra)
-        resamp_factor = 15  # TODO : un-hardcode, place somewhere else
-        
-        thumb_plots = []
-        ncols_grid = 5
+        ncols_grid = 5 # TODO un-hardcode
+        titles = None # TODO define
         miniplot_width = ( plot_width + (plot_height//2) ) // ncols_grid
-        
-        for i_spec in range(nspec) :
-            # other option use CustomJSTransform ?
-            # (https://docs.bokeh.org/en/1.1.0/docs/user_guide/data.html)
-            x_vals = (thumb_wave[::resamp_factor])[resamp_factor:-resamp_factor]
-            y_vals = (( scipy.ndimage.filters.gaussian_filter1d(thumb_flux[i_spec,:], sigma=resamp_factor, mode='nearest') )[::resamp_factor])[resamp_factor:-resamp_factor]
-            yampl = np.max(y_vals) - np.min(y_vals)
-            ymin = np.min(y_vals) - 0.1*yampl
-            ymax = np.max(y_vals) + 0.1*yampl
-            mini_plot = bk.figure(plot_width=miniplot_width, plot_height=miniplot_width//2, x_range=(xmin,xmax), y_range=(ymin,ymax))
-            mini_plot.line(x_vals, y_vals, line_color='red')
-            mini_plot.xaxis.visible = False
-            mini_plot.yaxis.visible = False
-            mini_plot.min_border_left = 0
-            mini_plot.min_border_right = 0
-            mini_plot.min_border_top = 0
-            mini_plot.min_border_bottom = 0
-            thumb_plots.append(mini_plot)
-        
-        thumb_grid = gridplot(thumb_plots, ncols=ncols_grid, toolbar_location=None)        
+        thumb_grid = grid_thumbs(spectra, miniplot_width, x_range=(xmin,xmax), ncols_grid=ncols_grid, titles=titles)
         tab1 = Panel(child = main_bokehsetup, title='Main viewer')
         tab2 = Panel(child = thumb_grid, title='Gallery')
         full_viewer.tabs=[ tab1, tab2 ]
@@ -1293,11 +1186,28 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             """)
             (thumb_grid.children[i_spec][0]).js_on_event(bokeh.events.Tap, thumb_callback)
 
-    
     if notebook:
         bk.show(full_viewer)
     else:
         bk.save(full_viewer)
+
+    #-----
+    #- "Light" Bokeh setup including only the thumbnail gallery
+    if with_thumb_only_page :
+        thumb_page = html_page.replace("specviewer_"+title, "thumbs_specviewer_"+title)
+        bk.output_file(thumb_page, title='DESI spectral viewer - thumbnail gallery')
+        ncols_grid = 5 # TODO un-hardcode
+        titles = None # TODO define
+        miniplot_width = ( plot_width + (plot_height//2) ) // ncols_grid
+        thumb_grid = grid_thumbs(spectra, miniplot_width, x_range=(xmin,xmax), ncols_grid=ncols_grid, titles=titles)
+        thumb_viewer = bk.Column(
+            widgetbox( Div(text=
+                           " <h3> Thumbnail gallery for DESI spectra in "+title+" </h3>" +
+                           " <p> Click <a href='specviewer_"+title+".html'>here</a> to access the spectral viewer corresponding to these spectra. </p>"
+                          ), width=plot_width ),
+            widgetbox( thumb_grid )
+        )
+        bk.save(thumb_viewer)
     
 
 #-------------------------------------------------------------------------
@@ -1489,7 +1399,7 @@ if __name__ == '__main__':
 
     #- Coadd on the fly
     individual_spectra = desispec.io.read_spectra(specfile)
-    spectra = coadd_targets(individual_spectra)
+    spectra = utils_specviewer.coadd_targets(individual_spectra)
     zbest = Table.read(zbfile, 'ZBEST')
 
     mwave, mflux = create_model(spectra, zbest)

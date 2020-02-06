@@ -272,10 +272,10 @@ if(ymin<0) {
 }
 fig.y_range.end = ymax * 1.4
 
-//
 // update target image
-//
-imfig_source.data.url[0] = imfig_urls[ifiber][0]
-imfig_source.data.txt[0] = imfig_urls[ifiber][2]
-imfig_source.change.emit()
+if (imfig_source) {
+    imfig_source.data.url[0] = imfig_urls[ifiber][0]
+    imfig_source.data.txt[0] = imfig_urls[ifiber][2]
+    imfig_source.change.emit()
+}
 

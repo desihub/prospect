@@ -21,11 +21,12 @@ def parse() :
     parser.add_argument('--pixels', help='Pixel-based directory structure', action='store_true')
     parser.add_argument('--targets', help='Target-based directory structure', action='store_true')
     parser.add_argument('--exposures', help='Exposure-based directory structure', action='store_true')
+    parser.add_argument('--with_thumbs', help='Also index thumbnail images', action='store_true')
     args = parser.parse_args()
     return args
 
 
-def prepare_subdir(subdir, entry, template_index, template_vignette, target=None, do_expo=False, info=None) :
+def prepare_subdir(subdir, entry, template_index, template_vignette, target=None, do_expo=False, info=None, with_thumbs=False) :
 
     # TODO Needs restructure !!!
     
@@ -37,11 +38,12 @@ def prepare_subdir(subdir, entry, template_index, template_vignette, target=None
 #     subsets = [ x[len(subdir+"/specviewer_"+pattern)+1:-5] for x in spec_pages ]
 #     subsets.sort(key=int)
     subsets = [str(x+1) for x in range(len(spec_pages))]
-    img_list = glob.glob( subdir+"/vignettes/*.png" )
+    if with_thumbs : img_list = glob.glob( subdir+"/vignettes/*.png" )
     pp = [x for x in spec_pages if "_1.html" in x]
     pp=pp[0]
     basename = pp[len(subdir)+1:-7]
-    nspec = len(img_list)
+    if with_thumbs : nspec = len(img_list)
+    else : nspec = 50 # TODO Ne pas laisser ca...
     if target is None and do_expo==False :
         pagetext = template_index.render(pixel=entry, subsets=subsets, nspec=nspec)
     elif target is None and do_expo==True :
@@ -52,21 +54,25 @@ def prepare_subdir(subdir, entry, template_index, template_vignette, target=None
     with open( os.path.join(subdir,"index_"+entry+".html"), "w") as fh:
         fh.write(pagetext)
         fh.close()
-    for subset in subsets :
-        img_sublist = [ os.path.basename(x) for x in img_list if entry+"_"+subset in x ]
-        pagetext = template_vignette.render(set=entry, i_subset=subset, n_subsets=len(subsets), imglist=img_sublist)
-        with open( os.path.join(subdir,"vignettelist_"+entry+"_"+subset+".html"), "w") as fh:
-            fh.write(pagetext)
-            fh.close()
+    if with_thumbs :
+        for subset in subsets :
+            img_sublist = [ os.path.basename(x) for x in img_list if entry+"_"+subset in x ]
+            pagetext = template_vignette.render(set=entry, i_subset=subset, n_subsets=len(subsets), imglist=img_sublist)
+            with open( os.path.join(subdir,"vignettelist_"+entry+"_"+subset+".html"), "w") as fh:
+                fh.write(pagetext)
+                fh.close()
     for x in glob.glob(subdir+"/*.html") :
         st = os.stat(x)
         os.chmod(x, st.st_mode | stat.S_IROTH) # "chmod a+r "
-    for thedir in [subdir, os.path.join(subdir,"vignettes") ] :
+    st = os.stat(subdir)
+    os.chmod(subdir, st.st_mode | stat.S_IROTH | stat.S_IXOTH) # "chmod a+rx "
+    if with_thumbs :
+        thedir = os.path.join(subdir,"vignettes")
         st = os.stat(thedir)
         os.chmod(thedir, st.st_mode | stat.S_IROTH | stat.S_IXOTH) # "chmod a+rx "
-    for x in glob.glob(subdir+"/vignettes/*.png") :
-        st = os.stat(x)
-        os.chmod(x, st.st_mode | stat.S_IROTH) # "chmod a+r "
+        for x in glob.glob(subdir+"/vignettes/*.png") :
+            st = os.stat(x)
+            os.chmod(x, st.st_mode | stat.S_IROTH) # "chmod a+r "
 
 
 def main(args) :
@@ -89,7 +95,7 @@ def main(args) :
         exposures = os.listdir( os.path.join(webdir,"exposures") )
         for expo in exposures :
             expo_dir = os.path.join(webdir,"exposures",expo)
-            prepare_subdir(expo_dir, expo, template_expolist, template_vignettelist, do_expo=True)
+            prepare_subdir(expo_dir, expo, template_expolist, template_vignettelist, do_expo=True, with_thumbs=args.with_thumbs)
             log.info("Subdirectory done : "+expo)
     else : exposures = None
 

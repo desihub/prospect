@@ -15,7 +15,8 @@ import astropy.io.fits
 import desispec.io
 from desiutil.log import get_logger
 from desitarget.targetmask import desi_mask
-from desitarget.sv1.sv1_targetmask import desi_mask as desi_mask_sv1
+from desitarget.cmx.cmx_targetmask import cmx_mask
+from desitarget.sv1.sv1_targetmask import desi_mask as sv1_desi_mask
 import desispec.spectra
 import desispec.frame
 
@@ -35,7 +36,7 @@ def parse() :
     parser.add_argument('--nspecperfile', help='Number of spectra in each html page', type=int, default=50)
     parser.add_argument('--webdir', help='Base directory for webpages', type=str, default=None)
     parser.add_argument('--vignette_smoothing', help='Smoothing of the vignette images (-1 : no smoothing)', type=float, default=10)
-    parser.add_argument('--sv', help='SV targets', action='store_true')
+    parser.add_argument('--mask_type', help='Mask category : DESI_TARGET,SV1_DESI_TARGET,CMX_TARGET', type=str, default='DESI_TARGET')
     parser.add_argument('--random_pixels', help='Process pixels in random order', action='store_true')
     parser.add_argument('--nmax_spectra', help='Stop the production of HTML pages once a given number of spectra are done', type=int, default=None)
     args = parser.parse_args()
@@ -49,12 +50,7 @@ def main(args) :
     if specprod_dir is None : specprod_dir = desispec.io.specprod_root()
     webdir = args.webdir
     if webdir is None : webdir = os.environ["DESI_WWW"]+"/users/armengau/svdc2019c" # TMP, for test
-    if args.mask is not None :
-        if args.sv :
-            assert ( args.mask in desi_mask_sv1.names() )
-        else :
-            assert ( args.mask in desi_mask.names() ) 
-
+            
     # TODO - Selection on pixels based on existing specviewer pages
     if args.pixel_list is None :
         pixels = glob.glob( os.path.join(specprod_dir,"spectra-64/*/*") )
@@ -78,57 +74,11 @@ def main(args) :
         else :
             log.info("No associated zbest file found : skipping pixel")
             continue
-
-        # Target mask selection
-        if args.mask is not None :
-            if args.sv :
-                w, = np.where( (spectra.fibermap['SV1_DESI_TARGET'] & desi_mask_sv1[args.mask]) )
-            else :
-                w, = np.where( (spectra.fibermap['DESI_TARGET'] & desi_mask[args.mask]) )
-            if len(w) == 0 :
-                log.info(" * No "+args.mask+" target in this pixel")
-                continue
-            else :
-                targetids = spectra.fibermap['TARGETID'][w]
-                spectra = spectra.select(targets=targetids)
-
-        # Photometry selection
-        if args.gcut is not None :
-            assert len(args.gcut)==2 # Require range [gmin, gmax]
-            gmag = np.zeros(spectra.num_spectra())
-            w, = np.where( (spectra.fibermap['FLUX_G']>0) & (spectra.fibermap['MW_TRANSMISSION_G']>0) )
-            gmag[w] = -2.5*np.log10(spectra.fibermap['FLUX_G'][w]/spectra.fibermap['MW_TRANSMISSION_G'][w])+22.5
-            w, = np.where( (gmag>args.gcut[0]) & (gmag<args.gcut[1]) )
-            if len(w) == 0 :
-                log.info(" * No target in this pixel with g_mag in requested range")
-                continue
-            else :
-                targetids = spectra.fibermap['TARGETID'][w]
-                spectra = spectra.select(targets=targetids)
-        if args.rcut is not None :
-            assert len(args.rcut)==2 # Require range [rmin, rmax]
-            rmag = np.zeros(spectra.num_spectra())
-            w, = np.where( (spectra.fibermap['FLUX_R']>0) & (spectra.fibermap['MW_TRANSMISSION_R']>0) )
-            rmag[w] = -2.5*np.log10(spectra.fibermap['FLUX_R'][w]/spectra.fibermap['MW_TRANSMISSION_R'][w])+22.5
-            w, = np.where( (rmag>args.rcut[0]) & (rmag<args.rcut[1]) )
-            if len(w) == 0 :
-                log.info(" * No target in this pixel with r_mag in requested range")
-                continue
-            else :
-                targetids = spectra.fibermap['TARGETID'][w]
-                spectra = spectra.select(targets=targetids)
-
-        # Chi2 selection
-        if args.chi2cut is not None :
-            assert len(args.chi2cut)==2 # Require range [chi2min, chi2max]
-            thezb, kk = utils_specviewer.match_zcat_to_spectra(zbest,spectra)
-            w, = np.where( (thezb['DELTACHI2']>args.chi2cut[0]) & (thezb['DELTACHI2']<args.chi2cut[1]) )
-            if len(w) == 0 :
-                log.info(" * No target in this pixel with DeltaChi2 in requested range")
-                continue
-            else :
-                targetids = spectra.fibermap['TARGETID'][w]
-                spectra = spectra.select(targets=targetids)
+        
+        spectra = utils_specviewer.specviewer_selection(spectra, log=log,
+                        mask=args.mask, mask_type=args.mask_type, gmag_cut=args.gcut, rmag_cut=args.rcut, 
+                        chi2cut=args.chi2cut, zbest=zbest)
+        if spectra == 0 : continue
 
         # Handle several html pages per pixel : sort by TARGETID
         # TODO - Find a more useful sort ?
@@ -160,7 +110,7 @@ def main(args) :
                 os.makedirs(html_dir)
                 os.mkdir(html_dir+"/vignettes")
             
-            plotframes.plotspectra(thespec, zcatalog=zbest, model_from_zcat=True, vidata=None, model=None, title=titlepage, html_dir=html_dir, is_coadded=True, sv=args.sv)
+            plotframes.plotspectra(thespec, zcatalog=zbest, model_from_zcat=True, vidata=None, model=None, title=titlepage, html_dir=html_dir, is_coadded=True, mask_type=args.mask_type)
             for i_spec in range(thespec.num_spectra()) :
                 saveplot = html_dir+"/vignettes/pix"+pixel+"_"+str(i_page)+"_"+str(i_spec)+".png"
                 utils_specviewer.miniplot_spectrum(thespec, i_spec, model=model, saveplot=saveplot, smoothing = args.vignette_smoothing)
