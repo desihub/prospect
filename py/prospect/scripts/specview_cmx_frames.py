@@ -170,6 +170,9 @@ def page_subset_tile(fdir, tile_db_subset, frametype, html_dir, titlepage_prefix
             else :
                 all_spectra.update(spectra) # NB update() does not copy scores. Filtering was done before.
 
+    if all_spectra is None : 
+        log.info("Tile "+tile+" : no spectra !")
+        return 0
     # Exposure-coadd
     all_spectra = utils_specviewer.coadd_targets(all_spectra)
     # Handle several html pages per exposure - sort by targetid
