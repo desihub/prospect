@@ -261,7 +261,7 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=" ") 
         cds_targetinfo.add(np.zeros(nspec), name='z')
         cds_targetinfo.add([" " for i in range(nspec)], name='spectype')
         cds_targetinfo.add(np.zeros(nspec), name='zerr')
-        cds_targetinfo.add([" " for i in range(nspec)], name='zwarn')
+        cds_targetinfo.add([0 for i in range(nspec)], name='zwarn')
         cds_targetinfo.add(np.zeros(nspec), name='deltachi2')
         
     if not is_coadded and 'EXPID' in spectra.fibermap.keys() :
