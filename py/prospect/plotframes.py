@@ -248,15 +248,21 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=" ") 
         mag[w] = -2.5*np.log10(flux[w]/extinction[w])+22.5
         cds_targetinfo.add(mag, name='mag_'+bandname)
     
-    if zcatalog is not None:
+    nspec = spectra.num_spectra()
+    
+    if zcatalog is not None :
         cds_targetinfo.add(zcatalog['Z'], name='z')
         cds_targetinfo.add(zcatalog['SPECTYPE'].astype('U{0:d}'.format(zcatalog['SPECTYPE'].dtype.itemsize)), name='spectype')
-        # BYPASS DIV : Added fields
         cds_targetinfo.add(zcatalog['ZERR'], name='zerr')
         cds_targetinfo.add(zcatalog['ZWARN'], name='zwarn')
         cds_targetinfo.add(zcatalog['DELTACHI2'], name='deltachi2')
-
-    nspec = spectra.num_spectra()
+    else :
+        cds_targetinfo.add(np.zeros(nspec), name='z')
+        cds_targetinfo.add([" " for i in range(nspec)], name='spectype')
+        cds_targetinfo.add(np.zeros(nspec), name='zerr')
+        cds_targetinfo.add([" " for i in range(nspec)], name='zwarn')
+        cds_targetinfo.add(np.zeros(nspec), name='deltachi2')
+        
     if not is_coadded and 'EXPID' in spectra.fibermap.keys() :
         cds_targetinfo.add(spectra.fibermap['EXPID'], name='expid')
     else : # If coadd, fill VI accordingly
