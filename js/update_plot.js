@@ -25,7 +25,7 @@ if (cb_obj == ifiberslider) { // update VI widgets + infos for current spectrum
     targ_disp_cds.data['mag_W1'] = [ targetinfo.data['mag_W1'][ifiber].toFixed(2) ]
     targ_disp_cds.data['mag_W2'] = [ targetinfo.data['mag_W2'][ifiber].toFixed(2) ]
     targ_disp_cds.change.emit()
-    if(targetinfo.data['z'] != undefined) {
+    if(targetinfo.data['z'] != undefined && zcat_disp_cds != null) {
         zcat_disp_cds.data['SPECTYPE'] = [ targetinfo.data['spectype'][ifiber] ]
         zcat_disp_cds.data['Z'] = [ targetinfo.data['z'][ifiber].toFixed(4) ]
         zcat_disp_cds.data['ZERR'] = [ targetinfo.data['zerr'][ifiber].toFixed(4) ]
