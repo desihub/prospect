@@ -17,6 +17,7 @@ import scipy.ndimage.filters
 
 from astropy.table import Table
 import astropy.io.fits
+import astropy.convolution
 
 import bokeh.plotting as bk
 from bokeh.models import ColumnDataSource, CDSView, IndexFilter
@@ -297,16 +298,14 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
     if thumb_height is None : thumb_height = thumb_width//2
     if titles is not None : assert len(titles) == spectra.num_spectra()
     thumb_wave, thumb_flux, dummy = mycoaddcam.mycoaddcam(spectra)
+    kernel = astropy.convolution.Gaussian1DKernel(stddev=resamp_factor)
     
     thumb_plots = []
     for i_spec in range(spectra.num_spectra()) :
-        # other option use CustomJSTransform ?
-        # (https://docs.bokeh.org/en/1.1.0/docs/user_guide/data.html)
         x_vals = (thumb_wave[::resamp_factor])[resamp_factor:-resamp_factor]
-        y_vals = scipy.ndimage.filters.gaussian_filter1d(thumb_flux[i_spec,:], sigma=resamp_factor, mode='nearest') 
+        # Use astropy convolution : handles NaNs
+        y_vals = astropy.convolution.convolve(thumb_flux[i_spec,:], kernel)
         y_vals = (y_vals[::resamp_factor])[resamp_factor:-resamp_factor]
-        x_vals = x_vals[~np.isnan(y_vals)] # TODO - should we keep that in the end ?
-        y_vals = y_vals[~np.isnan(y_vals)]            
         yampl = np.max(y_vals) - np.min(y_vals)
         ymin = np.min(y_vals) - 0.1*yampl
         ymax = np.max(y_vals) + 0.1*yampl
