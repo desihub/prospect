@@ -1201,7 +1201,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             full_viewer.active = 0
              ifiberslider.value = i_spec
             """)
-            (thumb_grid.children[i_spec][0]).js_on_event(bokeh.events.Tap, thumb_callback)
+            (thumb_grid.children[i_spec][0]).js_on_event(bokeh.events.DoubleTap, thumb_callback)
 
     if notebook:
         bk.show(full_viewer)
