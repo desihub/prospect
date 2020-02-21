@@ -950,6 +950,15 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         code=vi_z_code )
     vi_z_input.js_on_change('value',vi_z_callback)
     
+    # Copy z value from redshift slider to VI
+    z_tovi_button = Button(label='Copy z to VI')
+    z_tovi_callback = CustomJS(
+        args=dict(zdisp_cds=zdisp_cds, vi_z_input=vi_z_input),
+        code="""
+            vi_z_input.value = zdisp_cds.data['z_disp'][0]
+        """)
+    z_tovi_button.js_on_event('button_click', z_tovi_callback)
+    
     #- Optional VI information on spectral type
     vi_spectypes = [" "] + utils_specviewer._vi_spectypes
     vi_category_select = Select(value=" ", title="VI spectype :", options=vi_spectypes)
@@ -1136,13 +1145,14 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     plot_widget_set = bk.Column(
         widgetbox( Div(text="Pipeline fit : ") ),
         widgetbox(zcat_display, width=plot_widget_width),
+        widgetbox(zslider, width=plot_widget_width),
         bk.Row(
-            widgetbox(zslider, width=plot_width//2 - 110),
-            widgetbox(z_display, width=120)
-        ),
-        bk.Row(
-            widgetbox(dzslider, width=plot_width//2 - 110),
-            widgetbox(zreset_button, width=100)
+            widgetbox(dzslider, width=plot_widget_width-210),
+            widgetbox(z_display, width=100),
+            bk.Column(
+                widgetbox(zreset_button, width=100),
+                widgetbox(z_tovi_button, width=100)
+            )
         ),
         widgetbox(smootherslider, width=plot_widget_width),
         widgetbox(display_options_group,width=120),
