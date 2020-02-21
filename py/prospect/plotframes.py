@@ -1150,8 +1150,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             widgetbox(dzslider, width=plot_widget_width-210),
             widgetbox(z_display, width=100),
             bk.Column(
-                widgetbox(zreset_button, width=100),
                 widgetbox(z_tovi_button, width=100)
+                widgetbox(zreset_button, width=100),
             )
         ),
         widgetbox(smootherslider, width=plot_widget_width),
