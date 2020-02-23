@@ -85,25 +85,26 @@ def create_model(spectra, zbest):
 
     #- Now combine to a single wavelength grid across all cameras
     #- TODO: assumes b,r,z all exist
-    assert np.all([ band in spectra.wave.keys() for band in ['b','r','z'] ])
-    br_split = 0.5*(spectra.wave['b'][-1] + spectra.wave['r'][0])
-    rz_split = 0.5*(spectra.wave['r'][-1] + spectra.wave['z'][0])
-    keep = dict()
-    keep['b'] = (spectra.wave['b'] < br_split)
-    keep['r'] = (br_split <= spectra.wave['r']) & (spectra.wave['r'] < rz_split)
-    keep['z'] = (rz_split <= spectra.wave['z'])
-    model_wave = np.concatenate( [
-        spectra.wave['b'][keep['b']],
-        spectra.wave['r'][keep['r']],
-        spectra.wave['z'][keep['z']],
-    ] )
+#     assert np.all([ band in spectra.wave.keys() for band in ['b','r','z'] ])
+#     br_split = 0.5*(spectra.wave['b'][-1] + spectra.wave['r'][0])
+#     rz_split = 0.5*(spectra.wave['r'][-1] + spectra.wave['z'][0])
+#     keep = dict()
+#     keep['b'] = (spectra.wave['b'] < br_split)
+#     keep['r'] = (br_split <= spectra.wave['r']) & (spectra.wave['r'] < rz_split)
+#     keep['z'] = (rz_split <= spectra.wave['z'])
+#     model_wave = np.concatenate( [
+#         spectra.wave['b'][keep['b']],
+#         spectra.wave['r'][keep['r']],
+#         spectra.wave['z'][keep['z']],
+#     ] )
 
-    mflux = np.concatenate( [
-        model_flux['b'][:, keep['b']],
-        model_flux['r'][:, keep['r']],
-        model_flux['z'][:, keep['z']],
-    ], axis=1 )
-
+#     mflux = np.concatenate( [
+#         model_flux['b'][:, keep['b']],
+#         model_flux['r'][:, keep['r']],
+#         model_flux['z'][:, keep['z']],
+#     ], axis=1 )
+    model_wave = spectra.wave["brz"]
+    mflux = model_flux["brz"]
     return model_wave, mflux
 
 
@@ -441,8 +442,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     fig.yaxis.axis_label = 'Flux'
     fig.xaxis.axis_label_text_font_style = 'normal'
     fig.yaxis.axis_label_text_font_style = 'normal'
-    colors = dict(b='#1f77b4', r='#d62728', z='maroon', coadd='#d62728')
-    noise_colors = dict(b='greenyellow', r='green', z='forestgreen', coadd='green') # TODO test several and choose
+    colors = dict(b='#1f77b4', r='#d62728', z='maroon', coadd='#d62728', brz='#d62728')
+    noise_colors = dict(b='greenyellow', r='green', z='forestgreen', coadd='green', brz='#d62728') # TODO test several and choose
     alpha_discrete = 0.2 # alpha for "almost-hidden" curves (single-arm spectra and noise by default)
     if not with_coaddcam : alpha_discrete = 1
     
