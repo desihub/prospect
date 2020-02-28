@@ -83,26 +83,6 @@ def create_model(spectra, zbest):
             mx = resample_flux(spectra.wave[band], tx.wave*(1+zb['Z']), model)
             model_flux[band][i] = spectra.R[band][j].dot(mx)
 
-    #- Now combine to a single wavelength grid across all cameras
-    #- TODO: assumes b,r,z all exist
-#     assert np.all([ band in spectra.wave.keys() for band in ['b','r','z'] ])
-#     br_split = 0.5*(spectra.wave['b'][-1] + spectra.wave['r'][0])
-#     rz_split = 0.5*(spectra.wave['r'][-1] + spectra.wave['z'][0])
-#     keep = dict()
-#     keep['b'] = (spectra.wave['b'] < br_split)
-#     keep['r'] = (br_split <= spectra.wave['r']) & (spectra.wave['r'] < rz_split)
-#     keep['z'] = (rz_split <= spectra.wave['z'])
-#     model_wave = np.concatenate( [
-#         spectra.wave['b'][keep['b']],
-#         spectra.wave['r'][keep['r']],
-#         spectra.wave['z'][keep['z']],
-#     ] )
-
-#     mflux = np.concatenate( [
-#         model_flux['b'][:, keep['b']],
-#         model_flux['r'][:, keep['r']],
-#         model_flux['z'][:, keep['z']],
-#     ], axis=1 )
     model_wave = spectra.wave["brz"]
     mflux = model_flux["brz"]
     return model_wave, mflux
