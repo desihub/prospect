@@ -193,7 +193,6 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=" ") 
 
     assert mask_type in ['SV1_DESI_TARGET', 'DESI_TARGET', 'CMX_TARGET']
     target_info = list()
-    vi_info = list()
     for i, row in enumerate(spectra.fibermap):
         if mask_type == 'SV1_DESI_TARGET' :
             target_bit_names = ' '.join(sv1_desi_mask.names(row['SV1_DESI_TARGET']))
@@ -201,41 +200,18 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=" ") 
             target_bit_names = ' '.join(desi_mask.names(row['DESI_TARGET']))
         elif mask_type == 'CMX_TARGET' :
             target_bit_names = ' '.join(cmx_mask.names(row['CMX_TARGET']))
-        txt = 'TargetID {}: {} '.format(row['TARGETID'], target_bit_names)
+        txt = target_bit_names
         if not is_coadded :
             ## BYPASS DIV
             #           txt += '<BR />'
             if 'NIGHT' in spectra.fibermap.keys() : txt += "Night : {}".format(row['NIGHT'])
             if 'EXPID' in spectra.fibermap.keys() : txt += "Exposure : {}".format(row['EXPID'])
             if 'FIBER' in spectra.fibermap.keys() : txt += "Fiber : {}".format(row['FIBER'])
-## BYPASS DIV
-#         if (row['FLUX_G'] > 0 and row['MW_TRANSMISSION_G'] > 0) :
-#             gmag = -2.5*np.log10(row['FLUX_G']/row['MW_TRANSMISSION_G'])+22.5
-#         else : gmag = 0
-#         txt += '<BR /> Photometry (dereddened) : g<SUB>mag</SUB>={:.1f}'.format(gmag)
-## BYPASS DIV
-#         if zcatalog is not None:
-#             txt += '<BR /> Fit result : {} z={:.4f} ± {:.4f}&emsp;&emsp; z<SUB>WARN</SUB>={}&emsp;&emsp; &Delta;&chi;<SUP>2</SUP>={:.1f}'.format(
-#                 zcatalog['SPECTYPE'][i],
-#                 zcatalog['Z'][i],
-#                 zcatalog['ZERR'][i],
-#                 zcatalog['ZWARN'][i],
-#                 zcatalog['DELTACHI2'][i]
-#             )
         target_info.append(txt)
-        # TMP no vidata (will change it)
-#         if ( (vidata is not None) and (len(vidata[i])>0) ) :
-#             txt = ('<BR/> VI info : SCANNER FLAG COMMENTS')
-#             for the_vi in vidata[i] :
-#                 txt += ('<BR/>&emsp;&emsp;&emsp;&emsp; {0} {1} {2}'.format(the_vi['scannername'], the_vi['scanflag'], the_vi['VIcomment']))
-#        else : 
-        txt = ('<BR/> No VI previously recorded for this target')
-        vi_info.append(txt)
 
     cds_targetinfo = bk.ColumnDataSource(
         dict(target_info=target_info),
         name='target_info')
-    cds_targetinfo.add(vi_info, name='vi_info')
     
     ## BYPASS DIV : Added photometry fields ; also add several bands
     bands = ['G','R','Z', 'W1', 'W2']
@@ -326,7 +302,7 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
     return gridplot(thumb_plots, ncols=ncols_grid, toolbar_location=None, sizing_mode='scale_width')
 
 
-def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, mask_type='DESI_TARGET', with_thumb_tab=True, with_vi_widgets=True, with_thumb_only_page=False):
+def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, mask_type='DESI_TARGET', with_thumb_tab=True, with_vi_widgets=True, with_thumb_only_page=False):
     '''
     Main prospect routine, creates a bokeh document from a set of spectra and fits
 
@@ -340,7 +316,6 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     model : if set, use this input set of model spectra (instead of computing it from zcat)
         model format (mwave, mflux); model must be entry-matched to zcatalog.
     notebook : if True, bokeh outputs the viewer to notebook, else to a (static) html page
-    vidata : VI information to be preloaded and displayed. Currently disabled.
     is_coadded : set to True if spectra are coadds
     title : title used to produce html page / name bokeh figure / save VI file
     html_dir : directory to store html page
@@ -806,16 +781,18 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
 
     #-----
     # Display object-related informations
-    ## BYPASS DIV
-#    target_info_div = Div(text=cds_targetinfo.data['target_info'][0])
+    ## BYPASS DIV to be able to copy targetid...
+    ## target_info_div = Div(text=cds_targetinfo.data['target_info'][0])
     tmp_dict = dict()
-    tmp_dict['TARGETING'] = [ cds_targetinfo.data['target_info'][0] ]
-    targ_disp_cols = [ TableColumn(field='TARGETING', title='TARGETING', width=plot_width-120-50-5*50) ] # TODO non-hardcode width
+    tmp_dict['TargetID'] = [ cds_targetinfo.data['targetid'][0] ]
+    tmp_dict['Target class'] = [ cds_targetinfo.data['target_info'][0] ]
+    targ_disp_cols = [ TableColumn(field='TargetID', title='TargetID', width=150),
+                     TableColumn(field='Target class', title='Target class', width=plot_width-120-50-5*50-150) ] # TODO non-hardcode width
     for band in ['G', 'R', 'Z', 'W1', 'W2'] :
         tmp_dict['mag_'+band] = [ "{:.2f}".format(cds_targetinfo.data['mag_'+band][0]) ]
         targ_disp_cols.append( TableColumn(field='mag_'+band, title='mag_'+band, width=50) )
     targ_disp_cds = bk.ColumnDataSource(tmp_dict, name='targ_disp_cds')
-    targ_display = DataTable(source = targ_disp_cds, columns=targ_disp_cols,index_position=None, selectable=False) # width=...
+    targ_display = DataTable(source = targ_disp_cds, columns=targ_disp_cols,index_position=None, selectable=True, editable=True) # width=...
     targ_display.height = 2 * targ_display.row_height
     if zcatalog is not None :
         tmp_dict = dict(SPECTYPE = [ cds_targetinfo.data['spectype'][0] ],
@@ -825,14 +802,12 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
                         DeltaChi2 = [ "{:.1f}".format(cds_targetinfo.data['deltachi2'][0]) ])
         zcat_disp_cds = bk.ColumnDataSource(tmp_dict, name='zcat_disp_cds')
         zcat_disp_cols = [ TableColumn(field=x, title=x, width=w) for x,w in [ ('SPECTYPE',100), ('Z',50) , ('ZERR',50), ('ZWARN',50), ('DeltaChi2',50) ] ]
-        zcat_display = DataTable(source=zcat_disp_cds, columns=zcat_disp_cols, index_position=None, selectable=False, width=400) # width=...
+        zcat_display = DataTable(source=zcat_disp_cds, columns=zcat_disp_cols, index_position=None, selectable=False, width=400)
         zcat_display.height = 2 * zcat_display.row_height
     else :
         zcat_display = Div(text="Not available ")
         zcat_disp_cds = None
         
-    vi_info_div = Div(text=" ") # consistent with show_prev_vi="No" by default
-
     #-----
     #- Toggle lines
     lines_button_group = CheckboxButtonGroup(
@@ -1058,18 +1033,6 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     ]
     vi_table = DataTable(source=cds_targetinfo, columns=vi_table_columns, width=500)
     vi_table.height = 10 * vi_table.row_height
-    
-#     # Choose to show or not previous VI
-#     show_prev_vi_select = Select(title='Show previous VI', value='No', options=['Yes','No'])
-#     show_prev_vi_callback = CustomJS(args=dict(vi_info_div = vi_info_div, show_prev_vi_select=show_prev_vi_select, targetinfo = cds_targetinfo, ifiberslider = ifiberslider), code="""
-#         if (show_prev_vi_select.value == "Yes") {
-#             vi_info_div.text = targetinfo.data['vi_info'][ifiberslider.value];
-#         } else {
-#             vi_info_div.text = " ";
-#         }
-#     """)
-#     show_prev_vi_select.js_on_change('value',show_prev_vi_callback)
-
 
     #-----
     #- Main js code to update plot
@@ -1084,8 +1047,6 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
 ## BYPASS DIV
             zcat_disp_cds = zcat_disp_cds,
             targ_disp_cds = targ_disp_cds,
- #           vi_info_div = vi_info_div,
- #           show_prev_vi_select = show_prev_vi_select,
             ifiberslider = ifiberslider,
             smootherslider = smootherslider,
             zslider=zslider,
