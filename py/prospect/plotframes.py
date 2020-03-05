@@ -603,13 +603,9 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     z1 = np.floor(z*100)/100
     dz = z-z1
     zslider = Slider(start=0.0, end=4.0, value=z1, step=0.01, title='Redshift rough tuning')
-    dzslider = Slider(start=-0.01, end=0.01, value=dz, step=0.0001, title='Redshift fine-tuning')
+    dzslider = Slider(start=0.0, end=0.01, value=dz, step=0.0001, title='Redshift fine-tuning')
     dzslider.format = "0[.]0000"
-    zdisp_cds = bk.ColumnDataSource(dict(z_disp=[ "{:.4f}".format(z+dz) ]), name='zdisp_cds')
-    zdisp_cols = [ TableColumn(field="z_disp", title="z_disp") ]
-    z_display = DataTable(source=zdisp_cds, columns=zdisp_cols, index_position=None, width=70, selectable=False)
-    z_display.height = 2 * z_display.row_height
-    #    z_display = Div(text="<b>z<sub>disp</sub> = "+("{:.4f}").format(z+dz)+"</b>") ## Using Div is slow !!
+    z_input = TextInput(value="{:.4f}".format(z), title="Redshift value:")
 
     #- Observer vs. Rest frame wavelengths
     waveframe_buttons = RadioButtonGroup(
@@ -624,8 +620,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             ifiberslider = ifiberslider,
             zslider=zslider,
             dzslider=dzslider,
-#            z_display = z_display,
-            zdisp_cds = zdisp_cds,
+            z_input=z_input,
             waveframe_buttons=waveframe_buttons,
             line_data=line_data, lines=lines, line_labels=line_labels,
             zlines=zoom_lines, zline_labels=zoom_line_labels,
@@ -633,9 +628,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             ),
         code="""
         var z = zslider.value + dzslider.value
-//        z_display.text = "<b>z<sub>disp</sub> = " + z.toFixed(4) + "</b>"
-        zdisp_cds.data['z_disp']=[ z.toFixed(4) ]
-        zdisp_cds.change.emit()
+        z_input.value = z.toFixed(4)
 
         var line_restwave = line_data.data['restwave']
         var ifiber = ifiberslider.value
@@ -679,6 +672,26 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     dzslider.js_on_change('value', zslider_callback)
     waveframe_buttons.js_on_click(zslider_callback)
 
+    z_button_width = 30
+    z_minus_button = Button(label="<", width=z_button_width)
+    z_plus_button = Button(label=">", width=z_button_width)
+    z_minus_callback = CustomJS(
+        args=dict(zslider=zslider),
+        code="""
+        if(zslider.value>=0.01) {
+            zslider.value -= 0.01
+        }
+        """)
+    z_plus_callback = CustomJS(
+        args=dict(zslider=zslider),
+        code="""
+        if(zslider.value<=3.99) {
+            zslider.value += 0.01
+        }
+        """)
+    z_minus_button.js_on_event('button_click', z_minus_callback)
+    z_plus_button.js_on_event('button_click', z_plus_callback)
+    
     zreset_button = Button(label='Reset redshift')
     zreset_callback = CustomJS(
         args=dict(zslider=zslider, dzslider=dzslider, targetinfo=cds_targetinfo, ifiberslider=ifiberslider),
@@ -690,6 +703,22 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             dzslider.value = (z - z1)
         """)
     zreset_button.js_on_event('button_click', zreset_callback)
+
+    z_input_callback = CustomJS(
+        args=dict(zslider=zslider, dzslider=dzslider, z_input=z_input),
+        code="""
+            var z = parseFloat(z_input.value)
+            if ( z >=0 && z <= 4.0 ) {
+                z_input.value = parseFloat(z_input.value).toFixed(4)
+                var z1 = Math.floor(z*100) / 100
+                zslider.value = z1
+                dzslider.value = parseFloat((z - z1).toFixed(4))
+            } else {
+                if (z_input.value < 0) z_input.value = "0.0"
+                if (z_input.value > 4) z_input.value = "4.0"
+            }
+        """)
+    z_input.js_on_change('value', z_input_callback)
 
     plotrange_callback = CustomJS(
         args = dict(
@@ -784,9 +813,9 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     ## BYPASS DIV to be able to copy targetid...
     ## target_info_div = Div(text=cds_targetinfo.data['target_info'][0])
     tmp_dict = dict()
-    tmp_dict['TargetID'] = [ cds_targetinfo.data['targetid'][0] ]
+    tmp_dict['Target ID'] = [ cds_targetinfo.data['targetid'][0] ]
     tmp_dict['Target class'] = [ cds_targetinfo.data['target_info'][0] ]
-    targ_disp_cols = [ TableColumn(field='TargetID', title='TargetID', width=150),
+    targ_disp_cols = [ TableColumn(field='Target ID', title='Target ID', width=150),
                      TableColumn(field='Target class', title='Target class', width=plot_width-120-50-5*50-150) ] # TODO non-hardcode width
     for band in ['G', 'R', 'Z', 'W1', 'W2'] :
         tmp_dict['mag_'+band] = [ "{:.2f}".format(cds_targetinfo.data['mag_'+band][0]) ]
@@ -928,9 +957,9 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     # Copy z value from redshift slider to VI
     z_tovi_button = Button(label='Copy z to VI')
     z_tovi_callback = CustomJS(
-        args=dict(zdisp_cds=zdisp_cds, vi_z_input=vi_z_input),
+        args=dict(z_input=z_input, vi_z_input=vi_z_input),
         code="""
-            vi_z_input.value = zdisp_cds.data['z_disp'][0]
+            vi_z_input.value = z_input.value
         """)
     z_tovi_button.js_on_event('button_click', z_tovi_callback)
     
@@ -1106,13 +1135,22 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     plot_widget_set = bk.Column(
         widgetbox( Div(text="Pipeline fit : ") ),
         widgetbox(zcat_display, width=plot_widget_width),
-        widgetbox(zslider, width=plot_widget_width),
         bk.Row(
-            widgetbox(dzslider, width=plot_widget_width-210),
-            widgetbox(z_display, width=100),
             bk.Column(
-                widgetbox(z_tovi_button, width=100),
-                widgetbox(zreset_button, width=100)
+                bk.Row(
+                    widgetbox(z_minus_button, width=z_button_width+15),
+                    widgetbox(zslider, width=plot_widget_width-2*z_button_width-150),
+                    widgetbox(z_plus_button, width=z_button_width)
+                ),
+                bk.Row(
+                    widgetbox(dzslider, width=plot_widget_width-250),
+                    widgetbox(zreset_button, width=100)
+                )
+            ),
+            widgetbox(Spacer(width=15)),
+            bk.Column(
+                widgetbox(z_input, width=100),
+                widgetbox(z_tovi_button, width=100)
             )
         ),
         widgetbox(smootherslider, width=plot_widget_width),

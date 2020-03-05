@@ -18,7 +18,7 @@ if (cb_obj == ifiberslider) { // update VI widgets + infos for current spectrum
     // BYPASS DIV !!!
     // Code can clearly be better written... todo later...
 //    target_info_div.text = targetinfo.data['target_info'][ifiber]
-    targ_disp_cds.data['TargetID'] = [ targetinfo.data['targetid'][ifiber] ]
+    targ_disp_cds.data['Target ID'] = [ targetinfo.data['targetid'][ifiber] ]
     targ_disp_cds.data['Target class'] = [ targetinfo.data['target_info'][ifiber] ]
     targ_disp_cds.data['mag_G'] = [ targetinfo.data['mag_G'][ifiber].toFixed(2) ]
     targ_disp_cds.data['mag_R'] = [ targetinfo.data['mag_R'][ifiber].toFixed(2) ]
