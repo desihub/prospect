@@ -751,42 +751,42 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         imfig.js_on_event('tap', imfig_callback)
 
    
-    #-----
-    #- Checkboxes to display noise / model
-    disp_opt_labels = []
-    if cds_model is not None : disp_opt_labels.append('Show model')
-    if with_noise : disp_opt_labels.append('Show noise spectra')
-    display_options_group = CheckboxGroup(labels=disp_opt_labels, 
-                                          active=list(range(len(disp_opt_labels))))
-    disp_opt_callback = CustomJS(
-        args = dict(noise_lines=noise_lines, model_lines=model_lines, zoom_noise_lines=zoom_noise_lines, zoom_model_lines=zoom_model_lines), code="""
-        var i_noise = cb_obj.labels.indexOf("Show noise spectra")
-        if (i_noise >= 0) {
-            for (var i=0; i<noise_lines.length; i++) {
-                if (cb_obj.active.indexOf(i_noise) >= 0) {
-                    noise_lines[i].visible = true
-                    zoom_noise_lines[i].visible = true
-                } else {
-                    noise_lines[i].visible = false
-                    zoom_noise_lines[i].visible = false
-                }
-            }
-        }
-        var i_model = cb_obj.labels.indexOf("Show model")
-        if (i_model >= 0) {
-            for (var i=0; i<model_lines.length; i++) {
-                if (cb_obj.active.indexOf(i_model) >= 0) {
-                    model_lines[i].visible = true
-                    zoom_model_lines[i].visible = true
-                } else {
-                    model_lines[i].visible = false
-                    zoom_model_lines[i].visible = false
-                }
-            }
-        }
-        """
-    )
-    display_options_group.js_on_click(disp_opt_callback)
+#     #-----
+#     #- Checkboxes to display noise / model
+#     disp_opt_labels = []
+#     if cds_model is not None : disp_opt_labels.append('Show model')
+#     if with_noise : disp_opt_labels.append('Show noise spectra')
+#     display_options_group = CheckboxGroup(labels=disp_opt_labels, 
+#                                           active=list(range(len(disp_opt_labels))))
+#     disp_opt_callback = CustomJS(
+#         args = dict(noise_lines=noise_lines, model_lines=model_lines, zoom_noise_lines=zoom_noise_lines, zoom_model_lines=zoom_model_lines), code="""
+#         var i_noise = cb_obj.labels.indexOf("Show noise spectra")
+#         if (i_noise >= 0) {
+#             for (var i=0; i<noise_lines.length; i++) {
+#                 if (cb_obj.active.indexOf(i_noise) >= 0) {
+#                     noise_lines[i].visible = true
+#                     zoom_noise_lines[i].visible = true
+#                 } else {
+#                     noise_lines[i].visible = false
+#                     zoom_noise_lines[i].visible = false
+#                 }
+#             }
+#         }
+#         var i_model = cb_obj.labels.indexOf("Show model")
+#         if (i_model >= 0) {
+#             for (var i=0; i<model_lines.length; i++) {
+#                 if (cb_obj.active.indexOf(i_model) >= 0) {
+#                     model_lines[i].visible = true
+#                     zoom_model_lines[i].visible = true
+#                 } else {
+#                     model_lines[i].visible = false
+#                     zoom_model_lines[i].visible = false
+#                 }
+#             }
+#         }
+#         """
+#     )
+#     display_options_group.js_on_click(disp_opt_callback)
     
     #-----
     #- Highlight individual-arm or camera-coadded spectra
@@ -1139,11 +1139,12 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             bk.Column(
                 bk.Row(
                     widgetbox(z_minus_button, width=z_button_width+15),
-                    widgetbox(zslider, width=plot_widget_width-2*z_button_width-150),
+                    widgetbox(zslider, width=plot_widget_width-2*z_button_width-135),
                     widgetbox(z_plus_button, width=z_button_width)
                 ),
                 bk.Row(
-                    widgetbox(dzslider, width=plot_widget_width-250),
+                    widgetbox(dzslider, width=plot_widget_width-235),
+                    widgetbox(Spacer(width=20)),
                     widgetbox(zreset_button, width=100)
                 )
             ),
@@ -1154,7 +1155,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             )
         ),
         widgetbox(smootherslider, width=plot_widget_width),
-        widgetbox(display_options_group,width=120),
+#        widgetbox(display_options_group,width=120),
         widgetbox(coaddcam_buttons, width=200),
         widgetbox(waveframe_buttons, width=120),
         widgetbox(lines_button_group, width=200),
@@ -1273,16 +1274,16 @@ _line_list = [
     {"name" : "Hζ",   "longname" : "Balmer ζ",         "lambda" : 3889.049, "emission": False, "major": False },
     {"name" : "K",    "longname" : "K (Ca II 3933)",   "lambda" : 3933.7,   "emission": False, "major": False },
     {"name" : "H",    "longname" : "H (Ca II 3968)",   "lambda" : 3968.5,   "emission": False, "major": False },
-    {"name" : "Hε",   "longname" : "Balmer ε",         "lambda" : 3970.072, "emission": False, "major": False },
+    {"name" : "Hε",   "longname" : "Balmer ε",         "lambda" : 3970.072, "emission": False, "major": True },
     {"name" : "Hδ",   "longname" : "Balmer δ",         "lambda" : 4101.734, "emission": False, "major": False },
-    {"name" : "G",    "longname" : "G (Ca I 4307)",    "lambda" : 4307.74,  "emission": False, "major": False },
+    {"name" : "G",    "longname" : "G (Ca I 4307)",    "lambda" : 4307.74,  "emission": False, "major": True },
     {"name" : "Hγ",   "longname" : "Balmer γ",         "lambda" : 4340.464, "emission": False, "major": False },
     {"name" : "Hβ",   "longname" : "Balmer β",         "lambda" : 4861.325, "emission": False, "major": False },
     {"name" : "Mg I", "longname" : "Mg I 5175",        "lambda" : 5175.0,   "emission": False, "major": False },
-    {"name" : "D2",   "longname" : "D2 (Na I 5889)",   "lambda" : 5889.95,  "emission": False, "major": False },
+    {"name" : "D2",   "longname" : "D2 (Na I 5889)",   "lambda" : 5889.95,  "emission": False, "major": True },
     # {"name" : "D",    "longname" : "D (Na I doublet)", "lambda": 5892.9,   "emission": False, "major": False },
-    {"name" : "D1",   "longname" : "D1 (Na I 5895)",   "lambda" : 5895.92,  "emission": False, "major": False },
-    {"name" : "Hα",   "longname" : "Balmer α",         "lambda" : 6562.801, "emission": False, "major": False },
+    {"name" : "D1",   "longname" : "D1 (Na I 5895)",   "lambda" : 5895.92,  "emission": False, "major": True },
+    {"name" : "Hα",   "longname" : "Balmer α",         "lambda" : 6562.801, "emission": False, "major": True },
   ]
 
 def _airtovac(w):
