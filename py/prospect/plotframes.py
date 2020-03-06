@@ -906,25 +906,6 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     default_vi_filename += ".csv"
     vi_filename_input = TextInput(value=default_vi_filename, title="VI file name :")
     
-    #- Main VI classification
-    vi_class_input = RadioButtonGroup(labels=vi_class_labels)
-    with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_class_code = f.read()
-    vi_class_code += """
-        if ( vi_class_input.active >= 0 ) {
-            cds_targetinfo.data['VI_class_flag'][ifiberslider.value] = vi_class_labels[vi_class_input.active]
-        } else {
-            cds_targetinfo.data['VI_class_flag'][ifiberslider.value] = "-1"
-        }
-        autosave_vi(title, vi_file_fields, cds_targetinfo.data)
-        cds_targetinfo.change.emit()
-    """
-    vi_class_callback = CustomJS(
-        args=dict(cds_targetinfo=cds_targetinfo, vi_class_input=vi_class_input, 
-                vi_class_labels=vi_class_labels, ifiberslider = ifiberslider,
-                title=title, vi_file_fields = vi_file_fields), 
-        code=vi_class_code )
-    vi_class_input.js_on_click(vi_class_callback)
-
     #- Optional VI flags (issues)
     vi_issue_input = CheckboxGroup(labels=vi_issue_labels, active=[])
     with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_issue_code = f.read()
@@ -1002,6 +983,32 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         code=vi_comment_code )
     vi_comment_input.js_on_change('value',vi_comment_callback)
 
+    #- Main VI classification
+    vi_class_input = RadioButtonGroup(labels=vi_class_labels)
+    with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_class_code = f.read()
+    vi_class_code += """
+        if ( vi_class_input.active >= 0 ) {
+            cds_targetinfo.data['VI_class_flag'][ifiberslider.value] = vi_class_labels[vi_class_input.active]
+            if ( vi_class_labels[vi_class_input.active]=="4" ) { // Flag '4' => VI_z = z_pipe
+                var z = targetinfo.data['z'][ifiberslider.value]
+                vi_z_input.value = parseFloat(z).toFixed(4)
+                vi_category_select.value = targetinfo.data['spectype'][ifiberslider.value]
+            }
+        } else {
+            cds_targetinfo.data['VI_class_flag'][ifiberslider.value] = "-1"
+        }
+        autosave_vi(title, vi_file_fields, cds_targetinfo.data)
+        cds_targetinfo.change.emit()
+    """
+    vi_class_callback = CustomJS(
+        args=dict(cds_targetinfo=cds_targetinfo, vi_class_input=vi_class_input, 
+                vi_class_labels=vi_class_labels, ifiberslider = ifiberslider,
+                title=title, vi_file_fields = vi_file_fields, targetinfo=cds_targetinfo,
+                vi_z_input=vi_z_input, vi_category_select=vi_category_select), 
+        code=vi_class_code )
+    vi_class_input.js_on_click(vi_class_callback)
+
+    
     #- VI scanner name    
     vi_name_input = TextInput(value=(cds_targetinfo.data['VI_scanner'][0]).strip(), title="Your name :")
     with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_name_code = f.read()
