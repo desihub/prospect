@@ -84,27 +84,31 @@ def create_model(spectra, zbest):
             mx = resample_flux(spectra.wave[band], tx.wave*(1+zb['Z']), model)
             model_flux[band][i] = spectra.R[band][j].dot(mx)
 
-    #- Now combine to a single wavelength grid across all cameras
-    #- TODO: assumes b,r,z all exist
-    assert np.all([ band in spectra.wave.keys() for band in ['b','r','z'] ])
-    br_split = 0.5*(spectra.wave['b'][-1] + spectra.wave['r'][0])
-    rz_split = 0.5*(spectra.wave['r'][-1] + spectra.wave['z'][0])
-    keep = dict()
-    keep['b'] = (spectra.wave['b'] < br_split)
-    keep['r'] = (br_split <= spectra.wave['r']) & (spectra.wave['r'] < rz_split)
-    keep['z'] = (rz_split <= spectra.wave['z'])
-    model_wave = np.concatenate( [
-        spectra.wave['b'][keep['b']],
-        spectra.wave['r'][keep['r']],
-        spectra.wave['z'][keep['z']],
-    ] )
-
-    mflux = np.concatenate( [
-        model_flux['b'][:, keep['b']],
-        model_flux['r'][:, keep['r']],
-        model_flux['z'][:, keep['z']],
-    ], axis=1 )
-
+    #- Now combine, if needed, to a single wavelength grid across all cameras
+    if spectra.bands == ['brz'] :
+        model_wave = spectra.wave['brz']
+        mflux = model_flux['brz'][:]
+        
+    elif np.all([ band in spectra.bands for band in ['b','r','z'] ]) :
+        br_split = 0.5*(spectra.wave['b'][-1] + spectra.wave['r'][0])
+        rz_split = 0.5*(spectra.wave['r'][-1] + spectra.wave['z'][0])
+        keep = dict()
+        keep['b'] = (spectra.wave['b'] < br_split)
+        keep['r'] = (br_split <= spectra.wave['r']) & (spectra.wave['r'] < rz_split)
+        keep['z'] = (rz_split <= spectra.wave['z'])
+        model_wave = np.concatenate( [
+            spectra.wave['b'][keep['b']],
+            spectra.wave['r'][keep['r']],
+            spectra.wave['z'][keep['z']],
+        ] )
+        mflux = np.concatenate( [
+            model_flux['b'][:, keep['b']],
+            model_flux['r'][:, keep['r']],
+            model_flux['z'][:, keep['z']],
+        ], axis=1 )
+    else :
+        raise RunTimeError("create_model: Set of bands for spectra not supported")
+        
     return model_wave, mflux
 
 
@@ -341,7 +345,9 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     for band in spectra.bands:
         bad = (spectra.ivar[band] == 0.0) | (spectra.mask[band] != 0)
         spectra.flux[band][bad] = np.nan
-
+    #- No coaddition if spectra is already single-band
+    if len(spectra.bands)==1 : with_coaddcam = False
+        
     if frame_input and title is None:
         meta = spectra.meta
         title = 'Night {} ExpID {} Spectrograph {}'.format(
@@ -423,8 +429,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     fig.yaxis.axis_label = 'Flux'
     fig.xaxis.axis_label_text_font_style = 'normal'
     fig.yaxis.axis_label_text_font_style = 'normal'
-    colors = dict(b='#1f77b4', r='#d62728', z='maroon', coadd='#d62728')
-    noise_colors = dict(b='greenyellow', r='green', z='forestgreen', coadd='green') # TODO test several and choose
+    colors = dict(b='#1f77b4', r='#d62728', z='maroon', coadd='#d62728', brz='#d62728')
+    noise_colors = dict(b='greenyellow', r='green', z='forestgreen', coadd='green', brz='green')
     alpha_discrete = 0.2 # alpha for "almost-hidden" curves (single-arm spectra and noise by default)
     if not with_coaddcam : alpha_discrete = 1
     
@@ -750,7 +756,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
                                   code='''window.open(urls[ifiberslider.value][1], "_blank");''')
         imfig.js_on_event('tap', imfig_callback)
 
-   
+
 #     #-----
 #     #- Checkboxes to display noise / model
 #     disp_opt_labels = []
