@@ -92,7 +92,7 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
         # Filtering
         if (mask != None) or (snr_cut != None) :
             spectra = utils_specviewer.specviewer_selection(spectra, log=log,
-                        mask=mask, mask_type='CMX_TARGET', snr_cut=snr_cut)
+                        mask=mask, mask_type='CMX_TARGET', snr_cut=snr_cut, with_dirty_mask_merge=True)
             if spectra == 0 : continue
         # Merge
         if all_spectra is None :

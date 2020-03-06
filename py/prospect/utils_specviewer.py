@@ -203,7 +203,7 @@ def frames2spectra(frames, nspec=None, startspec=None, with_scores=False, with_r
     return spectra
 
 
-def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=None, rmag_cut=None, chi2cut=None, zbest=None, snr_cut=None) :
+def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=None, rmag_cut=None, chi2cut=None, zbest=None, snr_cut=None, with_dirty_mask_merge=False) :
     '''
     Simple sub-selection on spectra based on meta-data.
         Implemented cuts based on : target mask ; photo mag (g, r) ; chi2 from fit ; SNR (in spectra.scores, BRZ)
@@ -220,7 +220,16 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
             w, = np.where( (spectra.fibermap['DESI_TARGET'] & desi_mask[mask]) )
         elif mask_type == 'CMX_TARGET' :
             assert ( mask in cmx_mask.names() )
-            w, = np.where( (spectra.fibermap['CMX_TARGET'] & cmx_mask[mask]) )                
+            mask2 = None
+            if with_dirty_mask_merge : # Self-explanatory... only for fast VI of minisv
+                if mask in ['SV0_QSO', 'SV0_ELG', 'SV0_LRG'] : mask2 = mask.replace('SV0','MINI_SV')
+                if mask == 'SV0_BGS' : mask2 = 'MINI_SV_BGS_BRIGHT'
+                if mask in ['SV0_STD_FAINT', 'SV0_STD_BRIGHT'] : mask2 = mask.replace('SV0','')
+            if mask2 is None :
+                w, = np.where( (spectra.fibermap['CMX_TARGET'] & cmx_mask[mask]) )                
+            else :
+                w, = np.where( (spectra.fibermap['CMX_TARGET'] & cmx_mask[mask]) | 
+                             (spectra.fibermap['CMX_TARGET'] & cmx_mask[mask2]) )
         if len(w) == 0 :
             if log is not None : log.info(" * No spectra with mask "+mask)
             return 0
