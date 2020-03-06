@@ -86,7 +86,7 @@ def tile_db(specprod_dir, frametype='cframe', tile_subset=None, night_subset=Non
     if petals is None : petals = [str(i) for i in range(10)]
     tiles_db = list()
     for tile in os.listdir( os.path.join(specprod_dir,'tiles') ) :
-        if tile_subset is not None and if tile not in tile_subset : 
+        if (tile_subset is not None) and (tile not in tile_subset) : 
             continue
         if merge_exposures : tile_subdb = { 'tile':tile, 'db_subset':list() }
         for night in os.listdir( os.path.join(specprod_dir,'tiles',tile) ) :
