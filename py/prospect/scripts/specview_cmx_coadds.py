@@ -82,9 +82,13 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
     nspec_done = 0
     all_spectra = None
     log.info("Tile "+tile+" : reading coadds from night "+night)
-    for petal_num in the_subset['petals'] :
+    for petal_num in tile_db_subset['petals'] :
         fname = os.path.join(fdir,"coadd-"+petal_num+"-"+tile+'-'+night+".fits")
         spectra = desispec.io.read_spectra(fname)
+        ### TMP TRICK (?) : need to have (DUMMY) exposures in fibermap, otherwise spectra.update() crashes !
+        if not('EXPID' in spectra.fibermap.keys()) :
+                spectra.fibermap['EXPID'] = spectra.fibermap['FIBER']*0
+        ### END TMP TRICK
         # Filtering
         if (mask != None) or (snr_cut != None) :
             spectra = utils_specviewer.specviewer_selection(spectra, log=log,
@@ -103,7 +107,7 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
     # zcatalog
     if with_zcatalog :
         ztables = []
-        for petal_num in the_subset['petals'] :
+        for petal_num in tile_db_subset['petals'] :
             fname = os.path.join(fdir,"zbest-"+petal_num+"-"+tile+'-'+night+".fits")
             ztables.append(Table.read(fname,'ZBEST'))
         zcat = vstack(ztables)

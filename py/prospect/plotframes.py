@@ -288,13 +288,16 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
         y_vals = (y_vals[::resamp_factor])[resamp_factor:-resamp_factor]
         x_vals = x_vals[~np.isnan(y_vals)] # Needed to avoid 'ValueError: Out of range float values are not JSON compliant'
         y_vals = y_vals[~np.isnan(y_vals)]
-        yampl = np.max(y_vals) - np.min(y_vals)
-        ymin = np.min(y_vals) - 0.1*yampl
-        ymax = np.max(y_vals) + 0.1*yampl
+        if len(x_vals)==0 : # All NaN ... this should not happen ...
+            ymin, ymax = -1, 1
+        else :
+            yampl = np.max(y_vals) - np.min(y_vals)
+            ymin = np.min(y_vals) - 0.1*yampl
+            ymax = np.max(y_vals) + 0.1*yampl
         plot_title = None
         if titles is not None : plot_title = titles[i_spec]
         mini_plot = bk.figure(plot_width=thumb_width, plot_height=thumb_height, x_range=x_range, y_range=(ymin,ymax), title=plot_title)
-        mini_plot.line(x_vals, y_vals, line_color='red')
+        if len(x_vals)!=0 : mini_plot.line(x_vals, y_vals, line_color='red')
         mini_plot.xaxis.visible = False
         mini_plot.yaxis.visible = False
         mini_plot.min_border_left = 0
