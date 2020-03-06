@@ -224,7 +224,7 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
             if with_dirty_mask_merge : # Self-explanatory... only for fast VI of minisv
                 if mask in ['SV0_QSO', 'SV0_ELG', 'SV0_LRG'] : mask2 = mask.replace('SV0','MINI_SV')
                 if mask == 'SV0_BGS' : mask2 = 'MINI_SV_BGS_BRIGHT'
-                if mask in ['SV0_STD_FAINT', 'SV0_STD_BRIGHT'] : mask2 = mask.replace('SV0','')
+                if mask in ['SV0_STD_FAINT', 'SV0_STD_BRIGHT'] : mask2 = mask.replace('SV0_','')
             if mask2 is None :
                 w, = np.where( (spectra.fibermap['CMX_TARGET'] & cmx_mask[mask]) )                
             else :
