@@ -78,16 +78,15 @@ def tile_db(specprod_dir, frametype='cframe', tile_subset=None, night_subset=Non
     '''
     Returns [ {tile, night, expo, petals} for all tile/expos available in specprod_dir/tiles tree ], 
         with b,r,z frames whose name matches frametype
-        petals = list of petals numbers from 0 to 9 (only those with 3 band data available are kept)
         tile_subset : list; if None, all available tiles will be included in the list
         night_subset : list; if not None, only frames from these nights are included
         merge_exposures : if True, returns [ [ {tile, night, expo, petals} for all expos ] for all tiles ]
-        petals (list of strings) : select only data from a set of petals
+        petals (list of strings) : select only data from a set of petals, from 0 to 9 (only those with 3 band data available are kept)
     '''
     if petals is None : petals = [str(i) for i in range(10)]
     tiles_db = list()
     for tile in os.listdir( os.path.join(specprod_dir,'tiles') ) :
-        if tile not in tile_subset : 
+        if tile_subset is not None and if tile not in tile_subset : 
             continue
         if merge_exposures : tile_subdb = { 'tile':tile, 'db_subset':list() }
         for night in os.listdir( os.path.join(specprod_dir,'tiles',tile) ) :
