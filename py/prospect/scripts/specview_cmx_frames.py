@@ -225,12 +225,13 @@ def main(args) :
         
     # Logistics : list of "subsets" to process
     if page_sorting == "exposure" :
+        if args.with_zcatalog : log.info("Specview_cmx_frames: ignoring --with_zcatalog option (not available in exposure directory).")
         expo_subset = None
         if args.exposure_list is not None :
             expo_subset = np.loadtxt(args.exposure_list, dtype=str, comments='#')
         if args.exposure is not None :
             expo_subset = [ args.exposure ]
-        subset_db = exposure_db(args.specprod_dir, frametype=args.frametype, expo_subset=expo_subset)
+        subset_db = exposure_db(args.specprod_dir, frametype=args.frametype, expo_subset=expo_subset, petals=args.petals)
         if expo_subset is not None :
             tmplist = [ x['exposure'] for x in subset_db ]
             missing_expos = [ x for x in expo_subset if x.rjust(8, "0") not in tmplist ]
@@ -296,6 +297,6 @@ def main(args) :
                 log.info(str(nspec_done)+" spectra done : no other exposure will be processed")
                 break
 
-        return 0
+    return 0
 
 

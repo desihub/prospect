@@ -989,7 +989,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     vi_class_code += """
         if ( vi_class_input.active >= 0 ) {
             cds_targetinfo.data['VI_class_flag'][ifiberslider.value] = vi_class_labels[vi_class_input.active]
-            if ( vi_class_labels[vi_class_input.active]=="4" ) { // Flag '4' => VI_z = z_pipe
+            if ( vi_class_labels[vi_class_input.active]=="4" && model) { // Flag '4' => VI_z = z_pipe (if available)
                 var z = targetinfo.data['z'][ifiberslider.value]
                 vi_z_input.value = parseFloat(z).toFixed(4)
                 vi_category_select.value = targetinfo.data['spectype'][ifiberslider.value]
@@ -1004,7 +1004,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         args=dict(cds_targetinfo=cds_targetinfo, vi_class_input=vi_class_input, 
                 vi_class_labels=vi_class_labels, ifiberslider = ifiberslider,
                 title=title, vi_file_fields = vi_file_fields, targetinfo=cds_targetinfo,
-                vi_z_input=vi_z_input, vi_category_select=vi_category_select), 
+                model = cds_model, vi_z_input=vi_z_input, vi_category_select=vi_category_select), 
         code=vi_class_code )
     vi_class_input.js_on_click(vi_class_callback)
 
