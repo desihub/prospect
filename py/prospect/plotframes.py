@@ -311,29 +311,38 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
 
 def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, mask_type='DESI_TARGET', with_thumb_tab=True, with_vi_widgets=True, with_thumb_only_page=False):
     '''
-    Main prospect routine, creates a bokeh document from a set of spectra and fits
+    Main prospect routine. From a set of spectra, creates a bokeh document used for VI, to be displayed as an HTML page or within a jupyter notebook.
 
-    Parameter
+    Main Parameter
     ---------
-    spectra : desi spectra object, or a list of frames
-    nspec : select subsample of spectra, only for frame input
-    startspec : if nspec is set, subsample selection will be [startspec:startspec+nspec]
-    zcatalog : FITS file of pipeline redshifts for the spectra. Currently supports only redrock-PCA files.
-    model_from_zcat : if True, model spectra will be computed from the input zcatalog
-    model : if set, use this input set of model spectra (instead of computing it from zcat)
+    spectra: input spectra. Supported formats: 1) a 3-band DESI spectra object, with bands 'b', 'r', 'z'. 2) a single-band 
+        DESI spectra object, bandname 'brz'. 2) a list of 3 frames, associated to the b, r and z bands.
+    zcatalog (default None): astropy Table, containing the 'ZBEST' output redrock. Currently supports only redrock-PCA files.
+        The entries in zcatalog are matched to spectra with TARGETID, so that each spectrum must have a corresponding entry 
+        in zcatalog (on the other hand zcatalog may targets not included in spectra)
+    notebook (bool): if True, bokeh outputs the viewer to a notebook, else to a (static) HTML page
+    html_dir (string): directory to store the HTML page if notebook is False
+    title (string): title used to name the HTML page / the bokeh figure / the VI file
+    mask_type : mask type to identify target categories from the fibermap. Available : DESI_TARGET,
+        SV1_DESI_TARGET, CMX_TARGET. Default : DESI_TARGET.
+    with_vi_widgets (bool): include widgets used to enter VI informations. Set it to False if you do not intend to 
+        record VI files.
+    with_thumb_tab (bool): include a tab with thumbnails of spectra in bokeh viewer
+    with_thumb_only_page (bool): when creating a static HTML (notebook==False), a light HTML page including only the thumb 
+        gallery will also be produced.
+
+
+    Less-useful parameters
+    ---------
+    nspec: select subsample of spectra, only for frame input
+    startspec: if nspec is set, subsample selection will be [startspec:startspec+nspec]
+    model_from_zcat: if True, model spectra will be computed from the input zcatalog
+    model: if set, use this input set of model spectra (instead of computing it from zcat)
         model format (mwave, mflux); model must be entry-matched to zcatalog.
-    notebook : if True, bokeh outputs the viewer to notebook, else to a (static) html page
     is_coadded : set to True if spectra are coadds
-    title : title used to produce html page / name bokeh figure / save VI file
-    html_dir : directory to store html page
     with_imaging : include thumb image from legacysurvey.org
     with_noise : include noise for each spectrum
     with_coaddcam : include camera-coaddition
-    with_thumb_tab : include tab with thumbnails of spectra in viewer
-    with_vi_widgets : include widgets used to enter VI informations
-    with_thumb_only_page (requires notebook==False) : also create a light html page including only the thumb gallery
-    mask_type : mask type to identify target categories from the fibermap. Available : DESI_TARGET,
-        SV1_DESI_TARGET, CMX_TARGET. Default : DESI_TARGET.
     '''
 
     #- If inputs are frames, convert to a spectra object
@@ -989,11 +998,11 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     vi_class_code += """
         if ( vi_class_input.active >= 0 ) {
             cds_targetinfo.data['VI_class_flag'][ifiberslider.value] = vi_class_labels[vi_class_input.active]
-            if ( vi_class_labels[vi_class_input.active]=="4" && model) { // Flag '4' => VI_z = z_pipe (if available)
-                var z = targetinfo.data['z'][ifiberslider.value]
-                vi_z_input.value = parseFloat(z).toFixed(4)
-                vi_category_select.value = targetinfo.data['spectype'][ifiberslider.value]
-            }
+            //if ( vi_class_labels[vi_class_input.active]=="4" && model) { // Flag '4' => VI_z = z_pipe (if available)
+            //    var z = targetinfo.data['z'][ifiberslider.value]
+            //    vi_z_input.value = parseFloat(z).toFixed(4)
+            //    vi_category_select.value = targetinfo.data['spectype'][ifiberslider.value]
+            //}
         } else {
             cds_targetinfo.data['VI_class_flag'][ifiberslider.value] = "-1"
         }
