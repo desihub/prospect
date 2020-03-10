@@ -611,7 +611,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     #- Redshift / wavelength scale widgets
     z1 = np.floor(z*100)/100
     dz = z-z1
-    zslider = Slider(start=0.0, end=4.0, value=z1, step=0.01, title='Redshift rough tuning')
+    zslider = Slider(start=-0.1, end=4.0, value=z1, step=0.01, title='Redshift rough tuning')
     dzslider = Slider(start=0.0, end=0.01, value=dz, step=0.0001, title='Redshift fine-tuning')
     dzslider.format = "0[.]0000"
     z_input = TextInput(value="{:.4f}".format(z), title="Redshift value:")
@@ -687,7 +687,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     z_minus_callback = CustomJS(
         args=dict(zslider=zslider),
         code="""
-        if(zslider.value>=0.01) {
+        if(zslider.value>=-0.09) {
             zslider.value -= 0.01
         }
         """)
@@ -717,13 +717,13 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         args=dict(zslider=zslider, dzslider=dzslider, z_input=z_input),
         code="""
             var z = parseFloat(z_input.value)
-            if ( z >=0 && z <= 4.0 ) {
+            if ( z >=-0.1 && z <= 4.0 ) {
                 z_input.value = parseFloat(z_input.value).toFixed(4)
                 var z1 = Math.floor(z*100) / 100
                 zslider.value = z1
                 dzslider.value = parseFloat((z - z1).toFixed(4))
             } else {
-                if (z_input.value < 0) z_input.value = "0.0"
+                if (z_input.value < -0.1) z_input.value = "-0.1"
                 if (z_input.value > 4) z_input.value = "4.0"
             }
         """)

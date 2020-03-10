@@ -16,7 +16,7 @@ for (var i=0; i<nspec; i++) {
         var row = []
         for (var j=0; j<vi_file_fields.length; j++) {
             var entry = cds_targetinfo.data[vi_file_fields[j][1]][i]
-            if (vi_file_fields[j][1]=="z") entry = entry.toFixed(3)
+            if (vi_file_fields[j][1]=="z") entry = entry.toFixed(4)
             if ( typeof(entry)!="string" ) entry = entry.toString()
             entry = entry.replace(/"/g, '""')
             entry = entry.replace(/,/g, '","')
