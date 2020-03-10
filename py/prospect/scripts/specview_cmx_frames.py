@@ -184,7 +184,7 @@ def page_subset_tile(fdir, tile_db_subset, frametype, html_dir, titlepage_prefix
         log.info("Tile "+tile+" : no spectra !")
         return 0
     elif 'FIBERSTATUS' in all_spectra.fibermap.keys() :
-        all_spectra = myspecselect.myspecselect(all_spectra, clean_fiberstatus=True)
+        all_spectra = myspecselect.myspecselect(all_spectra, clean_fiberstatus=True, remove_scores=True)
         if all_spectra is None : return 0
     
     # Exposure-coadd
@@ -206,7 +206,7 @@ def page_subset_tile(fdir, tile_db_subset, frametype, html_dir, titlepage_prefix
 
         log.info(" * Page "+str(i_page)+" / "+str(nbpages))
         the_indices = sort_indices[(i_page-1)*nspecperfile:i_page*nspecperfile]            
-        thespec = myspecselect.myspecselect(all_spectra, indices=the_indices)
+        thespec = myspecselect.myspecselect(all_spectra, indices=the_indices, remove_scores=True)
         titlepage = titlepage_prefix+"_"+str(i_page)
         plotframes.plotspectra(thespec, with_noise=True, with_coaddcam=True, is_coadded=True, zcatalog=zcat,
                     title=titlepage, html_dir=html_dir, mask_type='CMX_TARGET', with_thumb_only_page=True)
