@@ -105,6 +105,7 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
         return 0
     elif 'FIBERSTATUS' in all_spectra.fibermap.keys() :
         all_spectra = myspecselect.myspecselect(all_spectra, clean_fiberstatus=True, remove_scores=True)
+        if all_spectra is None : return 0
     
     # zcatalog
     if with_zcatalog :
@@ -176,4 +177,4 @@ def main(args) :
                 log.info(str(nspec_done)+" spectra done : no other exposure will be processed")
                 break
 
-        return 0
+    return 0

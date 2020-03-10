@@ -122,6 +122,7 @@ def page_subset_expo(fdir, exposure, frametype, petals, html_dir, titlepage_pref
         spectra = utils_specviewer.frames2spectra(frames, with_scores=True)
         if 'FIBERSTATUS' in spectra.fibermap.keys() :
             spectra = myspecselect.myspecselect(spectra, clean_fiberstatus=True)
+            if spectra is None : return 0
 
         # Selection
         if (mask != None) or (snr_cut != None) :
@@ -184,7 +185,8 @@ def page_subset_tile(fdir, tile_db_subset, frametype, html_dir, titlepage_prefix
         return 0
     elif 'FIBERSTATUS' in all_spectra.fibermap.keys() :
         all_spectra = myspecselect.myspecselect(all_spectra, clean_fiberstatus=True)
-
+        if all_spectra is None : return 0
+    
     # Exposure-coadd
     all_spectra = utils_specviewer.coadd_targets(all_spectra)
     # zcatalog
