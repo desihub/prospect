@@ -89,8 +89,6 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
         if not('EXPID' in spectra.fibermap.keys()) :
                 spectra.fibermap['EXPID'] = spectra.fibermap['FIBER']*0
         ### END TMP TRICK
-        if 'FIBERSTATUS' in spectra.fibermap.keys() :
-            spectra = myspecselect.myspecselect(spectra, clean_fiberstatus=True)
         # Filtering
         if (mask != None) or (snr_cut != None) :
             spectra = utils_specviewer.specviewer_selection(spectra, log=log,
@@ -106,7 +104,7 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
         log.info("Tile "+tile+" - night "+night+": no spectra.")
         return 0
     elif 'FIBERSTATUS' in all_spectra.fibermap.keys() :
-        all_spectra = myspecselect.myspecselect(all_spectra, clean_fiberstatus=True)
+        all_spectra = myspecselect.myspecselect(all_spectra, clean_fiberstatus=True, remove_scores=True)
     
     # zcatalog
     if with_zcatalog :
