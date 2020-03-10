@@ -5,7 +5,7 @@
 
 import desispec.spectra
 
-def myspecselect(thespec, nights=None, bands=None, targets=None, fibers=None, expids=None, indices=None, invert=False):
+def myspecselect(thespec, nights=None, bands=None, targets=None, fibers=None, expids=None, indices=None, invert=False, remove_scores=False, clean_fiberstatus=False):
     """
     Select a subset of the data.
     This filters the data based on a logical AND of the different
@@ -18,9 +18,17 @@ def myspecselect(thespec, nights=None, bands=None, targets=None, fibers=None, ex
         ADDED=> expids (list): list/array of individual exposures to select.      
         ADDED =>indices (list) : list of raw (arbitrary) indices in the Spectra object to select. 
         invert (bool): after combining all criteria, invert selection.
+        remove_scores (bool): probably tmp trick, TODO
     Returns (Spectra):
         a new Spectra object containing the selected data.
     """
+    
+    keep_fiberstatus = None
+    if clean_fiberstatus == False :
+        keep_fiberstatus = [ True for x in range(thespec.num_spectra()) ]
+    else :
+        keep_fiberstatus = [ (x==0) for x in thespec.fibermap["FIBERSTATUS"] ]
+    
     keep_bands = None
     if bands is None:
         keep_bands = thespec.bands
@@ -69,7 +77,7 @@ def myspecselect(thespec, nights=None, bands=None, targets=None, fibers=None, ex
     if sum(keep_indices) == 0:
         raise RuntimeError("no valid indices were selected!")
 
-    keep_rows = [ (x and y and z and t and u) for x, y, z, t, u in zip(keep_nights, keep_targets, keep_fibers, keep_expids, keep_indices) ]
+    keep_rows = [ (x and y and z and t and u and v) for x, y, z, t, u, v in zip(keep_nights, keep_targets, keep_fibers, keep_expids, keep_indices, keep_fiberstatus) ]
     if invert:
         keep_rows = [ not x for x in keep_rows ]
 
@@ -104,7 +112,8 @@ def myspecselect(thespec, nights=None, bands=None, targets=None, fibers=None, ex
                 keep_extra[b][ex[0]] = ex[1][keep,:]
 
     keep_scores = None
-    if thespec.scores is not None : keep_scores = thespec.scores[keep]
+    if not remove_scores :
+        if thespec.scores is not None : keep_scores = thespec.scores[keep]
     
     ret = desispec.spectra.Spectra(keep_bands, keep_wave, keep_flux, keep_ivar, 
         mask=keep_mask, resolution_data=keep_res, 
