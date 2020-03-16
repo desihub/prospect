@@ -6,7 +6,7 @@ TODO
 * add target details tab
 * add code details tab (version, SPECPROD)
 * redshift model fit
-* better smoothing kernel, e.g. gaussian
+* better smoothing kernel, e.g. Gaussian
 """
 
 import os, sys
@@ -40,7 +40,7 @@ from prospect import utils_specviewer
 from prospect import mycoaddcam
 from astropy.table import Table
 
-def create_model(spectra, zbest):
+def create_model(spectra, zbest, archetype_fit=True, archetypes_dir=None):
     '''
     Returns model_wave[nwave], model_flux[nspec, nwave], row matched to zbest,
     which can be in a different order than spectra.
@@ -76,12 +76,32 @@ def create_model(spectra, zbest):
         zb = zbest[i]
         j = np.where(targetids == zb['TARGETID'])[0][0]
 
-        tx = templates[(zb['SPECTYPE'], zb['SUBTYPE'])]
-        coeff = zb['COEFF'][0:tx.nbasis]
-        model = tx.flux.T.dot(coeff).T
-        for band in spectra.bands:
-            mx = resample_flux(spectra.wave[band], tx.wave*(1+zb['Z']), model)
-            model_flux[band][i] = spectra.R[band][j].dot(mx)
+        if archetype_fit:
+          from redrock.archetypes import All_archetypes
+
+            
+          archetypes = All_archetypes(archetypes_dir=archetypes_dir).archetypes
+          archetype  = archetypes[zb['SPECTYPE']]
+
+          coeff      = zb['COEFF']
+
+          for band in spectra.bands:
+              wave                = spectra.wave[band]
+
+              wavehash            = hash((len(wave), wave[0], wave[1], wave[-2], wave[-1], spectra.R[band].data.shape[0]))
+              dwave               = {wavehash: wave}
+
+              mx                  = archetype.eval(zb['SUBTYPE'], dwave, coeff, wave, zb['Z'])
+              model_flux[band][i] = spectra.R[band][j].dot(mx)
+                    
+        else:
+          tx    = templates[(zb['SPECTYPE'], zb['SUBTYPE'])]
+          coeff = zb['COEFF'][0:tx.nbasis]
+          model = tx.flux.T.dot(coeff).T
+
+          for band in spectra.bands:
+              mx                  = resample_flux(spectra.wave[band], tx.wave*(1+zb['Z']), model)
+              model_flux[band][i] = spectra.R[band][j].dot(mx)
 
     model_wave = spectra.wave["brz"]
     mflux = model_flux["brz"]
@@ -300,7 +320,7 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
     return gridplot(thumb_plots, ncols=ncols_grid, toolbar_location=None, sizing_mode='scale_width')
 
 
-def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, mask_type='DESI_TARGET', with_thumb_tab=True, with_vi_widgets=True, with_thumb_only_page=False):
+def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, mask_type='DESI_TARGET', with_thumb_tab=True, with_vi_widgets=True, with_thumb_only_page=False, archetype_fit=False, archetypes_dir=None):
     '''
     Main prospect routine, creates a bokeh document from a set of spectra and fits
 
@@ -326,6 +346,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     with_thumb_only_page (requires notebook==False) : also create a light html page including only the thumb gallery
     mask_type : mask type to identify target categories from the fibermap. Available : DESI_TARGET,
         SV1_DESI_TARGET, CMX_TARGET. Default : DESI_TARGET.
+    archetype_fit : if True, assume zbest derived from redrock --archetypes and plot model accordingly.
+    archetypes_dir : directory path for archetypes if not $RR__ARCHETYPE_DIR.
     '''
 
     #- If inputs are frames, convert to a spectra object
@@ -360,7 +382,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             model = mwave, mflux[kk]
 
         if model_from_zcat == True :
-            model = create_model(spectra, zcatalog)
+            model = create_model(spectra, zcatalog, archetype_fit=archetype_fit)
 
     #-----
     #- Initialize Bokeh output
