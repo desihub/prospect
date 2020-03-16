@@ -48,7 +48,10 @@ def create_model(spectra, zbest, archetype_fit=True, archetypes_dir=None):
     '''
     import redrock.templates
     from desispec.interpolation import resample_flux
-
+    
+    if archetype_fit:
+      from redrock.archetypes import All_archetypes
+    
     nspec = spectra.num_spectra()
     assert len(zbest) == nspec
 
@@ -76,10 +79,7 @@ def create_model(spectra, zbest, archetype_fit=True, archetypes_dir=None):
         zb = zbest[i]
         j = np.where(targetids == zb['TARGETID'])[0][0]
 
-        if archetype_fit:
-          from redrock.archetypes import All_archetypes
-
-            
+        if archetype_fit:            
           archetypes = All_archetypes(archetypes_dir=archetypes_dir).archetypes
           archetype  = archetypes[zb['SPECTYPE']]
 
