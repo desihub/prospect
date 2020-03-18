@@ -203,11 +203,23 @@ def frames2spectra(frames, nspec=None, startspec=None, with_scores=False, with_r
     return spectra
 
 
-def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=None, rmag_cut=None, chi2cut=None, zbest=None, snr_cut=None, with_dirty_mask_merge=False) :
+def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=None, rmag_cut=None, chi2cut=None, zbest=None, snr_cut=None, with_dirty_mask_merge=False, remove_scores=False) :
     '''
     Simple sub-selection on spectra based on meta-data.
         Implemented cuts based on : target mask ; photo mag (g, r) ; chi2 from fit ; SNR (in spectra.scores, BRZ)
     '''
+
+    # SNR selection
+    if snr_cut is not None :
+        assert ( (len(snr_cut)==2) and (spectra.scores is not None) )
+        for band in ['B','R','Z'] :
+            w, = np.where( (spectra.scores['MEDIAN_CALIB_SNR_'+band]>snr_cut[0]) & (spectra.scores['MEDIAN_CALIB_SNR_'+band]<snr_cut[1]) )
+            if len(w) == 0 :
+                if log is not None : log.info(" * No spectra with MEDIAN_CALIB_SNR_"+band+" in requested range")
+                return 0
+            else :
+                targetids = spectra.fibermap['TARGETID'][w]
+                spectra = myspecselect.myspecselect(spectra, targets=targetids, remove_scores=remove_scores)
     
     # Target mask selection
     if mask is not None :
@@ -235,7 +247,7 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
             return 0
         else :
             targetids = spectra.fibermap['TARGETID'][w]
-            spectra = myspecselect.myspecselect(spectra, targets=targetids)
+            spectra = myspecselect.myspecselect(spectra, targets=targetids, remove_scores=remove_scores)
 
     # Photometry selection
     if gmag_cut is not None :
@@ -261,19 +273,7 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
             return 0
         else :
             targetids = spectra.fibermap['TARGETID'][w]
-            spectra = myspecselect.myspecselect(spectra, targets=targetids)
-
-    # SNR selection ## TODO check it !! May not work ...
-    if snr_cut is not None :
-        assert ( (len(snr_cut)==2) and (spectra.scores is not None) )
-        for band in ['B','R','Z'] :
-            w, = np.where( (spectra.scores['MEDIAN_CALIB_SNR_'+band]>snr_cut[0]) & (spectra.scores['MEDIAN_CALIB_SNR_'+band]<snr_cut[1]) )
-            if len(w) == 0 :
-                if log is not None : log.info(" * No spectra with MEDIAN_CALIB_SNR_"+band+" in requested range")
-                return 0
-            else :
-                targetids = spectra.fibermap['TARGETID'][w]
-                spectra = myspecselect.myspecselect(spectra, targets=targetids)
+            spectra = myspecselect.myspecselect(spectra, targets=targetids, remove_scores=remove_scores)
     
     # Chi2 selection
     if chi2cut is not None :
@@ -286,7 +286,7 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
             return 0
         else :
             targetids = spectra.fibermap['TARGETID'][w]
-            spectra = myspecselect.myspecselect(spectra, targets=targetids)
+            spectra = myspecselect.myspecselect(spectra, targets=targetids, remove_scores=remove_scores)
 
     return spectra
 
