@@ -1,5 +1,5 @@
 """
-prospect.scripts.specview_cmx_frames
+prospect.scripts.specview_cmx_coadds
 ===================================
 
 Write static html files from "coadd" files in CMX data

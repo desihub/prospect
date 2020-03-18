@@ -39,7 +39,6 @@ import desispec.frame
 #from . import utils_specviewer
 from prospect import utils_specviewer
 from prospect import mycoaddcam
-from astropy.table import Table
 
 def create_model(spectra, zbest):
     '''
