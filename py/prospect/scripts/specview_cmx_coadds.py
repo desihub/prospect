@@ -35,7 +35,8 @@ def parse() :
     parser.add_argument('--snrcut', help='Select only objects in a given range for MEDIAN_CALIB_SNR_B+R+Z', nargs='+', type=float, default=None)
     parser.add_argument('--with_zcatalog', help='Include redshift fit results (zbest files)', action='store_true')
     parser.add_argument('--petals', help='Select only a set of petals (labelled 0 to 9)', nargs='+', type=str, default=None)
-
+    parser.add_argument('--template_dir', help='Redrock template directory', type=str, default=None)
+    
     args = parser.parse_args()
     return args
 
@@ -72,7 +73,7 @@ def tile_db(specprod_dir, tile_subset=None, night_subset=None, petals=None, with
     return tiles_db
     
 
-def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log, nspecperfile, snr_cut, with_zcatalog=False) :
+def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log, nspecperfile, snr_cut, with_zcatalog=False, template_dir=None) :
     '''
     Running prospect from coadds.
     '''
@@ -128,7 +129,7 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
         thespec = myspecselect.myspecselect(all_spectra, indices=the_indices, remove_scores=True)
         titlepage = titlepage_prefix+"_"+str(i_page)
         plotframes.plotspectra(thespec, with_noise=True, with_coaddcam=False, is_coadded=True, zcatalog=zcat,
-                    title=titlepage, html_dir=html_dir, mask_type='CMX_TARGET', with_thumb_only_page=True)
+                    title=titlepage, html_dir=html_dir, mask_type='CMX_TARGET', with_thumb_only_page=True, template_dir=template_dir)
     nspec_done += nspec_tile
         
     return nspec_done
@@ -168,7 +169,7 @@ def main(args) :
         if not os.path.exists(html_dir) : 
             os.makedirs(html_dir)
         
-        nspec_added = page_subset_tile(fdir, the_subset, html_dir, titlepage_prefix, args.mask, log, args.nspecperfile, args.snrcut, with_zcatalog=args.with_zcatalog)
+        nspec_added = page_subset_tile(fdir, the_subset, html_dir, titlepage_prefix, args.mask, log, args.nspecperfile, args.snrcut, with_zcatalog=args.with_zcatalog, template_dir=args.template_dir)
                     
         # Stop running if needed, only once a full exposure is completed
         nspec_done += nspec_added

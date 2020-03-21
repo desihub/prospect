@@ -40,7 +40,7 @@ import desispec.frame
 from prospect import utils_specviewer
 from prospect import mycoaddcam
 
-def create_model(spectra, zbest):
+def create_model(spectra, zbest, template_dir=None):
     '''
     Returns model_wave[nwave], model_flux[nspec, nwave], row matched to zbest,
     which can be in a different order than spectra.
@@ -57,7 +57,7 @@ def create_model(spectra, zbest):
     sys.stdout = open('/dev/null', 'w')
     try:
         templates = dict()
-        for filename in redrock.templates.find_templates():
+        for filename in redrock.templates.find_templates(template_dir=template_dir):
             tx = redrock.templates.Template(filename)
             templates[(tx.template_type, tx.sub_type)] = tx
     except Exception as err:
@@ -308,7 +308,7 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
     return gridplot(thumb_plots, ncols=ncols_grid, toolbar_location=None, sizing_mode='scale_width')
 
 
-def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, mask_type='DESI_TARGET', with_thumb_tab=True, with_vi_widgets=True, with_thumb_only_page=False):
+def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, mask_type='DESI_TARGET', with_thumb_tab=True, with_vi_widgets=True, with_thumb_only_page=False, template_dir=None):
     '''
     Main prospect routine. From a set of spectra, creates a bokeh document used for VI, to be displayed as an HTML page or within a jupyter notebook.
 
@@ -342,6 +342,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     with_imaging : include thumb image from legacysurvey.org
     with_noise : include noise for each spectrum
     with_coaddcam : include camera-coaddition
+    template_dir: Redrock template directory
     '''
 
     #- If inputs are frames, convert to a spectra object
@@ -378,7 +379,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             model = mwave, mflux[kk]
 
         if model_from_zcat == True :
-            model = create_model(spectra, zcatalog)
+            model = create_model(spectra, zcatalog, template_dir=template_dir)
 
     #-----
     #- Initialize Bokeh output
