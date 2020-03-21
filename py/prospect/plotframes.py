@@ -6,7 +6,7 @@ TODO
 * add target details tab
 * add code details tab (version, SPECPROD)
 * redshift model fit
-* better smoothing kernel, e.g. gaussian
+* better smoothing kernel, e.g. Gaussian
 """
 
 import os, sys
@@ -40,7 +40,7 @@ from prospect import utils_specviewer
 from prospect import mycoaddcam
 from astropy.table import Table
 
-def create_model(spectra, zbest):
+def create_model(spectra, zbest, archetype_fit=True, archetypes_dir=None):
     '''
     Returns model_wave[nwave], model_flux[nspec, nwave], row matched to zbest,
     which can be in a different order than spectra.
@@ -48,7 +48,10 @@ def create_model(spectra, zbest):
     '''
     import redrock.templates
     from desispec.interpolation import resample_flux
-
+    
+    if archetype_fit:
+      from redrock.archetypes import All_archetypes
+    
     nspec = spectra.num_spectra()
     assert len(zbest) == nspec
 
@@ -76,36 +79,60 @@ def create_model(spectra, zbest):
         zb = zbest[i]
         j = np.where(targetids == zb['TARGETID'])[0][0]
 
-        tx = templates[(zb['SPECTYPE'], zb['SUBTYPE'])]
-        coeff = zb['COEFF'][0:tx.nbasis]
-        model = tx.flux.T.dot(coeff).T
-        for band in spectra.bands:
-            mx = resample_flux(spectra.wave[band], tx.wave*(1+zb['Z']), model)
-            model_flux[band][i] = spectra.R[band][j].dot(mx)
+        if archetype_fit:            
+          archetypes = All_archetypes(archetypes_dir=archetypes_dir).archetypes
+          archetype  = archetypes[zb['SPECTYPE']]
 
-    #- Now combine to a single wavelength grid across all cameras
-    #- TODO: assumes b,r,z all exist
-    assert np.all([ band in spectra.wave.keys() for band in ['b','r','z'] ])
-    br_split = 0.5*(spectra.wave['b'][-1] + spectra.wave['r'][0])
-    rz_split = 0.5*(spectra.wave['r'][-1] + spectra.wave['z'][0])
-    keep = dict()
-    keep['b'] = (spectra.wave['b'] < br_split)
-    keep['r'] = (br_split <= spectra.wave['r']) & (spectra.wave['r'] < rz_split)
-    keep['z'] = (rz_split <= spectra.wave['z'])
-    model_wave = np.concatenate( [
+          coeff      = zb['COEFF']
+
+          for band in spectra.bands:
+              wave                = spectra.wave[band]
+
+              wavehash            = hash((len(wave), wave[0], wave[1], wave[-2], wave[-1], spectra.R[band].data.shape[0]))
+              dwave               = {wavehash: wave}
+
+              mx                  = archetype.eval(zb['SUBTYPE'], dwave, coeff, wave, zb['Z'])
+              model_flux[band][i] = spectra.R[band][j].dot(mx)
+                    
+        else:
+          tx    = templates[(zb['SPECTYPE'], zb['SUBTYPE'])]
+          coeff = zb['COEFF'][0:tx.nbasis]
+          model = tx.flux.T.dot(coeff).T
+
+          for band in spectra.bands:
+              mx                  = resample_flux(spectra.wave[band], tx.wave*(1+zb['Z']), model)
+              model_flux[band][i] = spectra.R[band][j].dot(mx)
+
+    if spectra.bands == ['brz']:
+      # Already a coadd across cameras. 
+      return  spectra.wave['brz'], model_flux['brz']
+
+    else:
+      #- Now combine to a single wavelength grid across all cameras
+      #- TODO: assumes b,r,z all exist
+
+      assert np.all([ band in spectra.wave.keys() for band in ['b','r','z'] ])
+      br_split = 0.5*(spectra.wave['b'][-1] + spectra.wave['r'][0])
+      rz_split = 0.5*(spectra.wave['r'][-1] + spectra.wave['z'][0])
+
+      keep = dict()
+      keep['b'] = (spectra.wave['b'] < br_split)
+      keep['r'] = (br_split <= spectra.wave['r']) & (spectra.wave['r'] < rz_split)
+      keep['z'] = (rz_split <= spectra.wave['z'])
+      model_wave = np.concatenate( [
         spectra.wave['b'][keep['b']],
         spectra.wave['r'][keep['r']],
         spectra.wave['z'][keep['z']],
-    ] )
+       ] )
 
-    mflux = np.concatenate( [
+      mflux = np.concatenate( [
         model_flux['b'][:, keep['b']],
         model_flux['r'][:, keep['r']],
         model_flux['z'][:, keep['z']],
-    ], axis=1 )
+      ], axis=1 )
 
-    return model_wave, mflux
-
+      return model_wave, mflux
+  
 
 def _viewer_urls(spectra, zoom=13, layer='dr8'):
     """Return legacysurvey.org viewer URLs for all spectra.
@@ -319,7 +346,7 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
     return gridplot(thumb_plots, ncols=ncols_grid, toolbar_location=None, sizing_mode='scale_width')
 
 
-def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, mask_type='DESI_TARGET', with_thumb_tab=True, with_vi_widgets=True, with_thumb_only_page=False):
+def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, vidata=None, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, mask_type='DESI_TARGET', with_thumb_tab=True, with_vi_widgets=True, with_thumb_only_page=False, archetype_fit=False, archetypes_dir=None):
     '''
     Main prospect routine, creates a bokeh document from a set of spectra and fits
 
@@ -345,6 +372,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     with_thumb_only_page (requires notebook==False) : also create a light html page including only the thumb gallery
     mask_type : mask type to identify target categories from the fibermap. Available : DESI_TARGET,
         SV1_DESI_TARGET, CMX_TARGET. Default : DESI_TARGET.
+    archetype_fit : if True, assume zbest derived from redrock --archetypes and plot model accordingly.
+    archetypes_dir : directory path for archetypes if not $RR__ARCHETYPE_DIR.
     '''
 
     #- If inputs are frames, convert to a spectra object
@@ -379,7 +408,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             model = mwave, mflux[kk]
 
         if model_from_zcat == True :
-            model = create_model(spectra, zcatalog)
+            model = create_model(spectra, zcatalog, archetype_fit=archetype_fit, archetypes_dir=archetypes_dir)
 
     #-----
     #- Initialize Bokeh output
@@ -441,8 +470,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     fig.yaxis.axis_label = 'Flux'
     fig.xaxis.axis_label_text_font_style = 'normal'
     fig.yaxis.axis_label_text_font_style = 'normal'
-    colors = dict(b='#1f77b4', r='#d62728', z='maroon', coadd='#d62728')
-    noise_colors = dict(b='greenyellow', r='green', z='forestgreen', coadd='green') # TODO test several and choose
+    colors = dict(b='#1f77b4', r='#d62728', z='maroon', coadd='#d62728', brz='#d62728')
+    noise_colors = dict(b='greenyellow', r='green', z='forestgreen', coadd='green', brz='#d62728') # TODO test several and choose
     alpha_discrete = 0.2 # alpha for "almost-hidden" curves (single-arm spectra and noise by default)
     if not with_coaddcam : alpha_discrete = 1
     
