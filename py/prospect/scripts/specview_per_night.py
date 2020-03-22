@@ -78,7 +78,7 @@ def main(args):
                     os.mkdir(html_dir+"/vignettes")
             
                 plotframes.plotspectra(thespec, zcatalog=thezb, vidata=None, model=model, title=titlepage, html_dir=html_dir, is_coadded=False)
-                for i_spec in range(thespec.num_spectra()) :
-                    saveplot = html_dir+"/vignettes/night"+thenight+"_"+file_label+"_"+str(i_page)+"_"+str(i_spec)+".png"
-                    utils_specviewer.miniplot_spectrum(thespec, i_spec, model=model, saveplot=saveplot, smoothing = args.vignette_smoothing)
+#                 for i_spec in range(thespec.num_spectra()) :
+#                     saveplot = html_dir+"/vignettes/night"+thenight+"_"+file_label+"_"+str(i_page)+"_"+str(i_spec)+".png"
+#                     utils_specviewer.miniplot_spectrum(thespec, i_spec, model=model, saveplot=saveplot, smoothing = args.vignette_smoothing)
 

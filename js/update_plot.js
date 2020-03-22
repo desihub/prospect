@@ -18,14 +18,15 @@ if (cb_obj == ifiberslider) { // update VI widgets + infos for current spectrum
     // BYPASS DIV !!!
     // Code can clearly be better written... todo later...
 //    target_info_div.text = targetinfo.data['target_info'][ifiber]
-    targ_disp_cds.data['TARGETING'] = [ targetinfo.data['target_info'][ifiber] ]
+    targ_disp_cds.data['Target ID'] = [ targetinfo.data['targetid'][ifiber] ]
+    targ_disp_cds.data['Target class'] = [ targetinfo.data['target_info'][ifiber] ]
     targ_disp_cds.data['mag_G'] = [ targetinfo.data['mag_G'][ifiber].toFixed(2) ]
     targ_disp_cds.data['mag_R'] = [ targetinfo.data['mag_R'][ifiber].toFixed(2) ]
     targ_disp_cds.data['mag_Z'] = [ targetinfo.data['mag_Z'][ifiber].toFixed(2) ]
     targ_disp_cds.data['mag_W1'] = [ targetinfo.data['mag_W1'][ifiber].toFixed(2) ]
     targ_disp_cds.data['mag_W2'] = [ targetinfo.data['mag_W2'][ifiber].toFixed(2) ]
     targ_disp_cds.change.emit()
-    if(targetinfo.data['z'] != undefined) {
+    if(targetinfo.data['z'] != undefined && zcat_disp_cds != null) {
         zcat_disp_cds.data['SPECTYPE'] = [ targetinfo.data['spectype'][ifiber] ]
         zcat_disp_cds.data['Z'] = [ targetinfo.data['z'][ifiber].toFixed(4) ]
         zcat_disp_cds.data['ZERR'] = [ targetinfo.data['zerr'][ifiber].toFixed(4) ]
