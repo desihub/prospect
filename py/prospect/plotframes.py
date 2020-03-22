@@ -6,7 +6,7 @@ TODO
 * add target details tab
 * add code details tab (version, SPECPROD)
 * redshift model fit
-* better smoothing kernel, e.g. gaussian
+* better smoothing kernel, e.g. Gaussian
 """
 
 import os, sys
@@ -40,7 +40,7 @@ import desispec.frame
 from prospect import utils_specviewer
 from prospect import mycoaddcam
 
-def create_model(spectra, zbest, template_dir=None):
+def create_model(spectra, zbest, archetype_fit=True, archetypes_dir=None, template_dir=None):
     '''
     Returns model_wave[nwave], model_flux[nspec, nwave], row matched to zbest,
     which can be in a different order than spectra.
@@ -48,7 +48,10 @@ def create_model(spectra, zbest, template_dir=None):
     '''
     import redrock.templates
     from desispec.interpolation import resample_flux
-
+    
+    if archetype_fit:
+      from redrock.archetypes import All_archetypes
+    
     nspec = spectra.num_spectra()
     assert len(zbest) == nspec
 
@@ -76,17 +79,31 @@ def create_model(spectra, zbest, template_dir=None):
         zb = zbest[i]
         j = np.where(targetids == zb['TARGETID'])[0][0]
 
-        tx = templates[(zb['SPECTYPE'], zb['SUBTYPE'])]
-        coeff = zb['COEFF'][0:tx.nbasis]
-        model = tx.flux.T.dot(coeff).T
-        for band in spectra.bands:
-            mx = resample_flux(spectra.wave[band], tx.wave*(1+zb['Z']), model)
-            model_flux[band][i] = spectra.R[band][j].dot(mx)
+        if archetype_fit:            
+          archetypes = All_archetypes(archetypes_dir=archetypes_dir).archetypes
+          archetype  = archetypes[zb['SPECTYPE']]
+          coeff      = zb['COEFF']
+
+          for band in spectra.bands:
+              wave                = spectra.wave[band]
+              wavehash            = hash((len(wave), wave[0], wave[1], wave[-2], wave[-1], spectra.R[band].data.shape[0]))
+              dwave               = {wavehash: wave}
+              mx                  = archetype.eval(zb['SUBTYPE'], dwave, coeff, wave, zb['Z'])
+              model_flux[band][i] = spectra.R[band][j].dot(mx)
+                    
+        else:
+          tx    = templates[(zb['SPECTYPE'], zb['SUBTYPE'])]
+          coeff = zb['COEFF'][0:tx.nbasis]
+          model = tx.flux.T.dot(coeff).T
+
+          for band in spectra.bands:
+              mx                  = resample_flux(spectra.wave[band], tx.wave*(1+zb['Z']), model)
+              model_flux[band][i] = spectra.R[band][j].dot(mx)
 
     #- Now combine, if needed, to a single wavelength grid across all cameras
     if spectra.bands == ['brz'] :
         model_wave = spectra.wave['brz']
-        mflux = model_flux['brz'][:]
+        mflux = model_flux['brz']
         
     elif np.all([ band in spectra.bands for band in ['b','r','z'] ]) :
         br_split = 0.5*(spectra.wave['b'][-1] + spectra.wave['r'][0])
@@ -308,7 +325,7 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
     return gridplot(thumb_plots, ncols=ncols_grid, toolbar_location=None, sizing_mode='scale_width')
 
 
-def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, mask_type='DESI_TARGET', with_thumb_tab=True, with_vi_widgets=True, with_thumb_only_page=False, template_dir=None):
+def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, mask_type='DESI_TARGET', with_thumb_tab=True, with_vi_widgets=True, with_thumb_only_page=False, template_dir=None, archetype_fit=False, archetypes_dir=None):
     '''
     Main prospect routine. From a set of spectra, creates a bokeh document used for VI, to be displayed as an HTML page or within a jupyter notebook.
 
@@ -343,6 +360,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     with_noise : include noise for each spectrum
     with_coaddcam : include camera-coaddition
     template_dir: Redrock template directory
+    archetype_fit : if True, assume zbest derived from redrock --archetypes and plot model accordingly.
+    archetypes_dir : directory path for archetypes if not $RR__ARCHETYPE_DIR.
     '''
 
     #- If inputs are frames, convert to a spectra object
@@ -379,7 +398,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             model = mwave, mflux[kk]
 
         if model_from_zcat == True :
-            model = create_model(spectra, zcatalog, template_dir=template_dir)
+            model = create_model(spectra, zcatalog, archetype_fit=archetype_fit, archetypes_dir=archetypes_dir, template_dir=template_dir)
 
     #-----
     #- Initialize Bokeh output
