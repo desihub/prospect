@@ -9,12 +9,6 @@ from desispec.maskbits import specmask
 from desispec.resolution import Resolution
 
 def myspecupdate(spectra_in, other) :
-    """
-    Args:
-        other (Spectra): the new data to add.
-    Returns:
-        nothing (object "spectra" updated in place).
-    """
 
     # Does the other Spectra object have any data?
 

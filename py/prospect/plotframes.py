@@ -40,21 +40,21 @@ import desispec.frame
 from prospect import utils_specviewer
 from prospect import mycoaddcam
 
-def create_model(spectra, zbest, archetype_fit=True, archetypes_dir=None, template_dir=None):
+def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, template_dir=None):
     '''
     Returns model_wave[nwave], model_flux[nspec, nwave], row matched to zbest,
     which can be in a different order than spectra.
-    NB currently, zbest must have the same size as spectra.
+    - zbest must be entry-matched to spectra.
     '''
     import redrock.templates
     from desispec.interpolation import resample_flux
     
     if archetype_fit:
-      from redrock.archetypes import All_archetypes
+        from redrock.archetypes import All_archetypes
     
-    nspec = spectra.num_spectra()
-    assert len(zbest) == nspec
-
+    if np.any(zbest['TARGETID'] != spectra.fibermap['TARGETID']) :
+        raise RunTimeError('zcatalog and spectra do not match (different targetids)') 
+    
     #- Load redrock templates; redirect stdout because redrock is chatty
     saved_stdout = sys.stdout
     sys.stdout = open('/dev/null', 'w')
@@ -74,10 +74,8 @@ def create_model(spectra, zbest, archetype_fit=True, archetypes_dir=None, templa
     for band in spectra.bands:
         model_flux[band] = np.zeros(spectra.flux[band].shape)
 
-    targetids = spectra.target_ids()
     for i in range(len(zbest)):
         zb = zbest[i]
-        j = np.where(targetids == zb['TARGETID'])[0][0]
 
         if archetype_fit:            
           archetypes = All_archetypes(archetypes_dir=archetypes_dir).archetypes
@@ -89,7 +87,7 @@ def create_model(spectra, zbest, archetype_fit=True, archetypes_dir=None, templa
               wavehash            = hash((len(wave), wave[0], wave[1], wave[-2], wave[-1], spectra.R[band].data.shape[0]))
               dwave               = {wavehash: wave}
               mx                  = archetype.eval(zb['SUBTYPE'], dwave, coeff, wave, zb['Z'])
-              model_flux[band][i] = spectra.R[band][j].dot(mx)
+              model_flux[band][i] = spectra.R[band][i].dot(mx)
                     
         else:
           tx    = templates[(zb['SPECTYPE'], zb['SUBTYPE'])]
@@ -98,7 +96,7 @@ def create_model(spectra, zbest, archetype_fit=True, archetypes_dir=None, templa
 
           for band in spectra.bands:
               mx                  = resample_flux(spectra.wave[band], tx.wave*(1+zb['Z']), model)
-              model_flux[band][i] = spectra.R[band][j].dot(mx)
+              model_flux[band][i] = spectra.R[band][i].dot(mx)
 
     #- Now combine, if needed, to a single wavelength grid across all cameras
     if spectra.bands == ['brz'] :
@@ -333,9 +331,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     ---------
     spectra: input spectra. Supported formats: 1) a 3-band DESI spectra object, with bands 'b', 'r', 'z'. 2) a single-band 
         DESI spectra object, bandname 'brz'. 2) a list of 3 frames, associated to the b, r and z bands.
-    zcatalog (default None): astropy Table, containing the 'ZBEST' output redrock. Currently supports only redrock-PCA files.
-        The entries in zcatalog are matched to spectra with TARGETID, so that each spectrum must have a corresponding entry 
-        in zcatalog (on the other hand zcatalog may targets not included in spectra)
+    zcatalog (default None): astropy Table, containing the 'ZBEST' output redrock. Currently supports redrock-PCA or archetype files. The entries in zcatalog must be matched one-by-one (in order) to spectra.
     notebook (bool): if True, bokeh outputs the viewer to a notebook, else to a (static) HTML page
     html_dir (string): directory to store the HTML page if notebook is False
     title (string): title used to name the HTML page / the bokeh figure / the VI file
@@ -386,16 +382,16 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         )
     if title is None : title = "specviewer"
 
-    #- Reorder zcatalog to match input targets
-    #- TODO: allow more than one zcatalog entry with different ZNUM per targetid
+    #- Input zcatalog / model
     if zcatalog is not None:
-        zcatalog, kk = utils_specviewer.match_zcat_to_spectra(zcatalog, spectra)
+        if np.any(zcatalog['TARGETID'] != spectra.fibermap['TARGETID']) :
+            raise RunTimeError('zcatalog and spectra do not match (different targetids)') 
         
-        #- Also need to re-order input model fluxes
         if model is not None :
             assert model_from_zcat == False
             mwave, mflux = model
-            model = mwave, mflux[kk]
+            if len(mflux)!=spectra.num_spectra() :
+                raise RunTimeError("model fluxes do not match spectra (different nb of entries)")
 
         if model_from_zcat == True :
             model = create_model(spectra, zcatalog, archetype_fit=archetype_fit, archetypes_dir=archetypes_dir, template_dir=template_dir)
