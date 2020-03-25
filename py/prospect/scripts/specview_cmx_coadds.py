@@ -18,9 +18,14 @@ import desispec.spectra
 import desispec.frame
 
 from prospect import plotframes
-from prospect import utils_specviewer
-from prospect import myspecselect
+from prospect import utils_specviewer, myspecselect, myspecupdate
 
+# List of bad fibers in CMX data (see eg SB / KD emails 23-24/03/2020)
+_bad_fibers_cmx = [
+    [1000, 1250], # r2 amp A glowing spot CCD defect
+    [2250, 2500], # r4 amp D serial register CTE problem
+    [4500, 4750]  # b9 amp C readout salt-and-pepper noise
+]
 
 def parse() :
 
@@ -35,6 +40,7 @@ def parse() :
     parser.add_argument('--snrcut', help='Select only objects in a given range for MEDIAN_CALIB_SNR_B+R+Z', nargs='+', type=float, default=None)
     parser.add_argument('--with_zcatalog', help='Include redshift fit results (zbest files)', action='store_true')
     parser.add_argument('--petals', help='Select only a set of petals (labelled 0 to 9)', nargs='+', type=str, default=None)
+    parser.add_argument('--clean_bad_fibers_cmx', help='Remove list of known bad fibers (CMX conditions)', action='store_true')
     parser.add_argument('--template_dir', help='Redrock template directory', type=str, default=None)
     
     args = parser.parse_args()
@@ -73,7 +79,7 @@ def tile_db(specprod_dir, tile_subset=None, night_subset=None, petals=None, with
     return tiles_db
     
 
-def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log, nspecperfile, snr_cut, with_zcatalog=False, template_dir=None) :
+def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log, nspecperfile, snr_cut, with_zcatalog=False, template_dir=None, clean_bad_fibers_cmx=False) :
     '''
     Running prospect from coadds.
     '''
@@ -86,10 +92,6 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
     for petal_num in tile_db_subset['petals'] :
         fname = os.path.join(fdir,"coadd-"+petal_num+"-"+tile+'-'+night+".fits")
         spectra = desispec.io.read_spectra(fname)
-        ### TMP TRICK (?) : need to have (DUMMY) exposures in fibermap, otherwise spectra.update() crashes !
-        if not('EXPID' in spectra.fibermap.keys()) :
-                spectra.fibermap['EXPID'] = spectra.fibermap['FIBER']*0
-        ### END TMP TRICK
         # Filtering
         if (mask != None) or (snr_cut != None) :
             spectra = utils_specviewer.specviewer_selection(spectra, log=log,
@@ -99,13 +101,21 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
         if all_spectra is None :
             all_spectra = spectra
         else :
-            all_spectra.update(spectra) # NB update() does not copy scores. Filtering was done before.
+            # NB update() does not copy scores. Score-based filtering (SNR) was done before.
+            all_spectra = myspecupdate.myspecupdate(all_spectra, spectra) 
 
     if all_spectra is None : 
         log.info("Tile "+tile+" - night "+night+": no spectra.")
         return 0
-    elif 'FIBERSTATUS' in all_spectra.fibermap.keys() :
-        all_spectra = myspecselect.myspecselect(all_spectra, clean_fiberstatus=True, remove_scores=True)
+    else :
+        clean_fiberstatus=True if 'FIBERSTATUS' in all_spectra.fibermap.keys() else False
+        fibers = None
+        if clean_bad_fibers_cmx :
+            fibers = np.arange(5000)
+            for cut_fiber_range in _bad_fibers_cmx :
+                fibers = fibers[ ( (fibers < cut_fiber_range[0]) | (fibers > cut_fiber_range[1]) )]
+        all_spectra = myspecselect.myspecselect(all_spectra, 
+                            clean_fiberstatus=clean_fiberstatus, fibers=fibers, remove_scores=True)
         if all_spectra is None : return 0
     
     # zcatalog
@@ -127,8 +137,9 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
         log.info(" * Page "+str(i_page)+" / "+str(nbpages))
         the_indices = sort_indices[(i_page-1)*nspecperfile:i_page*nspecperfile]            
         thespec = myspecselect.myspecselect(all_spectra, indices=the_indices, remove_scores=True)
+        the_zcat = utils_specviewer.match_zcat_to_spectra(zcat, thespec)
         titlepage = titlepage_prefix+"_"+str(i_page)
-        plotframes.plotspectra(thespec, with_noise=True, with_coaddcam=False, is_coadded=True, zcatalog=zcat,
+        plotframes.plotspectra(thespec, with_noise=True, with_coaddcam=False, is_coadded=True, zcatalog=the_zcat,
                     title=titlepage, html_dir=html_dir, mask_type='CMX_TARGET', with_thumb_only_page=True, template_dir=template_dir)
     nspec_done += nspec_tile
         
@@ -169,7 +180,7 @@ def main(args) :
         if not os.path.exists(html_dir) : 
             os.makedirs(html_dir)
         
-        nspec_added = page_subset_tile(fdir, the_subset, html_dir, titlepage_prefix, args.mask, log, args.nspecperfile, args.snrcut, with_zcatalog=args.with_zcatalog, template_dir=args.template_dir)
+        nspec_added = page_subset_tile(fdir, the_subset, html_dir, titlepage_prefix, args.mask, log, args.nspecperfile, args.snrcut, with_zcatalog=args.with_zcatalog, template_dir=args.template_dir, clean_bad_fibers_cmx=args.clean_bad_fibers_cmx)
                     
         # Stop running if needed, only once a full exposure is completed
         nspec_done += nspec_added

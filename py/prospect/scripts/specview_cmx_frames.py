@@ -19,8 +19,7 @@ import desispec.spectra
 import desispec.frame
 
 from prospect import plotframes
-from prospect import utils_specviewer
-from prospect import myspecselect
+from prospect import utils_specviewer, myspecselect, myspecupdate
 
 
 def parse() :
@@ -161,13 +160,7 @@ def page_subset_tile(fdir, tile_db_subset, frametype, html_dir, titlepage_prefix
         log.info("Tile "+tile+" : reading frames from exposure "+the_subset['exposure'])
         for petal_num in the_subset['petals'] :
             frames = [ desispec.io.read_frame(os.path.join(fdir, the_subset['night'],frametype+"-" + band + petal_num + "-" + the_subset['exposure'] + ".fits")) for band in ['b','r','z'] ]
-            ### TMP TRICK (?) : need to have exposures in fibermaps, otherwise spectra.update() crashes !
-            for fr in frames :
-                if not('EXPID' in fr.fibermap.keys()) :
-                    fr.fibermap['EXPID'] = fr.fibermap['FIBER']
-                    for i in range(len(fr.fibermap)) : fr.fibermap['EXPID'][i] = the_subset['exposure']
-            ### END TMP TRICK
-            ### OTHER TRICK : need resolution data in spectra to pass coadd fct (could be changed...)
+            # TRICK : need resolution data in spectra to pass coadd fct (could be changed...)
             spectra = utils_specviewer.frames2spectra(frames, with_scores=True, with_resolution_data=True)
             # Filtering
             if (mask != None) or (snr_cut != None) :
@@ -177,8 +170,8 @@ def page_subset_tile(fdir, tile_db_subset, frametype, html_dir, titlepage_prefix
             # Merge
             if all_spectra is None :
                 all_spectra = spectra
-            else :
-                all_spectra.update(spectra) # NB update() does not copy scores. Filtering was done before.
+            else : # NB update() does not copy scores. Filtering was done before.
+                all_spectra = myspecupdate.myspecupdate(all_spectra, spectra)
                 
     if all_spectra is None : 
         log.info("Tile "+tile+" : no spectra !")
