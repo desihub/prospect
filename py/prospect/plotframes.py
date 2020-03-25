@@ -264,10 +264,13 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=" ") 
         cds_targetinfo.add(['-1' for i in range(nspec)], name='expid')
     cds_targetinfo.add([str(x) for x in spectra.fibermap['TARGETID']], name='targetid') # !! No int64 in js !!
 
-    #- FIXME: should not hardcode which DEPVERnn has which versions
-    ### cds_targetinfo.add([spectra.meta['DEPVER10'] for i in range(nspec)], name='spec_version')
-    ### cds_targetinfo.add([spectra.meta['DEPVER13'] for i in range(nspec)], name='redrock_version')
-    cds_targetinfo.add(np.zeros(nspec), name='spec_version')
+    #- Get desispec version
+    #- TODO : get redrock version (from zcatalog...)
+    desispec_specversion = "0"
+    for xx,yy in spectra.meta.items() :
+        if yy=="desispec" :
+            desispec_specversion = spectra.meta[xx.replace('NAM','VER')]
+    cds_targetinfo.add([desispec_specversion for i in range(nspec)], name='spec_version')
     cds_targetinfo.add(np.zeros(nspec), name='redrock_version')
 
     # VI inputs
