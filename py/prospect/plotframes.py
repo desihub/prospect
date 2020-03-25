@@ -21,7 +21,7 @@ import astropy.convolution
 
 import bokeh.plotting as bk
 from bokeh.models import ColumnDataSource, CDSView, IndexFilter
-from bokeh.models import CustomJS, LabelSet, Label, Span, Legend, Panel, Tabs
+from bokeh.models import CustomJS, LabelSet, Label, Span, Legend, Panel, Tabs, BoxAnnotation
 from bokeh.models.widgets import (
     Slider, Button, Div, CheckboxGroup, CheckboxButtonGroup, RadioButtonGroup, 
     TextInput, Select, DataTable, TableColumn)
@@ -495,6 +495,14 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
 
     fig.add_layout(legend, 'center')
     fig.legend.click_policy = 'hide'    #- or 'mute'
+
+    #- Highlight overlap regions between arms
+    ## overlap wavelengths are hardcoded, from 1907.10688 (Table 1)
+    if spectra.bands == ['brz'] :
+        br_band = BoxAnnotation(left=5660, right=5930, fill_color='blue', fill_alpha=0.05)
+        fig.add_layout(br_band)
+        rz_band = BoxAnnotation(left=7470, right=7720, fill_color='blue', fill_alpha=0.05)
+        fig.add_layout(rz_band)
 
     #-----
     #- Zoom figure around mouse hover of main plot
