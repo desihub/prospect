@@ -4,6 +4,7 @@
 Utility functions for prospect
 """
 
+import os, glob
 import numpy as np
 import astropy.io.fits
 from astropy.table import Table, vstack
@@ -15,8 +16,10 @@ import desispec.frame
 from desitarget.targetmask import desi_mask
 from desitarget.cmx.cmx_targetmask import cmx_mask
 from desitarget.sv1.sv1_targetmask import desi_mask as sv1_desi_mask
+import redrock.results
+
 from prospect import mycoaddcam
-from prospect import myspecselect
+from prospect import myspecselect, myspecupdate
 
 _vi_flags = [
     # Definition of VI flags
@@ -130,20 +133,117 @@ def merge_vi(mastervifile, newvifile) :
     log.info("Updated master VI file : "+mastervifile+" (now "+str(len(mergedvi))+" entries).")
 
 
+
 def match_zcat_to_spectra(zcat_in, spectra) :
     '''
     zcat_in : astropy Table from redshift fitter
-    creates a new astropy Table whose rows match the targetids of input spectra
-    also returns the corresponding list of indices
+    - creates a new astropy Table whose rows match the targetids of input spectra
+    - also returns the corresponding list of indices
+    - for each targetid, a unique row in zcat_in must exist.
     '''
     zcat_out = Table(dtype=zcat_in.dtype)
     index_list = list()
     for i_spec in range(spectra.num_spectra()) :
         ww, = np.where((zcat_in['TARGETID'] == spectra.fibermap['TARGETID'][i_spec]))
-        if len(ww)<1 : raise RuntimeError("zcat table cannot match spectra.")
+        if len(ww)<1 : 
+                raise RuntimeError("No zcat entry for target "+str(spectra.fibermap['TARGETID'][i_spec]))
+        if len(ww)>1 :
+            raise RuntimeError("Several zcat entries for target "+str(spectra.fibermap['TARGETID'][i_spec]))
         zcat_out.add_row(zcat_in[ww[0]])
         index_list.append(ww[0])
     return (zcat_out, index_list)
+
+
+def match_redrock_zfit_to_spectra(redrockfile, spectra, num_best_fit=3) :
+    '''
+    Read Redrock file, and return astropy Table of best fits matched to the targetids of input spectra
+    - for each target, returns arrays chi2[N], coeff[N], z[N], spectype[N], subtype[N]
+    - where N = num_best_fit
+    '''
+    matched_redrock_cat = Table(dtype=[('TARGETID', '<i8'), ('chi2', '<f8', (num_best_fit,)), ('coeff', '<f8', (num_best_fit,10,)), ('z', '<f8', (num_best_fit,)), ('spectype', '<U6', (num_best_fit,)), ('subtype', '<U2', (num_best_fit,))])
+    dummy, rr_table = redrock.results.read_zscan(redrockfile)
+    for i_spec in range(spectra.num_spectra()) :
+        ww, = np.where((rr_table['targetid'] == spectra.fibermap['TARGETID'][i_spec]))
+        if len(ww)<num_best_fit : 
+            raise RuntimeError("redrock table cannot match spectra with "+str(num_best_fit)+" best fits")
+        ind = np.argsort(rr_table[ww]['chi2'])[0:num_best_fit]
+        sub_table = rr_table[ww][ind][0:num_best_fit]
+        the_entry = [ spectra.fibermap['TARGETID'][i_spec] ]
+        the_entry.append(sub_table['chi2'])
+        the_entry.append(sub_table['coeff'])
+        the_entry.append(sub_table['z'])
+        the_entry.append(sub_table['spectype'])
+        the_entry.append(sub_table['subtype'])
+        matched_redrock_cat.add_row(the_entry)
+        
+    return matched_redrock_cat
+
+def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None) :
+    '''
+    Small homemade/hack utility (based on Anand's hack)
+    Makes "mini-db" of targetids. It basically reads zbest, so it's reasonably fast
+    Adapted to the directory structure tiledir/{tile}/{night}/{cframe/zbest/...}
+    '''
+    target_dict = {}
+    if tiles is None :
+        tiles = os.listdir(tiledir)
+    else :
+        alltiles = os.listdir(tiledir)
+        assert all(x in alltiles for x in tiles)
+            
+    for tile in tiles :
+        nights = os.listdir(os.path.join(tiledir,tile))
+        for night in nights :
+            target_dict[tile+"-"+night] = {}
+            # exposures
+            fns = np.sort(glob.glob(os.path.join(tiledir,tile,night,'cframe-b'+petals[0]+'-????????.fits')))
+            target_dict[tile+"-"+night]['exps'] = np.array([fn.replace('.','-').split('-')[-2] for fn in fns])
+            # targetid, fibres
+            targetid,fiber,petal_list = [],[],[]
+            for petal in petals:
+                pp = glob.glob(os.path.join(tiledir,tile,night,'zbest-'+petal+'-'+tile+'-????????.fits'))
+                if len(pp)>0 :
+                    fn        = pp[0]
+                    data      = astropy.io.fits.open(fn)['fibermap'].data
+                    targetid += data['targetid'].tolist()
+                    fiber    += data['fiber'].tolist()
+                    petal_list    += [petal for i in range(len(data['targetid']))]
+            target_dict[tile+"-"+night]['targetid'] = np.array(targetid)
+            target_dict[tile+"-"+night]['fiber']    = np.array(fiber)
+            target_dict[tile+"-"+night]['petal']    = np.array(petal_list)
+            
+    return target_dict
+
+def load_spectra_zcat_from_targets(targets, tiledir, obs_db) :
+    '''
+    Creates (spectra,zcat) = (Spectra object, zcatalog Table) from a list of targetids
+    - targets must be a list of int64
+    - obs_db : "mini-db" produced by make_targetdict()
+    '''
+    
+    spectra = None
+    ztables = []
+    
+    for target in targets :
+        for tile_night in obs_db.keys() :
+            w, = np.where( obs_db[tile_night]['targetid'] == target )
+            if len(w) > 1 : 
+                print("Warning ! Several entries in tile/night "+tile_night+" available for target "+str(target))
+            if len(w) == 0 : continue
+            the_path = tile_night.replace("-","/")
+            the_petal = obs_db[tile_night]['petal'][w[0]]
+            the_spec = desispec.io.read_spectra(os.path.join(tiledir,the_path,"coadd-"+the_petal+"-"+tile_night+".fits"))
+            the_spec = myspecselect.myspecselect(the_spec, targets=[target], remove_scores=True)
+            if the_spec.num_spectra() != 1 : 
+                print("Warning ! Several spectra for "+tile_night+" and target "+str(target))
+            the_zcat = Table.read(os.path.join(tiledir,the_path,"zbest-"+the_petal+"-"+tile_night+".fits"),'ZBEST')
+            the_zcat, dummy = match_zcat_to_spectra(the_zcat, the_spec)
+            ztables.append(the_zcat)
+            if spectra is None : spectra = the_spec
+            else : spectra = myspecupdate.myspecupdate(spectra,the_spec)
+    zcat = vstack(ztables)
+    
+    return (spectra,zcat)
 
 
 def get_y_minmax(pmin, pmax, data, ispec) :
@@ -207,6 +307,7 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
     '''
     Simple sub-selection on spectra based on meta-data.
         Implemented cuts based on : target mask ; photo mag (g, r) ; chi2 from fit ; SNR (in spectra.scores, BRZ)
+        - if chi2cut : a catalog zbest must be provided, with entries matching exactly those of spectra
     '''
 
     # SNR selection
@@ -278,9 +379,10 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
     # Chi2 selection
     if chi2cut is not None :
         assert len(chi2cut)==2 # Require range [chi2min, chi2max]
-        assert (zbest is not None)
-        thezb, kk = match_zcat_to_spectra(zbest,spectra)
-        w, = np.where( (thezb['DELTACHI2']>chi2cut[0]) & (thezb['DELTACHI2']<chi2cut[1]) )
+        if np.any(zbest['TARGETID'] != spectra.fibermap['TARGETID']) :
+            raise RunTimeError('specviewer_selection : zbest and spectra do not match (different targetids)') 
+
+        w, = np.where( (zbest['DELTACHI2']>chi2cut[0]) & (zbest['DELTACHI2']<chi2cut[1]) )
         if len(w) == 0 :
             if log is not None : log.info(" * No target in this pixel with DeltaChi2 in requested range")
             return 0

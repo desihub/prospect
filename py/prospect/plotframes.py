@@ -21,7 +21,7 @@ import astropy.convolution
 
 import bokeh.plotting as bk
 from bokeh.models import ColumnDataSource, CDSView, IndexFilter
-from bokeh.models import CustomJS, LabelSet, Label, Span, Legend, Panel, Tabs
+from bokeh.models import CustomJS, LabelSet, Label, Span, Legend, Panel, Tabs, BoxAnnotation
 from bokeh.models.widgets import (
     Slider, Button, Div, CheckboxGroup, CheckboxButtonGroup, RadioButtonGroup, 
     TextInput, Select, DataTable, TableColumn)
@@ -40,21 +40,21 @@ import desispec.frame
 from prospect import utils_specviewer
 from prospect import mycoaddcam
 
-def create_model(spectra, zbest, archetype_fit=True, archetypes_dir=None, template_dir=None):
+def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, template_dir=None):
     '''
     Returns model_wave[nwave], model_flux[nspec, nwave], row matched to zbest,
     which can be in a different order than spectra.
-    NB currently, zbest must have the same size as spectra.
+    - zbest must be entry-matched to spectra.
     '''
     import redrock.templates
     from desispec.interpolation import resample_flux
     
     if archetype_fit:
-      from redrock.archetypes import All_archetypes
+        from redrock.archetypes import All_archetypes
     
-    nspec = spectra.num_spectra()
-    assert len(zbest) == nspec
-
+    if np.any(zbest['TARGETID'] != spectra.fibermap['TARGETID']) :
+        raise RunTimeError('zcatalog and spectra do not match (different targetids)') 
+    
     #- Load redrock templates; redirect stdout because redrock is chatty
     saved_stdout = sys.stdout
     sys.stdout = open('/dev/null', 'w')
@@ -74,10 +74,8 @@ def create_model(spectra, zbest, archetype_fit=True, archetypes_dir=None, templa
     for band in spectra.bands:
         model_flux[band] = np.zeros(spectra.flux[band].shape)
 
-    targetids = spectra.target_ids()
     for i in range(len(zbest)):
         zb = zbest[i]
-        j = np.where(targetids == zb['TARGETID'])[0][0]
 
         if archetype_fit:            
           archetypes = All_archetypes(archetypes_dir=archetypes_dir).archetypes
@@ -89,7 +87,7 @@ def create_model(spectra, zbest, archetype_fit=True, archetypes_dir=None, templa
               wavehash            = hash((len(wave), wave[0], wave[1], wave[-2], wave[-1], spectra.R[band].data.shape[0]))
               dwave               = {wavehash: wave}
               mx                  = archetype.eval(zb['SUBTYPE'], dwave, coeff, wave, zb['Z'])
-              model_flux[band][i] = spectra.R[band][j].dot(mx)
+              model_flux[band][i] = spectra.R[band][i].dot(mx)
                     
         else:
           tx    = templates[(zb['SPECTYPE'], zb['SUBTYPE'])]
@@ -98,7 +96,7 @@ def create_model(spectra, zbest, archetype_fit=True, archetypes_dir=None, templa
 
           for band in spectra.bands:
               mx                  = resample_flux(spectra.wave[band], tx.wave*(1+zb['Z']), model)
-              model_flux[band][i] = spectra.R[band][j].dot(mx)
+              model_flux[band][i] = spectra.R[band][i].dot(mx)
 
     #- Now combine, if needed, to a single wavelength grid across all cameras
     if spectra.bands == ['brz'] :
@@ -266,10 +264,13 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=" ") 
         cds_targetinfo.add(['-1' for i in range(nspec)], name='expid')
     cds_targetinfo.add([str(x) for x in spectra.fibermap['TARGETID']], name='targetid') # !! No int64 in js !!
 
-    #- FIXME: should not hardcode which DEPVERnn has which versions
-    ### cds_targetinfo.add([spectra.meta['DEPVER10'] for i in range(nspec)], name='spec_version')
-    ### cds_targetinfo.add([spectra.meta['DEPVER13'] for i in range(nspec)], name='redrock_version')
-    cds_targetinfo.add(np.zeros(nspec), name='spec_version')
+    #- Get desispec version
+    #- TODO : get redrock version (from zcatalog...)
+    desispec_specversion = "0"
+    for xx,yy in spectra.meta.items() :
+        if yy=="desispec" :
+            desispec_specversion = spectra.meta[xx.replace('NAM','VER')]
+    cds_targetinfo.add([desispec_specversion for i in range(nspec)], name='spec_version')
     cds_targetinfo.add(np.zeros(nspec), name='redrock_version')
 
     # VI inputs
@@ -333,9 +334,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     ---------
     spectra: input spectra. Supported formats: 1) a 3-band DESI spectra object, with bands 'b', 'r', 'z'. 2) a single-band 
         DESI spectra object, bandname 'brz'. 2) a list of 3 frames, associated to the b, r and z bands.
-    zcatalog (default None): astropy Table, containing the 'ZBEST' output redrock. Currently supports only redrock-PCA files.
-        The entries in zcatalog are matched to spectra with TARGETID, so that each spectrum must have a corresponding entry 
-        in zcatalog (on the other hand zcatalog may targets not included in spectra)
+    zcatalog (default None): astropy Table, containing the 'ZBEST' output redrock. Currently supports redrock-PCA or archetype files. The entries in zcatalog must be matched one-by-one (in order) to spectra.
     notebook (bool): if True, bokeh outputs the viewer to a notebook, else to a (static) HTML page
     html_dir (string): directory to store the HTML page if notebook is False
     title (string): title used to name the HTML page / the bokeh figure / the VI file
@@ -386,16 +385,16 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         )
     if title is None : title = "specviewer"
 
-    #- Reorder zcatalog to match input targets
-    #- TODO: allow more than one zcatalog entry with different ZNUM per targetid
+    #- Input zcatalog / model
     if zcatalog is not None:
-        zcatalog, kk = utils_specviewer.match_zcat_to_spectra(zcatalog, spectra)
+        if np.any(zcatalog['TARGETID'] != spectra.fibermap['TARGETID']) :
+            raise RunTimeError('zcatalog and spectra do not match (different targetids)') 
         
-        #- Also need to re-order input model fluxes
         if model is not None :
             assert model_from_zcat == False
             mwave, mflux = model
-            model = mwave, mflux[kk]
+            if len(mflux)!=spectra.num_spectra() :
+                raise RunTimeError("model fluxes do not match spectra (different nb of entries)")
 
         if model_from_zcat == True :
             model = create_model(spectra, zcatalog, archetype_fit=archetype_fit, archetypes_dir=archetypes_dir, template_dir=template_dir)
@@ -464,7 +463,16 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     noise_colors = dict(b='greenyellow', r='green', z='forestgreen', coadd='green', brz='green')
     alpha_discrete = 0.2 # alpha for "almost-hidden" curves (single-arm spectra and noise by default)
     if not with_coaddcam : alpha_discrete = 1
-    
+
+    #- Highlight overlap regions between arms
+    ## overlap wavelengths are hardcoded, from 1907.10688 (Table 1)
+    overlap_waves = [ [5660, 5930], [7470, 7720] ]
+    overlap_bands = []
+    if spectra.bands == ['brz'] :
+        for i in range(len(overlap_waves)) :
+            overlap_bands.append( BoxAnnotation(left=overlap_waves[i][0], right=overlap_waves[i][1], fill_color='blue', fill_alpha=0.03, line_alpha=0) )
+            fig.add_layout(overlap_bands[-1])
+        
     data_lines = list()
     for spec in cds_spectra:
         lx = fig.line('plotwave', 'plotflux', source=spec, line_color=colors[spec.name], line_alpha=alpha_discrete)
@@ -661,6 +669,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             waveframe_buttons=waveframe_buttons,
             line_data=line_data, lines=lines, line_labels=line_labels,
             zlines=zoom_lines, zline_labels=zoom_line_labels,
+            overlap_waves=overlap_waves, overlap_bands=overlap_bands,
             fig=fig,
             ),
         code="""
@@ -674,12 +683,23 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             zfit = targetinfo.data['z'][ifiber]
         }
         var waveshift_lines = (waveframe_buttons.active == 0) ? 1+z : 1 ;
+        var waveshift_spec = (waveframe_buttons.active == 0) ? 1 : 1/(1+z) ;
+
         for(var i=0; i<line_restwave.length; i++) {
             lines[i].location = line_restwave[i] * waveshift_lines
             line_labels[i].x = line_restwave[i] * waveshift_lines
             zlines[i].location = line_restwave[i] * waveshift_lines
             zline_labels[i].x = line_restwave[i] * waveshift_lines
         }
+        if (overlap_bands.length>0) {
+            for (var i=0; i<overlap_bands.length; i++) {
+                console.log("before ",overlap_bands[i].left)
+                overlap_bands[i].left = overlap_waves[i][0] * waveshift_spec
+                overlap_bands[i].right = overlap_waves[i][1] * waveshift_spec
+                console.log("after ",overlap_bands[i].left)
+            }
+        }
+        
         function shift_plotwave(cds_spec, waveshift) {
             var data = cds_spec.data
             var origwave = data['origwave']
@@ -692,7 +712,6 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             }
         }
         
-        var waveshift_spec = (waveframe_buttons.active == 0) ? 1 : 1/(1+z) ;
         for(var i=0; i<spectra.length; i++) {
             shift_plotwave(spectra[i], waveshift_spec)
         }
@@ -1282,6 +1301,8 @@ _line_list = [
     {"name" : "Lyα",      "longname" : "Lyman α",        "lambda" : 1215.67,  "emission": True, "major": True  },
     {"name" : "Lyβ",      "longname" : "Lyman β",        "lambda" : 1025.18,  "emission": True, "major": False },
     {"name" : "N V",      "longname" : "N V 1240",       "lambda" : 1240.81,  "emission": True, "major": False },
+    {"name" : "Si IV",    "longname" : "Si IV 1394",     "lambda" : 1393.75,  "emission": True, "major": False },
+    {"name" : "Si IV",    "longname" : "Si IV 1403",     "lambda" : 1402.77,  "emission": True, "major": False },
     {"name" : "C IV",     "longname" : "C IV 1549",      "lambda" : 1549.48,  "emission": True, "major": True  },
     {"name" : "He II",    "longname" : "He II 1640",     "lambda" : 1640.42,  "emission": True, "major": False },
     {"name" : "C III]",   "longname" : "C III] 1908",    "lambda" : 1908.734, "emission": True, "major": False },
