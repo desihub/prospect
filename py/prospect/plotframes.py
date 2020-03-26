@@ -463,7 +463,16 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     noise_colors = dict(b='greenyellow', r='green', z='forestgreen', coadd='green', brz='green')
     alpha_discrete = 0.2 # alpha for "almost-hidden" curves (single-arm spectra and noise by default)
     if not with_coaddcam : alpha_discrete = 1
-    
+
+    #- Highlight overlap regions between arms
+    ## overlap wavelengths are hardcoded, from 1907.10688 (Table 1)
+    overlap_waves = [ [5660, 5930], [7470, 7720] ]
+    overlap_bands = []
+    if spectra.bands == ['brz'] :
+        for i in range(len(overlap_waves)) :
+            overlap_bands.append( BoxAnnotation(left=overlap_waves[i][0], right=overlap_waves[i][1], fill_color='blue', fill_alpha=0.03) )
+            fig.add_layout(overlap_bands[-1])
+        
     data_lines = list()
     for spec in cds_spectra:
         lx = fig.line('plotwave', 'plotflux', source=spec, line_color=colors[spec.name], line_alpha=alpha_discrete)
@@ -495,14 +504,6 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
 
     fig.add_layout(legend, 'center')
     fig.legend.click_policy = 'hide'    #- or 'mute'
-
-    #- Highlight overlap regions between arms
-    ## overlap wavelengths are hardcoded, from 1907.10688 (Table 1)
-    if spectra.bands == ['brz'] :
-        br_band = BoxAnnotation(left=5660, right=5930, fill_color='blue', fill_alpha=0.05)
-        fig.add_layout(br_band)
-        rz_band = BoxAnnotation(left=7470, right=7720, fill_color='blue', fill_alpha=0.05)
-        fig.add_layout(rz_band)
 
     #-----
     #- Zoom figure around mouse hover of main plot
@@ -668,6 +669,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             waveframe_buttons=waveframe_buttons,
             line_data=line_data, lines=lines, line_labels=line_labels,
             zlines=zoom_lines, zline_labels=zoom_line_labels,
+            overlap_waves=overlap_waves, overlap_bands=overlap_bands,
             fig=fig,
             ),
         code="""
@@ -681,12 +683,23 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             zfit = targetinfo.data['z'][ifiber]
         }
         var waveshift_lines = (waveframe_buttons.active == 0) ? 1+z : 1 ;
+        var waveshift_spec = (waveframe_buttons.active == 0) ? 1 : 1/(1+z) ;
+
         for(var i=0; i<line_restwave.length; i++) {
             lines[i].location = line_restwave[i] * waveshift_lines
             line_labels[i].x = line_restwave[i] * waveshift_lines
             zlines[i].location = line_restwave[i] * waveshift_lines
             zline_labels[i].x = line_restwave[i] * waveshift_lines
         }
+        if (overlap_bands.length>0) {
+            for (var i=0; i<overlap_bands.length; i++) {
+                console.log("before ",overlap_bands[i].left)
+                overlap_bands[i].left = overlap_waves[i][0] * waveshift_spec
+                overlap_bands[i].right = overlap_waves[i][1] * waveshift_spec
+                console.log("after ",overlap_bands[i].left)
+            }
+        }
+        
         function shift_plotwave(cds_spec, waveshift) {
             var data = cds_spec.data
             var origwave = data['origwave']
@@ -699,7 +712,6 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
             }
         }
         
-        var waveshift_spec = (waveframe_buttons.active == 0) ? 1 : 1/(1+z) ;
         for(var i=0; i<spectra.length; i++) {
             shift_plotwave(spectra[i], waveshift_spec)
         }
