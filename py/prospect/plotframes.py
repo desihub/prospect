@@ -470,7 +470,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     overlap_bands = []
     if spectra.bands == ['brz'] :
         for i in range(len(overlap_waves)) :
-            overlap_bands.append( BoxAnnotation(left=overlap_waves[i][0], right=overlap_waves[i][1], fill_color='blue', fill_alpha=0.03) )
+            overlap_bands.append( BoxAnnotation(left=overlap_waves[i][0], right=overlap_waves[i][1], fill_color='blue', fill_alpha=0.03, line_alpha=0) )
             fig.add_layout(overlap_bands[-1])
         
     data_lines = list()

@@ -137,7 +137,7 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
         log.info(" * Page "+str(i_page)+" / "+str(nbpages))
         the_indices = sort_indices[(i_page-1)*nspecperfile:i_page*nspecperfile]            
         thespec = myspecselect.myspecselect(all_spectra, indices=the_indices, remove_scores=True)
-        the_zcat = utils_specviewer.match_zcat_to_spectra(zcat, thespec)
+        the_zcat, kk = utils_specviewer.match_zcat_to_spectra(zcat, thespec)
         titlepage = titlepage_prefix+"_"+str(i_page)
         plotframes.plotspectra(thespec, with_noise=True, with_coaddcam=False, is_coadded=True, zcatalog=the_zcat,
                     title=titlepage, html_dir=html_dir, mask_type='CMX_TARGET', with_thumb_only_page=True, template_dir=template_dir)
@@ -189,4 +189,5 @@ def main(args) :
                 log.info(str(nspec_done)+" spectra done : no other exposure will be processed")
                 break
 
+    log.info("End of specview_cmx_coadds script.")
     return 0
