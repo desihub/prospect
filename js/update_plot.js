@@ -1,17 +1,11 @@
 // update_plot() CustomJS
+// Requires to include functions in: adapt_plotrange.js, coadd_brz_cameras.js, 
+//     interp_grid.js, smooth_data.js
 
-
-var d0 = new Date()
-var t0 = d0.getTime()
+// TODO : optimize : if cd_obj==smootherslider don't need to do everything... (change imaging data etc)
 
 var ifiber = ifiberslider.value
 var nsmooth = smootherslider.value
-
-// if (show_prev_vi_select.value == "Yes") {
-//     vi_info_div.text = targetinfo.data['vi_info'][ifiber];
-// } else {
-//     vi_info_div.text = " ";
-// }
 
 if (cb_obj == ifiberslider) { // update VI widgets + infos for current spectrum
 
@@ -49,20 +43,12 @@ if (cb_obj == ifiberslider) { // update VI widgets + infos for current spectrum
     vi_category_select.value = targetinfo.data['VI_spectype'][ifiber]
 }
 
-if(targetinfo.data['z'] != undefined && cb_obj == ifiberslider) {
+if(targetinfo.data['z'] != undefined && cb_obj == ifiberslider && model_select == undefined) {
+    // if model_select is defined : this will be done in select_model.
     var z = targetinfo.data['z'][ifiber]
     var z1 = Math.floor(z*100) / 100
     zslider.value = z1
     dzslider.value = (z - z1)
-}
-
-function get_y_minmax(pmin, pmax, data) {
-    // copy before sorting to not impact original, and filter out NaN
-    var dx = data.slice().filter(Boolean)
-    dx.sort()
-    var imin = Math.floor(pmin * dx.length)
-    var imax = Math.floor(pmax * dx.length)
-    return [dx[imin], dx[imax]]
 }
 
 // Smoothing kernel
@@ -74,134 +60,7 @@ if (nsmooth > 0) {
     var kernel_offset = Math.floor(kernel.length/2)
 }
 
-function smooth_data(data_in, kernel, kernel_offset, quadrature=false) {
-    // by default : out_j ~ (sum K_i in_i) / (sum K_i)
-    // if quadrature is true (for noise) : out_j^2 ~ (sum K_i^2 in_i^2) / (sum K_i)^2
-    var smoothed_data = data_in.slice()
-    for (var j=0; j<data_in.length; j++) {
-        smoothed_data[j] = 0.0
-        var weight = 0.0
-        // TODO: speed could be improved by moving `if` out of loop
-        for (var k=0; k<kernel.length; k++) {
-            var m = j+k-kernel_offset
-            if((m >= 0) && (m < data_in.length)) {
-                var fx = data_in[m]
-                if(fx == fx) {
-                    if (quadrature==true) {
-                        smoothed_data[j] = smoothed_data[j] + (fx * kernel[k])**2
-                    } else {
-                        smoothed_data[j] = smoothed_data[j] + fx * kernel[k]
-                    }
-                    weight += kernel[k]
-                }
-            }
-        }
-        if (quadrature==true) {
-            smoothed_data[j] = Math.sqrt(smoothed_data[j]) / weight
-        } else {
-            smoothed_data[j] = smoothed_data[j] / weight
-        }
-    }
-    return smoothed_data
-}
-
-// Find nearest index in grid, left from point; use dichotomy method
-function index_dichotomy(point, grid) {
-    if ( point < grid[0] ) return 0
-    if ( point > grid[grid.length-1] ) return grid.length-2
-    var i_left = 0
-    var i_center = 0
-    var i_right = grid.length-1
-    while ( i_right - i_left != 1) {
-        i_center = i_left + Math.floor((i_right-i_left)/2)
-        if ( point >= grid[i_center] ) {
-            i_left = i_center
-        } else {
-            i_right = i_center
-        }
-    }
-    return i_left
-}
-
-// Basic linear interpolation at on point
-function interp_grid(xval, xarr, yarr) {
-    var index = index_dichotomy(xval, xarr)
-    var a = (yarr[index+1] - yarr[index])/(xarr[index+1] - xarr[index])
-    var b = yarr[index]-a*xarr[index]
-    var yval = a*xval+b
-    return yval
-}
-
-// Coadd brz spectra. Similar to the python code mycoaddcam()
-function coadd_brz_cams(wave_in, flux_in, noise_in) {
-    // each "_in" must have 3 entries (brz)
-    // TODO handle case of no noise
-
-    // Find b,r,z ordering in input arrays
-    var wave_start = [wave_in[0][0], wave_in[1][0], wave_in[2][0]]
-    var i_b = wave_start.indexOf(Math.min.apply(Math, wave_start))
-    var i_z = wave_start.indexOf(Math.max.apply(Math, wave_start))
-    var i_r = 1
-    for (var i=0; i<3; i++) {
-        if ( (i_b != i) && (i_z != i) ) i_r = i
-    }
-
-    var wave_out = []
-    var flux_out = []
-    var noise_out = []
-    var margin = 20
-    for (var i=0; i<wave_in[i_b].length; i++) { // b
-        if (wave_in[i_b][i] < wave_in[i_b][wave_in[i_b].length-1] - margin) {
-            wave_out.push(wave_in[i_b][i])
-            flux_out.push(flux_in[i_b][i])
-            noise_out.push(noise_in[i_b][i])
-        }
-    }
-    var the_lim = wave_out[wave_out.length-1]
-    for (var i=0; i<wave_in[i_r].length; i++) { // r
-        if ( (wave_in[i_r][i] < wave_in[i_r][wave_in[i_r].length-1] - margin) && (wave_in[i_r][i] > the_lim)) {
-            wave_out.push(wave_in[i_r][i])
-            flux_out.push(flux_in[i_r][i])
-            noise_out.push(noise_in[i_r][i])
-        }
-    }
-    the_lim = wave_out[wave_out.length-1]
-    for (var i=0; i<wave_in[i_z].length; i++) { // z
-        if (wave_in[i_z][i] > the_lim) {
-            wave_out.push(wave_in[i_z][i])
-            flux_out.push(flux_in[i_z][i])
-            noise_out.push(noise_in[i_z][i])
-        }
-    }
-    for (var i=0; i<wave_out.length; i++) { // combine in overlapping regions
-        var b1 = -1
-        var b2 = -1
-        if ( (wave_out[i] > wave_in[i_r][0]) && (wave_out[i] < wave_in[i_b][wave_in[i_b].length-1]) ) { // br
-            b1 = 0
-            b2 = 1
-        }
-        if ( (wave_out[i] > wave_in[i_z][0]) && (wave_out[i] < wave_in[i_r][wave_in[i_r].length-1]) ) {  // rz
-            b1 = 1
-            b2 = 2
-        }
-        if (b1 != -1) {
-            var phi1 = interp_grid(wave_out[i], wave_in[b1], flux_in[b1])
-            var noise1 = interp_grid(wave_out[i], wave_in[b1], noise_in[b1])
-            var phi2 = interp_grid(wave_out[i], wave_in[b2], flux_in[b2])
-            var noise2 = interp_grid(wave_out[i], wave_in[b2], noise_in[b2])
-            if ( noise1 > 0 && noise2 > 0 ) {
-                var iv1 = 1/(noise1*noise1)
-                var iv2 = 1/(noise2*noise2)
-                var iv = iv1+iv2
-                noise_out[i] = 1/Math.sqrt(iv)
-                flux_out[i] = (iv1*phi1+iv2*phi2)/iv
-            }
-        }
-    }
-    return [wave_out, flux_out, noise_out]
-}
-
-// Smooth plot and recalculate ymin/ymax
+// Smooth plot and recalculate ymin/ymax TODO: ymin/max only if cb_obj==ifiberslider ?
 var ymin = 0.0
 var ymax = 0.0
 for (var i=0; i<spectra.length; i++) {
@@ -224,7 +83,7 @@ for (var i=0; i<spectra.length; i++) {
     }
     spectra[i].change.emit()
 
-    tmp = get_y_minmax(0.01, 0.99, data['plotflux'])
+    tmp = adapt_plotrange(0.01, 0.99, data['plotflux'])
     ymin = Math.min(ymin, tmp[0])
     ymax = Math.max(ymax, tmp[1])
 }
@@ -247,7 +106,7 @@ if (coaddcam_spec) {
             noise_in.push(dummy_noise)
         }
     }
-    var coadd_infos = coadd_brz_cams(wave_in, flux_in, noise_in)
+    var coadd_infos = coadd_brz_cameras(wave_in, flux_in, noise_in)
     coaddcam_spec.data['plotwave'] = coadd_infos[0].slice()
     coaddcam_spec.data['plotflux'] = coadd_infos[1].slice()
     coaddcam_spec.data['plotnoise'] = coadd_infos[2].slice()
@@ -255,7 +114,7 @@ if (coaddcam_spec) {
 }
 
 // update model
-if(model) {
+if (model) {
     var origflux = model.data['origflux'+ifiber]
     if (nsmooth == 0) {
         model.data['plotflux'] = origflux.slice()
@@ -263,6 +122,23 @@ if(model) {
         model.data['plotflux'] = smooth_data(origflux, kernel, kernel_offset)
     }
     model.change.emit()
+}
+
+if (model_select) {
+    var old_value = model_select.value
+    
+    // Trick to force trigger select_model... (seems to work.. other way?) :
+    var trigger_value = '1st fit (approx)'
+    if (old_value == '1st fit (approx)') {
+        trigger_value = '2nd fit (approx)'
+    }
+    model_select.value = trigger_value
+    
+    if (cb_obj == ifiberslider) { // Reset model select value to default
+        model_select.value = 'Best fit'
+    } else { // Don't change model select value
+        model_select.value = old_value
+    }
 }
 
 // update y_range
