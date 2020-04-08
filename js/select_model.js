@@ -1,6 +1,6 @@
 // CustomJS, callback for the model selection
 //  - Requires to include function in: interp_grid.js, smooth_data.js
-//  - args = ifiberslider, model_select, fit_templates, cds_model_2ndfit, cds_model, zslider, dzslider
+//  - args = ifiberslider, model_select, fit_templates, cds_model_2ndfit, cds_model, z_input
 //             cds_othermodel, fit_results, std_templates, median_spectra, spec_wave, smootherslider,
 //             cds_targetinfo
 // IN DEVLPT
@@ -103,9 +103,7 @@ if (nsmooth > 0) {
     cds_othermodel.data['plotflux'] = smoothed_flux
 }
 
-// Change values for z- and dz-sliders
-var z1 = Math.floor(spec_z*100) / 100
-zslider.value = z1
-dzslider.value = (spec_z - z1)
+// Change value for z_input
+z_input.value = spec_z.toFixed(4)
 
 cds_othermodel.change.emit()

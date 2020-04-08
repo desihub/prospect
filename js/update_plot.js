@@ -46,9 +46,7 @@ if (cb_obj == ifiberslider) { // update VI widgets + infos for current spectrum
 if(targetinfo.data['z'] != undefined && cb_obj == ifiberslider && model_select == undefined) {
     // if model_select is defined : this will be done in select_model.
     var z = targetinfo.data['z'][ifiber]
-    var z1 = Math.floor(z*100) / 100
-    zslider.value = z1
-    dzslider.value = (z - z1)
+    z_input.value = z.toFixed(4)
 }
 
 // Smoothing kernel

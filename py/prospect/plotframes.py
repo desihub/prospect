@@ -727,7 +727,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     z1 = np.floor(z*100)/100
     dz = z-z1
     zslider = Slider(start=-0.1, end=5.0, value=z1, step=0.01, title='Redshift rough tuning')
-    dzslider = Slider(start=0.0, end=0.01, value=dz, step=0.0001, title='Redshift fine-tuning')
+    dzslider = Slider(start=0.0, end=0.0099, value=dz, step=0.0001, title='Redshift fine-tuning')
     dzslider.format = "0[.]0000"
     z_input = TextInput(value="{:.4f}".format(z), title="Redshift value:")
 
@@ -736,8 +736,70 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         labels=["Obs", "Rest"], active=0)
 
     zslider_callback  = CustomJS(
-        args=dict(
-            spectra = cds_spectra,
+        args=dict(zslider=zslider, dzslider=dzslider, z_input=z_input),
+        code="""
+        // Protect against 1) recursive call with z_input callback;
+        //   2) out-of-range zslider values (should never happen in principle)
+        var z1 = Math.floor(parseFloat(z_input.value)*100) / 100
+        if ( (Math.abs(zslider.value-z1) >= 0.01) &&
+             (zslider.value >= -0.1) && (zslider.value <= 5.0) ){
+             var new_z = zslider.value + dzslider.value
+             z_input.value = new_z.toFixed(4)
+            }
+        """)
+    
+    dzslider_callback  = CustomJS(
+        args=dict(zslider=zslider, dzslider=dzslider, z_input=z_input),
+        code="""
+        var z = parseFloat(z_input.value)
+        var z1 = Math.floor(z) / 100
+        var z2 = z-z1
+        if ( (Math.abs(dzslider.value-z2) >= 0.0001) &&
+             (dzslider.value >= 0.0) && (dzslider.value <= 0.0099) ){
+             var new_z = zslider.value + dzslider.value
+             z_input.value = new_z.toFixed(4)
+            }
+        """)
+
+    zslider.js_on_change('value', zslider_callback)
+    dzslider.js_on_change('value', dzslider_callback)
+
+    z_button_width = 30
+    z_minus_button = Button(label="<", width=z_button_width)
+    z_plus_button = Button(label=">", width=z_button_width)
+    z_minus_callback = CustomJS(
+        args=dict(z_input=z_input),
+        code="""
+        var z = parseFloat(z_input.value)
+        if(z >= -0.09) {
+            z -= 0.01
+            z_input.value = z.toFixed(4)
+        }
+        """)
+    z_plus_callback = CustomJS(
+        args=dict(z_input=z_input),
+        code="""
+        var z = parseFloat(z_input.value)
+        if(z <= 4.99) {
+            z += 0.01
+            z_input.value = z.toFixed(4)
+        }
+        """)
+    z_minus_button.js_on_event('button_click', z_minus_callback)
+    z_plus_button.js_on_event('button_click', z_plus_callback)
+    
+    zreset_button = Button(label='Reset redshift')
+    zreset_callback = CustomJS(
+        args=dict(z_input=z_input, targetinfo=cds_targetinfo, ifiberslider=ifiberslider),
+        code="""
+            var ifiber = ifiberslider.value
+            var z = targetinfo.data['z'][ifiber]
+            z_input.value = z.toFixed(4)
+        """)
+    zreset_button.js_on_event('button_click', zreset_callback)
+
+    z_input_callback = CustomJS(
+        args=dict(spectra = cds_spectra,
             coaddcam_spec = cds_coaddcam_spec,
             model = cds_model,
             othermodel = cds_othermodel,
@@ -750,125 +812,83 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
             line_data=line_data, lines=lines, line_labels=line_labels,
             zlines=zoom_lines, zline_labels=zoom_line_labels,
             overlap_waves=overlap_waves, overlap_bands=overlap_bands,
-            fig=fig,
+            fig=fig
             ),
-        code="""
-        var z = zslider.value + dzslider.value
-        z_input.value = z.toFixed(4)
-
-        var line_restwave = line_data.data['restwave']
-        var ifiber = ifiberslider.value
-        var waveshift_lines = (waveframe_buttons.active == 0) ? 1+z : 1 ;
-        var waveshift_spec = (waveframe_buttons.active == 0) ? 1 : 1/(1+z) ;
-
-        for(var i=0; i<line_restwave.length; i++) {
-            lines[i].location = line_restwave[i] * waveshift_lines
-            line_labels[i].x = line_restwave[i] * waveshift_lines
-            zlines[i].location = line_restwave[i] * waveshift_lines
-            zline_labels[i].x = line_restwave[i] * waveshift_lines
-        }
-        if (overlap_bands.length>0) {
-            for (var i=0; i<overlap_bands.length; i++) {
-                overlap_bands[i].left = overlap_waves[i][0] * waveshift_spec
-                overlap_bands[i].right = overlap_waves[i][1] * waveshift_spec
-            }
-        }
-        
-        function shift_plotwave(cds_spec, waveshift) {
-            var data = cds_spec.data
-            var origwave = data['origwave']
-            var plotwave = data['plotwave']
-            if ( plotwave[0] != origwave[0] * waveshift ) { // Avoid redo calculation if not needed
-                for (var j=0; j<plotwave.length; j++) {
-                    plotwave[j] = origwave[j] * waveshift ;
-                }
-                cds_spec.change.emit()
-            }
-        }
-        
-        for(var i=0; i<spectra.length; i++) {
-            shift_plotwave(spectra[i], waveshift_spec)
-        }
-        if (coaddcam_spec) shift_plotwave(coaddcam_spec, waveshift_spec)
-        
-        // Update model wavelength array
-        // NEW : don't shift model if othermodel is there
-        if (othermodel) {
-            var zref = othermodel.data['zref'][0]
-            var waveshift_model = (waveframe_buttons.active == 0) ? (1+z)/(1+zref) : 1/(1+zref) ;
-            shift_plotwave(othermodel, waveshift_model)
-        } else if (model) {
-            var zfit = 0.0
-            if(targetinfo.data['z'] != undefined) {
-                zfit = targetinfo.data['z'][ifiber]
-            }
-            var waveshift_model = (waveframe_buttons.active == 0) ? (1+z)/(1+zfit) : 1/(1+zfit) ;
-            shift_plotwave(model, waveshift_model)
-        }
-        
-        """)
-
-    zslider.js_on_change('value', zslider_callback)
-    dzslider.js_on_change('value', zslider_callback)
-    waveframe_buttons.js_on_click(zslider_callback)
-
-    z_button_width = 30
-    z_minus_button = Button(label="<", width=z_button_width)
-    z_plus_button = Button(label=">", width=z_button_width)
-    z_minus_callback = CustomJS(
-        args=dict(zslider=zslider),
-        code="""
-        if(zslider.value>=-0.09) {
-            zslider.value -= 0.01
-        }
-        """)
-    z_plus_callback = CustomJS(
-        args=dict(zslider=zslider),
-        code="""
-        if(zslider.value<=3.99) {
-            zslider.value += 0.01
-        }
-        """)
-    z_minus_button.js_on_event('button_click', z_minus_callback)
-    z_plus_button.js_on_event('button_click', z_plus_callback)
-    
-    zreset_button = Button(label='Reset redshift')
-    zreset_callback = CustomJS(
-        args=dict(zslider=zslider, dzslider=dzslider, targetinfo=cds_targetinfo, ifiberslider=ifiberslider),
-        code="""
-            var ifiber = ifiberslider.value
-            var z = targetinfo.data['z'][ifiber]
-            var z1 = Math.floor(z*100) / 100
-            zslider.value = z1
-            dzslider.value = (z - z1)
-        """)
-    zreset_button.js_on_event('button_click', zreset_callback)
-
-    z_input_callback = CustomJS(
-        args=dict(zslider=zslider, dzslider=dzslider, z_input=z_input),
         code="""
             var z = parseFloat(z_input.value)
             if ( z >=-0.1 && z <= 5.0 ) {
+                // update zsliders only if needed (avoid recursive call)
                 z_input.value = parseFloat(z_input.value).toFixed(4)
                 var z1 = Math.floor(z*100) / 100
-                zslider.value = z1
-                dzslider.value = parseFloat((z - z1).toFixed(4))
+                var z2 = z-z1
+                if ( Math.abs(z1-zslider.value) >= 0.01) zslider.value = parseFloat(parseFloat(z1).toFixed(2))
+                if ( Math.abs(z2-dzslider.value) >= 0.0001) dzslider.value = parseFloat(parseFloat(z2).toFixed(4))                
             } else {
-                if (z_input.value < -0.1) z_input.value = "-0.1"
-                if (z_input.value > 5) z_input.value = "5.0"
+                if (z_input.value < -0.1) z_input.value = (-0.1).toFixed(4)
+                if (z_input.value > 5) z_input.value = (5.0).toFixed(4)
+            }
+            
+            var line_restwave = line_data.data['restwave']
+            var ifiber = ifiberslider.value
+            var waveshift_lines = (waveframe_buttons.active == 0) ? 1+z : 1 ;
+            var waveshift_spec = (waveframe_buttons.active == 0) ? 1 : 1/(1+z) ;
+
+            for(var i=0; i<line_restwave.length; i++) {
+                lines[i].location = line_restwave[i] * waveshift_lines
+                line_labels[i].x = line_restwave[i] * waveshift_lines
+                zlines[i].location = line_restwave[i] * waveshift_lines
+                zline_labels[i].x = line_restwave[i] * waveshift_lines
+            }
+            if (overlap_bands.length>0) {
+                for (var i=0; i<overlap_bands.length; i++) {
+                    overlap_bands[i].left = overlap_waves[i][0] * waveshift_spec
+                    overlap_bands[i].right = overlap_waves[i][1] * waveshift_spec
+                }
+            }
+
+            function shift_plotwave(cds_spec, waveshift) {
+                var data = cds_spec.data
+                var origwave = data['origwave']
+                var plotwave = data['plotwave']
+                if ( plotwave[0] != origwave[0] * waveshift ) { // Avoid redo calculation if not needed
+                    for (var j=0; j<plotwave.length; j++) {
+                        plotwave[j] = origwave[j] * waveshift ;
+                    }
+                    cds_spec.change.emit()
+                }
+            }
+
+            for(var i=0; i<spectra.length; i++) {
+                shift_plotwave(spectra[i], waveshift_spec)
+            }
+            if (coaddcam_spec) shift_plotwave(coaddcam_spec, waveshift_spec)
+
+            // Update model wavelength array
+            // NEW : don't shift model if othermodel is there
+            if (othermodel) {
+                var zref = othermodel.data['zref'][0]
+                var waveshift_model = (waveframe_buttons.active == 0) ? (1+z)/(1+zref) : 1/(1+zref) ;
+                shift_plotwave(othermodel, waveshift_model)
+            } else if (model) {
+                var zfit = 0.0
+                if(targetinfo.data['z'] != undefined) {
+                    zfit = targetinfo.data['z'][ifiber]
+                }
+                var waveshift_model = (waveframe_buttons.active == 0) ? (1+z)/(1+zfit) : 1/(1+zfit) ;
+                shift_plotwave(model, waveshift_model)
             }
         """)
     z_input.js_on_change('value', z_input_callback)
+    waveframe_buttons.js_on_click(z_input_callback)
 
     plotrange_callback = CustomJS(
         args = dict(
-            zslider=zslider,
-            dzslider=dzslider,
+            z_input=z_input
             waveframe_buttons=waveframe_buttons,
             fig=fig,
         ),
         code="""
-        var z = zslider.value + dzslider.value
+        var z =  parseFloat(z_input.value)
         // Observer Frame
         if(waveframe_buttons.active == 0) {
             fig.x_range.start = fig.x_range.start * (1+z)
@@ -1007,8 +1027,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
                       std_templates=template_dicts[2],
                       median_spectra = cds_median_spectra,
                       smootherslider = smootherslider,
-                      zslider = zslider,
-                      dzslider = dzslider,
+                      z_input = z_input,
                       cds_targetinfo = cds_targetinfo,
                       spec_wave= spectra.wave['brz']),
             code=model_select_code)
@@ -1226,8 +1245,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
             targ_disp_cds = targ_disp_cds,
             ifiberslider = ifiberslider,
             smootherslider = smootherslider,
-            zslider=zslider,
-            dzslider=dzslider,
+            z_input = z_input,
             fig = fig,
             imfig_source=imfig_source,
             imfig_urls=imfig_urls,
