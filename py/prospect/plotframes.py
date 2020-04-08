@@ -883,7 +883,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
 
     plotrange_callback = CustomJS(
         args = dict(
-            z_input=z_input
+            z_input=z_input,
             waveframe_buttons=waveframe_buttons,
             fig=fig,
         ),

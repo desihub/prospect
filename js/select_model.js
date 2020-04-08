@@ -82,14 +82,14 @@ if (model_select.value == 'Best fit') {
     for (var j=0; j<shifted_flux.length; j++) {
         shifted_flux[j] = interp_grid(spec_wave[j], model_wave, model_flux)
     }
-    cds_othermodel.data['plotwave'] = spec_wave
-    cds_othermodel.data['origwave'] = spec_wave
-    cds_othermodel.data['plotflux'] = shifted_flux
+    cds_othermodel.data['plotwave'] = spec_wave.slice()
+    cds_othermodel.data['origwave'] = spec_wave.slice()
+    cds_othermodel.data['plotflux'] = shifted_flux.slice()
 }
 
 var zref_vect = (cds_othermodel.data['plotwave']).slice() // trick to keep track of spec_z (see plotframes.py)
 for (var j=0; j<zref_vect.length; j++) zref_vect[j] = spec_z
-cds_othermodel.data['zref'] = zref_vect
+cds_othermodel.data['zref'] = zref_vect.slice()
 
 // Smooth plotflux
 nsmooth = smootherslider.value
