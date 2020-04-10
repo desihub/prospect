@@ -21,11 +21,31 @@ if (cb_obj == ifiberslider) { // update VI widgets + infos for current spectrum
     targ_disp_cds.data['mag_W2'] = [ targetinfo.data['mag_W2'][ifiber].toFixed(2) ]
     targ_disp_cds.change.emit()
     if(targetinfo.data['z'] != undefined && zcat_disp_cds != null) {
-        zcat_disp_cds.data['SPECTYPE'] = [ targetinfo.data['spectype'][ifiber] ]
-        zcat_disp_cds.data['Z'] = [ targetinfo.data['z'][ifiber].toFixed(4) ]
-        zcat_disp_cds.data['ZERR'] = [ targetinfo.data['zerr'][ifiber].toFixed(4) ]
-        zcat_disp_cds.data['ZWARN'] = [ targetinfo.data['zwarn'][ifiber] ]
-        zcat_disp_cds.data['DeltaChi2'] = [ targetinfo.data['deltachi2'][ifiber].toFixed(1) ]
+        if (fit_results != undefined) {
+            zcat_disp_cds.data['SPECTYPE'] = fit_results['SPECTYPE'][ifiberslider.value].slice(0,num_best_fits)
+            zcat_disp_cds.data['SUBTYPE'] = fit_results['SUBTYPE'][ifiberslider.value].slice(0,num_best_fits)
+            zcat_disp_cds.data['Z'] = fit_results['Z'][ifiberslider.value].slice(0,num_best_fits)
+            zcat_disp_cds.data['ZERR'] = fit_results['ZERR'][ifiberslider.value].slice(0,num_best_fits)
+            zcat_disp_cds.data['ZWARN'] = fit_results['ZWARN'][ifiberslider.value].slice(0,num_best_fits)
+            var chi2s = fit_results['CHI2'][ifiberslider.value].slice(0,num_best_fits+1) // Custom DeltaChi2 calculation
+            var full_deltachi2s = []
+            for (var i=0; i<num_best_fits; i++) {
+                full_deltachi2s.push(chi2s[i+1]-chi2s[i])
+            }
+            zcat_disp_cds.data['DeltaChi2'] = full_deltachi2s
+            for (var i=0; i<num_best_fits; i++) {
+                zcat_disp_cds.data['Z'][i] = zcat_disp_cds.data['Z'][i].toFixed(4)
+                zcat_disp_cds.data['ZERR'][i] = zcat_disp_cds.data['ZERR'][i].toFixed(4)
+                zcat_disp_cds.data['DeltaChi2'][i] = zcat_disp_cds.data['DeltaChi2'][i].toFixed(1)
+            }
+        } else {
+            zcat_disp_cds.data['SPECTYPE'] = [ targetinfo.data['spectype'][ifiber] ]
+            zcat_disp_cds.data['SUBTYPE'] = [ targetinfo.data['subtype'][ifiber] ]
+            zcat_disp_cds.data['Z'] = [ targetinfo.data['z'][ifiber].toFixed(4) ]
+            zcat_disp_cds.data['ZERR'] = [ targetinfo.data['zerr'][ifiber].toFixed(4) ]
+            zcat_disp_cds.data['ZWARN'] = [ targetinfo.data['zwarn'][ifiber] ]
+            zcat_disp_cds.data['DeltaChi2'] = [ targetinfo.data['deltachi2'][ifiber].toFixed(1) ]
+        }
         zcat_disp_cds.change.emit()
     }
     

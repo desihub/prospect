@@ -154,23 +154,24 @@ def match_zcat_to_spectra(zcat_in, spectra) :
     return (zcat_out, index_list)
 
 
-def match_redrock_zfit_to_spectra(redrockfile, spectra, num_best_fit=3) :
+def match_redrock_zfit_to_spectra(redrockfile, spectra, num_best_fits=5) :
     '''
     Read Redrock file, and return astropy Table of best fits matched to the targetids of input spectra
     - for each target, store arrays chi2[N], coeff[N], z[N], spectype[N], subtype[N]
-    - where N = num_best_fit
+    - where N = num_best_fits
     '''
-    matched_redrock_cat = Table(dtype=[('TARGETID', '<i8'), ('CHI2', '<f8', (num_best_fit,)), ('COEFF', '<f8', (num_best_fit,10,)), ('Z', '<f8', (num_best_fit,)), ('ZERR', '<f8', (num_best_fit,)), ('ZWARN', '<i8', (num_best_fit,)), ('SPECTYPE', '<U6', (num_best_fit,)), ('SUBTYPE', '<U2', (num_best_fit,))])
+    matched_redrock_cat = Table(dtype=[('TARGETID', '<i8'), ('CHI2', '<f8', (num_best_fits,)), ('DELTACHI2', '<f8', (num_best_fits,)), ('COEFF', '<f8', (num_best_fits,10,)), ('Z', '<f8', (num_best_fits,)), ('ZERR', '<f8', (num_best_fits,)), ('ZWARN', '<i8', (num_best_fits,)), ('SPECTYPE', '<U6', (num_best_fits,)), ('SUBTYPE', '<U2', (num_best_fits,))])
     dummy, rr_table = redrock.results.read_zscan(redrockfile)
     rr_targets = rr_table['targetid']
     for i_spec in range(spectra.num_spectra()) :
         ww, = np.where((rr_targets == spectra.fibermap['TARGETID'][i_spec]))
-        if len(ww)<num_best_fit : 
-            raise RuntimeError("redrock table cannot match spectra with "+str(num_best_fit)+" best fits")
-        ind = np.argsort(rr_table[ww]['chi2'])[0:num_best_fit]
+        if len(ww)<num_best_fits : 
+            raise RuntimeError("redrock table cannot match spectra with "+str(num_best_fits)+" best fits")
+        ind = np.argsort(rr_table[ww]['chi2'])[0:num_best_fits]
         sub_table = rr_table[ww][ind]
         the_entry = [ spectra.fibermap['TARGETID'][i_spec] ]
         the_entry.append(sub_table['chi2'])
+        the_entry.append(sub_table['deltachi2'])
         the_entry.append(sub_table['coeff'])
         the_entry.append(sub_table['z'])
         the_entry.append(sub_table['zerr'])
@@ -186,15 +187,16 @@ def create_zcat_from_redrock_cat(redrock_cat, fit_num=0) :
     Extract a z catalog from redrock catalog produced in match_redrock_zfit_to_spectra()
     The z catalog has one fit per targetid, corresponding to the (fit_num)th best fit
     '''
-
-    zcat_dtype=[('TARGETID', '<i8'), ('CHI2', '<f8'), ('COEFF', '<f8', (10,)), ('Z', '<f8'), ('ZERR', '<f8'), ('ZWARN', '<i8'), ('SPECTYPE', '<U6'), ('SUBTYPE', '<U2')]
+    
+    rr_cat_num_best_fits = redrock_cat['Z'].shape[1]
+    if (fit_num >= rr_cat_num_best_fits) : raise ValueError("fit_num too large wrt redrock_cat")
+    zcat_dtype=[('TARGETID', '<i8'), ('CHI2', '<f8'), ('COEFF', '<f8', (10,)), ('Z', '<f8'), ('ZERR', '<f8'), ('ZWARN', '<i8'), ('SPECTYPE', '<U6'), ('SUBTYPE', '<U2'), ('DELTACHI2', '<f8')]
     zcat_out = Table( data=np.zeros(len(redrock_cat), dtype=zcat_dtype) )
     zcat_out['TARGETID'] = redrock_cat['TARGETID']
-    for key in [ 'CHI2', 'COEFF', 'SPECTYPE', 'SUBTYPE', 'Z', 'ZERR', 'ZWARN'] :
+    for key in [ 'CHI2', 'DELTACHI2', 'COEFF', 'SPECTYPE', 'SUBTYPE', 'Z', 'ZERR', 'ZWARN'] :
         zcat_out[key] = redrock_cat[key][:,fit_num]
     
     return zcat_out
-    
     
 def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None) :
     '''

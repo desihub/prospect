@@ -1,7 +1,7 @@
 // CustomJS, callback for the model selection
 //  - Requires to include function in: interp_grid.js, smooth_data.js
 //  - args = ifiberslider, model_select, fit_templates, cds_model_2ndfit, cds_model, z_input
-//             cds_othermodel, fit_results, std_templates, median_spectra, spec_wave, smootherslider,
+//             cds_othermodel, fit_results, std_templates, median_spectra, smootherslider,
 //             cds_targetinfo
 // IN DEVLPT
 // values for model_select (model_options) are hardcoded
@@ -58,7 +58,7 @@ if (model_select.value == 'Best fit') {
     cds_othermodel.data['origwave'] = shifted_template_wave.slice()
     
 } else { // recompute Nth best fit
-    var i_fit = parseInt(model_select.value[0])-1 // hardcoded ("1st fit" => "1" => entry 0)
+    var i_fit = parseInt(model_select.value[0])-1 // hardcoded ("1st fit" => "1" => entry 0. Assumes N<10)
     var coeffs = fit_results['COEFF'][ifiberslider.value][i_fit]
     var spectype =  fit_results['SPECTYPE'][ifiberslider.value][i_fit]
     var subtype =  fit_results['SUBTYPE'][ifiberslider.value][i_fit]
@@ -77,14 +77,9 @@ if (model_select.value == 'Best fit') {
         }
     }
 
-    // TODO/check : need to do that ??? (probably not)
-    shifted_flux = spec_wave.slice()
-    for (var j=0; j<shifted_flux.length; j++) {
-        shifted_flux[j] = interp_grid(spec_wave[j], model_wave, model_flux)
-    }
-    cds_othermodel.data['plotwave'] = spec_wave.slice()
-    cds_othermodel.data['origwave'] = spec_wave.slice()
-    cds_othermodel.data['plotflux'] = shifted_flux.slice()
+    cds_othermodel.data['plotwave'] = model_wave.slice()
+    cds_othermodel.data['origwave'] = model_wave.slice()
+    cds_othermodel.data['plotflux'] = model_flux.slice()
 }
 
 var zref_vect = (cds_othermodel.data['plotwave']).slice() // trick to keep track of spec_z (see plotframes.py)

@@ -228,9 +228,9 @@ def make_cds_model(model) :
     return cds_model
 
 
-def make_template_dicts(redrock_cat, spec_wave, delta_lambd_templates=None, template_dir=None) :
+def make_template_dicts(redrock_cat, delta_lambd_templates=3, num_fits=None, template_dir=None) :
     """
-    Input :
+    Input : TODO document
     - redrock_cat : Table produced by match_redrock_zfit_to_spectra (matches spectra).
     Create list of CDS including all data needed to plot other models (Nth best fit, std templates) :
     - list of templates used in fits
@@ -239,11 +239,6 @@ def make_template_dicts(redrock_cat, spec_wave, delta_lambd_templates=None, temp
     """
     
     rr_templts = load_redrock_templates(template_dir=template_dir)
-
-    # TODO document
-    # this is to optimize vector lengths (wrt length of spectra.wave and z range)
-    if delta_lambd_templates is None :
-        delta_lambd_templates = 3 # spec_wave[1]-spec_wave[0] : 0.8
     
     dict_fit_templates = dict()
     for key,val in rr_templts.items() :
@@ -257,7 +252,10 @@ def make_template_dicts(redrock_cat, spec_wave, delta_lambd_templates=None, temp
     
     dict_fit_results = dict()
     for key in redrock_cat.keys() :
-        dict_fit_results[key] = np.asarray(redrock_cat[key])
+        if (num_fits is None) or (key=='TARGETID') :
+            dict_fit_results[key] = np.asarray(redrock_cat[key])
+        else : # Keep only requested fit results
+            dict_fit_results[key] = np.asarray(redrock_cat[key])[:,0:num_fits]
         
     # TODO fix the list of std templates
     # We take flux[0,:] : ie use first entry in RR template basis
@@ -315,12 +313,14 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=" ") 
     if zcatalog is not None :
         cds_targetinfo.add(zcatalog['Z'], name='z')
         cds_targetinfo.add(zcatalog['SPECTYPE'].astype('U{0:d}'.format(zcatalog['SPECTYPE'].dtype.itemsize)), name='spectype')
+        cds_targetinfo.add(zcatalog['SUBTYPE'].astype('U{0:d}'.format(zcatalog['SUBTYPE'].dtype.itemsize)), name='subtype')
         cds_targetinfo.add(zcatalog['ZERR'], name='zerr')
         cds_targetinfo.add(zcatalog['ZWARN'], name='zwarn')
         cds_targetinfo.add(zcatalog['DELTACHI2'], name='deltachi2')
     else :
         cds_targetinfo.add(np.zeros(nspec), name='z')
         cds_targetinfo.add([" " for i in range(nspec)], name='spectype')
+        cds_targetinfo.add([" " for i in range(nspec)], name='subtype')
         cds_targetinfo.add(np.zeros(nspec), name='zerr')
         cds_targetinfo.add([0 for i in range(nspec)], name='zwarn')
         cds_targetinfo.add(np.zeros(nspec), name='deltachi2')
@@ -393,7 +393,7 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
     return gridplot(thumb_plots, ncols=ncols_grid, toolbar_location=None, sizing_mode='scale_width')
 
 
-def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=None, with_full_2ndfit=True, model_from_zcat=True, model=None, notebook=False, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, mask_type='DESI_TARGET', with_thumb_tab=True, with_vi_widgets=True, with_thumb_only_page=False, template_dir=None, archetype_fit=False, archetypes_dir=None):
+def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=None, num_best_fits=None, with_full_2ndfit=True, model_from_zcat=True, model=None, notebook=False, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, mask_type='DESI_TARGET', with_thumb_tab=True, with_vi_widgets=True, with_thumb_only_page=False, template_dir=None, archetype_fit=False, archetypes_dir=None):
     '''
     Main prospect routine. From a set of spectra, creates a bokeh document used for VI, to be displayed as an HTML page or within a jupyter notebook.
 
@@ -429,6 +429,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     template_dir: Redrock template directory
     archetype_fit : if True, assume zbest derived from redrock --archetypes and plot model accordingly.
     archetypes_dir : directory path for archetypes if not $RR__ARCHETYPE_DIR.
+    num_best_fit (default None): nb of best fit models to display if redrock_cat is given. By default, 
+        num_best_fit=(nb of best fits available in redrock_cat)-1 ("-1" is to provide deltachi2s)
     '''
 
     #- If inputs are frames, convert to a spectra object
@@ -471,8 +473,9 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         if np.any(redrock_cat['TARGETID'] != spectra.fibermap['TARGETID']) :
             raise RunTimeError('redrock_cat and spectra do not match (different targetids)')
         if zcatalog is None : raise ValueError('Redrock_cat was provided but not zcatalog.')
-        # TODO : un-hardcode nb of fits in rr cat
-        if redrock_cat['Z'].shape[1] != 3 : raise ValueError("Wrong nb of fits stored in redrock_cat")
+        rr_cat_num_best_fits = redrock_cat['Z'].shape[1]
+        if num_best_fits is None : num_best_fits = rr_cat_num_best_fits-1
+        if (num_best_fits > rr_cat_num_best_fits-1) : raise ValueError("num_best_fits too large wrt redrock_cat")
         if with_full_2ndfit :
             zcat_2ndfit = utils_specviewer.create_zcat_from_redrock_cat(redrock_cat, fit_num=1)
             model_2ndfit = create_model(spectra, zcat_2ndfit, archetype_fit=archetype_fit, 
@@ -500,8 +503,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     else:
         cds_model = None
     if redrock_cat is not None :
-        # TODO specwave stuff (no brz..)
-        template_dicts = make_template_dicts(redrock_cat, spectra.wave['brz'], template_dir=template_dir)
+        template_dicts = make_template_dicts(redrock_cat, delta_lambd_templates=3, num_fits=num_best_fits+1, template_dir=template_dir)
         if with_full_2ndfit :
             cds_model_2ndfit = make_cds_model(model_2ndfit)
         else :
@@ -947,15 +949,34 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     targ_display = DataTable(source = targ_disp_cds, columns=targ_disp_cols,index_position=None, selectable=True, editable=True) # width=...
     targ_display.height = 2 * targ_display.row_height
     if zcatalog is not None :
-        tmp_dict = dict(SPECTYPE = [ cds_targetinfo.data['spectype'][0] ],
-                        Z = [ "{:.4f}".format(cds_targetinfo.data['z'][0]) ],
-                        ZERR = [ "{:.4f}".format(cds_targetinfo.data['zerr'][0]) ],
-                        ZWARN = [ cds_targetinfo.data['zwarn'][0] ],
-                        DeltaChi2 = [ "{:.1f}".format(cds_targetinfo.data['deltachi2'][0]) ])
+        if template_dicts is not None : # Add other best fits
+            fit_results = template_dicts[1]
+            # Case of DeltaChi2 : compute it from Chi2s
+            #    The "DeltaChi2" in rr fits is between best fits for a given (spectype,subtype)
+            chi2s = fit_results['CHI2'][0][0:num_best_fits+1]
+            full_deltachi2s = chi2s[1:]-chi2s[:-1]
+            tmp_dict = dict(Nfit = np.arange(1,num_best_fits+1),
+                            SPECTYPE = fit_results['SPECTYPE'][0][0:num_best_fits],
+                            SUBTYPE = fit_results['SUBTYPE'][0][0:num_best_fits],
+                            Z = [ "{:.4f}".format(x) for x in fit_results['Z'][0][0:num_best_fits] ],
+                            ZERR = [ "{:.4f}".format(x) for x in fit_results['ZERR'][0][0:num_best_fits] ],
+                            ZWARN = fit_results['ZWARN'][0][0:num_best_fits],
+                            CHI2 = [ "{:.1f}".format(x) for x in fit_results['CHI2'][0][0:num_best_fits] ],
+                            DeltaChi2 = [ "{:.1f}".format(x) for x in full_deltachi2s ])
+        else :
+            tmp_dict = dict(SPECTYPE = [ cds_targetinfo.data['spectype'][0] ],
+                SUBTYPE = [ cds_targetinfo.data['subtype'][0] ],
+                Z = [ "{:.4f}".format(cds_targetinfo.data['z'][0]) ],
+                ZERR = [ "{:.4f}".format(cds_targetinfo.data['zerr'][0]) ],
+                ZWARN = [ cds_targetinfo.data['zwarn'][0] ],
+                DeltaChi2 = [ "{:.1f}".format(cds_targetinfo.data['deltachi2'][0]) ])
         zcat_disp_cds = bk.ColumnDataSource(tmp_dict, name='zcat_disp_cds')
-        zcat_disp_cols = [ TableColumn(field=x, title=x, width=w) for x,w in [ ('SPECTYPE',100), ('Z',50) , ('ZERR',50), ('ZWARN',50), ('DeltaChi2',50) ] ]
-        zcat_display = DataTable(source=zcat_disp_cds, columns=zcat_disp_cols, index_position=None, selectable=False, width=400)
+        zcat_disp_cols = [ TableColumn(field=x, title=t, width=w) for x,t,w in [ ('SPECTYPE','SPECTYPE',70), ('SUBTYPE','SUBTYPE',50), ('Z','Z',50) , ('ZERR','ZERR',50), ('ZWARN','ZWARN',40), ('DeltaChi2','Δχ2(N/N+1)',60)] ]
+        if template_dicts is not None :
+            zcat_disp_cols.insert(0, TableColumn(field='Nfit', title='Nfit', width=10))
+        zcat_display = DataTable(source=zcat_disp_cds, columns=zcat_disp_cols, selectable=False, index_position=None)
         zcat_display.height = 2 * zcat_display.row_height
+        if template_dicts is not None : zcat_display.height = (1+num_best_fits) * zcat_display.row_height
     else :
         zcat_display = Div(text="Not available ")
         zcat_disp_cds = None
@@ -1006,7 +1027,13 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     #------
     #- Select secondary model to display
     if template_dicts is not None :
-        model_options = ['Best fit', '2nd best fit', '1st fit (approx)', '2nd fit (approx)', '3rd fit (approx)']
+        model_options = ['Best fit', '2nd best fit']
+        for i in range(1,1+num_best_fits) :
+            ith = 'th'
+            if i==1 : ith='st'
+            if i==2 : ith='nd'
+            if i==3 : ith='rd'
+            model_options.append(str(i)+ith+' fit (approx)')
         if with_full_2ndfit is False :
             model_options.remove('2nd best fit')
         for std_template in ['QSO', 'GALAXY', 'STAR'] :
@@ -1028,8 +1055,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
                       median_spectra = cds_median_spectra,
                       smootherslider = smootherslider,
                       z_input = z_input,
-                      cds_targetinfo = cds_targetinfo,
-                      spec_wave= spectra.wave['brz']),
+                      cds_targetinfo = cds_targetinfo),
             code=model_select_code)
         model_select.js_on_change('value',model_select_callback)
     else :
@@ -1231,6 +1257,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     with open(os.path.join(js_dir,"smooth_data.js"), 'r') as f : update_plot_code += f.read()
     with open(os.path.join(js_dir,"coadd_brz_cameras.js"), 'r') as f : update_plot_code += f.read()    
     with open(os.path.join(js_dir,"update_plot.js"), 'r') as f : update_plot_code += f.read()
+    # ONGOING
+    the_fit_results = None if template_dicts is None else template_dicts[1] # dirty
     update_plot = CustomJS(
         args = dict(
             spectra = cds_spectra,
@@ -1241,6 +1269,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
             targetinfo = cds_targetinfo,
 #            target_info_div = target_info_div,
 ## BYPASS DIV
+            fit_results = the_fit_results,
+            num_best_fits = num_best_fits,
             zcat_disp_cds = zcat_disp_cds,
             targ_disp_cds = targ_disp_cds,
             ifiberslider = ifiberslider,
