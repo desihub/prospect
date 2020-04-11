@@ -548,6 +548,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     
     plot_width=800
     plot_height=400
+    plot_widget_width = (plot_width+(plot_height//2))//2 - 40 # used for widgets scaling 
     tools = 'pan,box_zoom,wheel_zoom,save'
     tooltips_fig = [("wave","$x"),("flux","$y")]
     fig = bk.figure(height=plot_height, width=plot_width, title=title,
@@ -602,7 +603,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     
     legend_items = [("data",  data_lines[-1::-1])] #- reversed to get blue as lengend entry
     if cds_model is not None : 
-        legend_items.append(("model", model_lines))
+        legend_items.append(("pipeline fit", model_lines))
     if cds_othermodel is not None :
         legend_items.append(("other model", othermodel_lines))
     if with_noise : 
@@ -636,6 +637,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
             
     if cds_model is not None:
         lx = zoomfig.line('plotwave', 'plotflux', source=cds_model, line_color='black')
+    if cds_othermodel is not None :
+        lx = zoomfig.line('plotwave', 'plotflux', source=cds_othermodel, line_color='black', line_dash='dashed')
 
     #- Callback to update zoom window x-range
     zoom_callback = CustomJS(
@@ -689,7 +692,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     # Ifiberslider's value controls which spectrum is displayed
     # These two widgets call update_plot(), later defined
     slider_end = nspec-1 if nspec > 1 else 0.5 # Slider cannot have start=end
-    ifiberslider = Slider(start=0, end=slider_end, value=0, step=1, title='Spectrum')
+    ifiberslider = Slider(start=0, end=slider_end, value=0, step=1, title='Spectrum (of '+str(nspec)+')')
     smootherslider = Slider(start=0, end=51, value=0, step=1.0, title='Gaussian Sigma Smooth')
 
     #-----
@@ -790,7 +793,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     z_minus_button.js_on_event('button_click', z_minus_callback)
     z_plus_button.js_on_event('button_click', z_plus_callback)
     
-    zreset_button = Button(label='Reset redshift')
+    zreset_button = Button(label='Reset to z_pipe')
     zreset_callback = CustomJS(
         args=dict(z_input=z_input, targetinfo=cds_targetinfo, ifiberslider=ifiberslider),
         code="""
@@ -971,10 +974,10 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
                 ZWARN = [ cds_targetinfo.data['zwarn'][0] ],
                 DeltaChi2 = [ "{:.1f}".format(cds_targetinfo.data['deltachi2'][0]) ])
         zcat_disp_cds = bk.ColumnDataSource(tmp_dict, name='zcat_disp_cds')
-        zcat_disp_cols = [ TableColumn(field=x, title=t, width=w) for x,t,w in [ ('SPECTYPE','SPECTYPE',70), ('SUBTYPE','SUBTYPE',50), ('Z','Z',50) , ('ZERR','ZERR',50), ('ZWARN','ZWARN',40), ('DeltaChi2','Δχ2(N/N+1)',60)] ]
+        zcat_disp_cols = [ TableColumn(field=x, title=t, width=w) for x,t,w in [ ('SPECTYPE','SPECTYPE',70), ('SUBTYPE','SUBTYPE',60), ('Z','Z',50) , ('ZERR','ZERR',50), ('ZWARN','ZWARN',50), ('DeltaChi2','Δχ2(N/N+1)',70)] ]
         if template_dicts is not None :
-            zcat_disp_cols.insert(0, TableColumn(field='Nfit', title='Nfit', width=10))
-        zcat_display = DataTable(source=zcat_disp_cds, columns=zcat_disp_cols, selectable=False, index_position=None)
+            zcat_disp_cols.insert(0, TableColumn(field='Nfit', title='Nfit', width=5))
+        zcat_display = DataTable(source=zcat_disp_cds, columns=zcat_disp_cols, selectable=False, index_position=None, width=plot_widget_width)
         zcat_display.height = 2 * zcat_display.row_height
         if template_dicts is not None : zcat_display.height = (1+num_best_fits) * zcat_display.row_height
     else :
@@ -984,7 +987,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     #-----
     #- Toggle lines
     lines_button_group = CheckboxButtonGroup(
-            labels=["Emission", "Absorption"], active=[])
+            labels=["Emission lines", "Absorption lines"], active=[])
     majorline_checkbox = CheckboxGroup(
             labels=['Show only major lines'], active=[])
 
@@ -1038,7 +1041,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
             model_options.remove('2nd best fit')
         for std_template in ['QSO', 'GALAXY', 'STAR'] :
             model_options.append('STD '+std_template)            
-        model_select = Select(value=model_options[0], title="Model select :", options=model_options)
+        model_select = Select(value=model_options[0], title="Other model (dashed curve):", options=model_options)
         cds_median_spectra = make_cds_median_spectra(spectra)
         with open(os.path.join(js_dir,"interp_grid.js"), 'r') as f : model_select_code = f.read()
         with open(os.path.join(js_dir,"smooth_data.js"), 'r') as f : model_select_code += f.read()            
@@ -1328,9 +1331,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
                 widgetbox(clear_vi_button, width=150)
             )
         )
-    plot_widget_width = (plot_width+(plot_height//2))//2 - 40
     plot_widget_set = bk.Column(
-        widgetbox( Div(text="Pipeline fit : ") ),
+        widgetbox( Div(text="Pipeline fit: ") ),
         widgetbox(zcat_display, width=plot_widget_width),
         bk.Row(
             bk.Column(
@@ -1355,11 +1357,14 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
 #        widgetbox(display_options_group,width=120),
         widgetbox(coaddcam_buttons, width=200),
         widgetbox(waveframe_buttons, width=120),
-        widgetbox(lines_button_group, width=200),
-        widgetbox(majorline_checkbox, width=120)
+        bk.Row(
+            widgetbox(lines_button_group, width=200),
+            widgetbox(Spacer(width=30)),
+            widgetbox(majorline_checkbox, width=120)
+        )
     )
     if model_select is not None :
-        plot_widget_set.children.append(widgetbox(model_select, width=200)) # TODO : change position
+        plot_widget_set.children.insert(3, widgetbox(model_select, width=200))
     if with_vi_widgets :
         plot_widget_set.children.append( widgetbox(Spacer(height=30)) )
         plot_widget_set.children.append( widgetbox(vi_guideline_div, width=plot_widget_width) )
