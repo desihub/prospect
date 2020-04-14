@@ -140,7 +140,13 @@ def match_zcat_to_spectra(zcat_in, spectra) :
     - creates a new astropy Table whose rows match the targetids of input spectra
     - also returns the corresponding list of indices
     - for each targetid, a unique row in zcat_in must exist.
+    TODO : maybe rename this fct ? match_table_to_spectra ?
+    => it also works whatever kind of input zcat : just has to be a table with 'TARGETID' key
+    => in particular it's useful for "redrock_cat" tables
     '''
+    
+    if zcat_in is None : return None
+    
     zcat_out = Table(dtype=zcat_in.dtype)
     index_list = list()
     for i_spec in range(spectra.num_spectra()) :
@@ -179,11 +185,12 @@ def match_redrock_zfit_to_spectra(redrockfile, spectra, num_best_fits=5) :
         the_entry.append(sub_table['spectype'])
         the_entry.append(sub_table['subtype'])
         matched_redrock_cat.add_row(the_entry)
-        
+     
     return matched_redrock_cat
 
 def create_zcat_from_redrock_cat(redrock_cat, fit_num=0) :
     '''
+    TODO change name zcat -> zbest_cat ?
     Extract a z catalog from redrock catalog produced in match_redrock_zfit_to_spectra()
     The z catalog has one fit per targetid, corresponding to the (fit_num)th best fit
     '''

@@ -39,21 +39,29 @@ if (model_select.value == 'Best fit') {
 } else if ( (model_select.value).search("STD ") == 0) {
     // TODO : adapt median to relevant waverange (fct of z_spec at least).
     var template_key = (model_select.value).slice(4)
-    var median_goal = median_spectra.data['median'][ifiberslider.value]
-    var median_template = median(std_templates["flux_"+template_key])
 
+    if ( (model_select.value).search("GALAXY") > -1) spec_z = 0.7
+    if ( (model_select.value).search("QSO") > -1) spec_z = 1.5
+    var shifted_template_wave = std_templates["wave_"+template_key].slice()
+    // Median is computed in waverange [3600-9800] angstrom (RoI)
+    var lambda_min_roi = 3600
+    var lambda_max_roi = 9800
+    var template_in_roi = []
+    for (var i=0; i<shifted_template_wave.length; i++) {
+        shifted_template_wave[i] = shifted_template_wave[i]*(1+spec_z)
+        if (shifted_template_wave[i]>lambda_min_roi && shifted_template_wave[i]<lambda_max_roi) {
+            template_in_roi.push(std_templates["flux_"+template_key][i])
+        }
+    }
+
+    var median_goal = median_spectra.data['median'][ifiberslider.value]
+    var median_template = median(template_in_roi)
     var scaled_template_flux = std_templates["flux_"+template_key].slice()
     for (var i=0; i<scaled_template_flux.length; i++) {
         scaled_template_flux[i] = scaled_template_flux[i]*median_goal/median_template
     }
     cds_othermodel.data['plotflux'] = scaled_template_flux
 
-    if ( (model_select.value).search("GALAXY") > -1) spec_z = 0.7
-    if ( (model_select.value).search("QSO") > -1) spec_z = 1.5
-    var shifted_template_wave = std_templates["wave_"+template_key].slice()
-    for (var i=0; i<shifted_template_wave.length; i++) {
-        shifted_template_wave[i] = shifted_template_wave[i]*(1+spec_z)
-    }
     cds_othermodel.data['plotwave'] = shifted_template_wave.slice()
     cds_othermodel.data['origwave'] = shifted_template_wave.slice()
     
