@@ -259,6 +259,7 @@ def make_template_dicts(redrock_cat, delta_lambd_templates=3, num_fits=None, tem
         
     # TODO fix the list of std templates
     # We take flux[0,:] : ie use first entry in RR template basis
+    # We choose here not to convolve with a "typical" resolution (could easily be done)
     # Std template : corresponding RR template . TODO put this list somewhere else
     std_templates = {'QSO': ('QSO',''), 'GALAXY': ('GALAXY',''), 'STAR': ('STAR','F') }
     dict_std_templates = dict()
