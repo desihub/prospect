@@ -15,6 +15,7 @@ import astropy.units as u
 from astropy.nddata import InverseVariance
 from astropy.io import fits
 from astropy.table import Table
+from astropy.wcs import WCS
 from specutils import SpectrumList, Spectrum1D
 
 from desiutil.depend import add_dependencies
@@ -818,39 +819,39 @@ def read_spectra(infile, single=False):
             else:
                 # Find the band based on the name
                 mat = re.match(r"(.*)_(.*)", name)
-            if mat is None:
-                raise RuntimeError("FITS extension name {} does not contain the band".format(name))
-            band = mat.group(1).lower()
-            type = mat.group(2)
-            if band not in bands:
-                bands.append(band)
-            if type == "WAVELENGTH":
-                if wave is None:
-                    wave = {}
-                wave[band] = native_endian(hdulist[h].data.astype(ftype))
-            elif type == "FLUX":
-                if flux is None:
-                    flux = {}
-                flux[band] = native_endian(hdulist[h].data.astype(ftype))
-            elif type == "IVAR":
-                if ivar is None:
-                    ivar = {}
-                ivar[band] = native_endian(hdulist[h].data.astype(ftype))
-            elif type == "MASK":
-                if mask is None:
-                    mask = {}
-                mask[band] = native_endian(hdulist[h].data.astype(np.uint32))
-            elif type == "RESOLUTION":
-                if res is None:
-                    res = {}
-                res[band] = native_endian(hdulist[h].data.astype(ftype))
-            else:
-                # this must be an "extra" HDU
-                if extra is None:
-                    extra = {}
-                if band not in extra:
-                    extra[band] = {}
-                extra[band][type] = native_endian(hdulist[h].data.astype(ftype))
+                if mat is None:
+                    raise RuntimeError("FITS extension name {} does not contain the band".format(name))
+                band = mat.group(1).lower()
+                type = mat.group(2)
+                if band not in bands:
+                    bands.append(band)
+                if type == "WAVELENGTH":
+                    if wave is None:
+                        wave = {}
+                    wave[band] = native_endian(hdulist[h].data.astype(ftype))
+                elif type == "FLUX":
+                    if flux is None:
+                        flux = {}
+                    flux[band] = native_endian(hdulist[h].data.astype(ftype))
+                elif type == "IVAR":
+                    if ivar is None:
+                        ivar = {}
+                    ivar[band] = native_endian(hdulist[h].data.astype(ftype))
+                elif type == "MASK":
+                    if mask is None:
+                        mask = {}
+                    mask[band] = native_endian(hdulist[h].data.astype(np.uint32))
+                elif type == "RESOLUTION":
+                    if res is None:
+                        res = {}
+                    res[band] = native_endian(hdulist[h].data.astype(ftype))
+                else:
+                    # this must be an "extra" HDU
+                    if extra is None:
+                        extra = {}
+                    if band not in extra:
+                        extra[band] = {}
+                    extra[band][type] = native_endian(hdulist[h].data.astype(ftype))
 
     # Construct the Spectra object from the data.  If there are any
     # inconsistencies in the sizes of the arrays read from the file,
@@ -859,6 +860,42 @@ def read_spectra(infile, single=False):
     return Spectra(bands, wave, flux, ivar, mask=mask, resolution_data=res,
                    fibermap=fmap, meta=meta, extra=extra, single=single,
                    scores=scores)
+
+
+def read_spPlate(filename):
+    """Read a SDSS spPlate file.
+
+    Parameters
+    ----------
+    filename : :class:`str`
+        Name of the spPlate file.
+
+    Returns
+    -------
+    Spectrum1D
+        The spectra.
+    """
+    with fits.open(filename) as hdulist:
+        header = hdulist[0].header
+        meta = {'header': header}
+        try:
+            flux_unit = u.Unit(hdulist[0].header['BUNIT'])
+        except ValueError:
+            flux_unit = u.Unit('1e-17 erg / (Angstrom cm2 s)')
+        flux = hdulist[0].data * flux_unit
+        wcs = WCS(header)
+        dispersion_unit = u.Unit('Angstrom')
+        dispersion = 10**wcs.all_pix2world(np.vstack((np.arange(flux.shape[1]),
+                                                      np.zeros((flux.shape[1],)))).T,
+                                           0)[:, 0]
+        try:
+            uncertainty_unit = u.Unit(hdulist[1].header['BUNIT'])
+        except ValueError:
+            uncertainty_unit = u.Unit('1e+34 (Angstrom2 cm4 s2) / erg2')
+        uncertainty = InverseVariance(hdulist[1].data * uncertainty_unit)
+        mask = hdulist[2].data != 0
+    return Spectrum1D(flux=flux, spectral_axis=dispersion*dispersion_unit,
+                      uncertainty=uncertainty, meta=meta, mask=mask)
 
 
 def read_frame_as_spectra(filename, night=None, expid=None, band=None, single=False):
