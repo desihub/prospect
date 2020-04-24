@@ -26,7 +26,7 @@ from desispec.resolution import Resolution
 from desispec.io.util import fitsheader, native_endian, add_columns
 from desispec.io.frame import read_frame
 from desispec.io.fibermap import fibermap_comments
-
+from .utils_specviewer import _coadd
 
 class Spectra(SpectrumList):
     """Represents a grouping of spectra.
@@ -765,7 +765,7 @@ def write_spectra(outfile, spec, units=None):
     return outfile
 
 
-def read_spectra(infile, single=False):
+def read_spectra(infile, single=False, coadd=False):
     """Read Spectra object from FITS file.
 
     This reads data written by the write_spectra function.  A new Spectra
@@ -774,6 +774,7 @@ def read_spectra(infile, single=False):
     Args:
         infile (str): path to read
         single (bool): if True, keep spectra as single precision in memory.
+        coadd (bool): if True, coadd all spectra from the same targetid.
 
     Returns (Spectra):
         The object containing the data read from disk.
@@ -853,6 +854,57 @@ def read_spectra(infile, single=False):
                         extra[band] = {}
                     extra[band][type] = native_endian(hdulist[h].data.astype(ftype))
 
+    if coadd:
+        uniq, indices = np.unique(fmap["TARGETID"], return_index=True)
+        targetids = uniq[indices.argsort()]
+        ntargets = len(targetids)
+        cwave = dict()
+        cflux = dict()
+        civar = dict()
+        crdat = dict()
+        cmask = dict()
+        for channel in bands:
+            cwave[channel] = wave[channel].copy()
+            nwave = len(cwave[channel])
+            cflux[channel] = np.zeros((ntargets, nwave))
+            civar[channel] = np.zeros((ntargets, nwave))
+            ndiag = res[channel].shape[1]
+            crdat[channel] = np.zeros((ntargets, ndiag, nwave))
+            cmask[channel] = np.zeros((ntargets, nwave), dtype=mask[channel].dtype)
+        #- Loop over targets, coadding all spectra for each target
+        fibermap = Table(dtype=fmap.dtype)
+        for i, targetid in enumerate(targetids):
+            ii = np.where(fmap['TARGETID'] == targetid)[0]
+            fibermap.add_row(fmap[ii[0]])
+            for channel in bands:
+                if len(ii) > 1:
+                    outwave, outflux, outivar, outrdat = _coadd(
+                        wave[channel],
+                        flux[channel][ii],
+                        ivar[channel][ii],
+                        res[channel][ii]
+                        )
+                    outmask = mask[channel][ii[0]]
+                    for j in range(1, len(ii)):
+                        outmask |= mask[channel][ii[j]]
+                else:
+                    outwave, outflux, outivar, outrdat = (
+                        wave[channel],
+                        flux[channel][ii[0]],
+                        ivar[channel][ii[0]],
+                        res[channel][ii[0]]
+                        )
+                    outmask = mask[channel][ii[0]]
+
+                cflux[channel][i] = outflux
+                civar[channel][i] = outivar
+                crdat[channel][i] = outrdat
+                cmask[channel][i] = outmask
+
+        return Spectra(bands, cwave, cflux, civar, mask=cmask, resolution_data=crdat,
+                       fibermap=fibermap, meta=meta, extra=extra, single=single,
+                       scores=scores)
+
     # Construct the Spectra object from the data.  If there are any
     # inconsistencies in the sizes of the arrays read from the file,
     # they will be caught by the constructor.
@@ -894,8 +946,38 @@ def read_spPlate(filename):
             uncertainty_unit = u.Unit('1e+34 (Angstrom2 cm4 s2) / erg2')
         uncertainty = InverseVariance(hdulist[1].data * uncertainty_unit)
         mask = hdulist[2].data != 0
+        meta['plugmap'] = Table.read(hdulist[5])
     return Spectrum1D(flux=flux, spectral_axis=dispersion*dispersion_unit,
                       uncertainty=uncertainty, meta=meta, mask=mask)
+
+
+def read_spZbest(filename):
+    """Read a SDSS spZbest file.
+
+    Parameters
+    ----------
+    filename : :class:`str`
+        Name of the spZbest file.
+
+    Returns
+    -------
+    tuple
+        A Table containing the redshift values and a Spectrum1D object containing
+        the best-fit models.
+    """
+    with fits.open(filename) as hdulist:
+        header = hdulist[0].header
+        meta = {'header': header}
+        redshifts = Table.read(hdulist[1])
+        flux_unit = u.Unit('1e-17 erg / (Angstrom cm2 s)')
+        flux = hdulist[2].data * flux_unit
+        dispersion = 10**(header['CRVAL1'] +
+                          header['CD1_1'] * np.arange(hdulist[2].header['NAXIS1'],
+                                                      dtype=hdulist[2].data.dtype))
+        dispersion_unit = u.Unit('Angstrom')
+        models = Spectrum1D(flux=flux, spectral_axis=dispersion*dispersion_unit,
+                            meta=meta)
+    return redshifts, models
 
 
 def read_frame_as_spectra(filename, night=None, expid=None, band=None, single=False):

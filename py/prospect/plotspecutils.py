@@ -1,14 +1,12 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
 # -*- coding: utf-8 -*-
-
-
 """
-TODO
-* add target details tab
-* add code details tab (version, SPECPROD)
-* redshift model fit
-* better smoothing kernel, e.g. Gaussian
-"""
+prospect.plotspecutils
+======================
 
+Plot spectra in the form of specutils-compatible objects.
+See :mod:`prospect.specutils` for objects and IO routines.
+"""
 import os, sys
 import argparse
 
@@ -54,7 +52,7 @@ def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, templ
         from redrock.archetypes import All_archetypes
 
     if np.any(zbest['TARGETID'] != spectra.fibermap['TARGETID']) :
-        raise RunTimeError('zcatalog and spectra do not match (different targetids)')
+        raise ValueError('zcatalog and spectra do not match (different targetids)')
 
     #- Load redrock templates; redirect stdout because redrock is chatty
     saved_stdout = sys.stdout
@@ -79,25 +77,25 @@ def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, templ
         zb = zbest[i]
 
         if archetype_fit:
-          archetypes = All_archetypes(archetypes_dir=archetypes_dir).archetypes
-          archetype  = archetypes[zb['SPECTYPE']]
-          coeff      = zb['COEFF']
+            archetypes = All_archetypes(archetypes_dir=archetypes_dir).archetypes
+            archetype  = archetypes[zb['SPECTYPE']]
+            coeff      = zb['COEFF']
 
-          for band in spectra.bands:
-              wave                = spectra.wave[band]
-              wavehash            = hash((len(wave), wave[0], wave[1], wave[-2], wave[-1], spectra.R[band].data.shape[0]))
-              dwave               = {wavehash: wave}
-              mx                  = archetype.eval(zb['SUBTYPE'], dwave, coeff, wave, zb['Z'])
-              model_flux[band][i] = spectra.R[band][i].dot(mx)
+            for band in spectra.bands:
+                wave                = spectra.wave[band]
+                wavehash            = hash((len(wave), wave[0], wave[1], wave[-2], wave[-1], spectra.R[band].data.shape[0]))
+                dwave               = {wavehash: wave}
+                mx                  = archetype.eval(zb['SUBTYPE'], dwave, coeff, wave, zb['Z'])
+                model_flux[band][i] = spectra.R[band][i].dot(mx)
 
         else:
-          tx    = templates[(zb['SPECTYPE'], zb['SUBTYPE'])]
-          coeff = zb['COEFF'][0:tx.nbasis]
-          model = tx.flux.T.dot(coeff).T
+            tx    = templates[(zb['SPECTYPE'], zb['SUBTYPE'])]
+            coeff = zb['COEFF'][0:tx.nbasis]
+            model = tx.flux.T.dot(coeff).T
 
-          for band in spectra.bands:
-              mx                  = resample_flux(spectra.wave[band], tx.wave*(1+zb['Z']), model)
-              model_flux[band][i] = spectra.R[band][i].dot(mx)
+            for band in spectra.bands:
+                mx                  = resample_flux(spectra.wave[band], tx.wave*(1+zb['Z']), model)
+                model_flux[band][i] = spectra.R[band][i].dot(mx)
 
     #- Now combine, if needed, to a single wavelength grid across all cameras
     if spectra.bands == ['brz'] :
@@ -132,13 +130,16 @@ def _viewer_urls(spectra, zoom=13, layer='dr8'):
     """
     u = "http://legacysurvey.org/viewer/jpeg-cutout?ra={0:f}&dec={1:f}&zoom={2:d}&layer={3}"
     v = "http://legacysurvey.org/viewer/?ra={0:f}&dec={1:f}&zoom={2:d}&layer={3}"
-    try:
-        ra = spectra.fibermap['RA_TARGET']
-        dec = spectra.fibermap['DEC_TARGET']
-    except KeyError:
-        ra = spectra.fibermap['TARGET_RA']
-        dec = spectra.fibermap['TARGET_DEC']
-
+    if hasattr(spectra, 'fibermap'):
+        try:
+            ra = spectra.fibermap['RA_TARGET']
+            dec = spectra.fibermap['DEC_TARGET']
+        except KeyError:
+            ra = spectra.fibermap['TARGET_RA']
+            dec = spectra.fibermap['TARGET_DEC']
+    else:
+        ra = spectra.meta['plugmap']['RA']
+        dec = spectra.meta['plugmap']['DEC']
     return [(u.format(ra[i], dec[i], zoom, layer),
              v.format(ra[i], dec[i], zoom, layer),
              'RA, Dec = {0:.4f}, {1:+.4f}'.format(ra[i], dec[i]))
@@ -147,24 +148,29 @@ def _viewer_urls(spectra, zoom=13, layer='dr8'):
 
 def make_cds_spectra(spectra, with_noise) :
     """ Creates column data source for b,r,z observed spectra """
-
     cds_spectra = list()
-    for band in spectra.bands:
-        cdsdata=dict(
-            origwave=spectra.wave[band].copy(),
-            plotwave=spectra.wave[band].copy(),
-            )
-        for i in range(spectra.num_spectra()):
+    if isinstance(spectra, SpectrumList):
+        s = spectra
+        bands = spectra.bands
+    else:
+        s = [spectra]
+        bands = ['coadd']
+    for j, band in enumerate(bands):
+        cdsdata=dict(origwave=s[j].spectral_axis.value.copy(),
+                     plotwave=s[j].spectral_axis.value.copy())
+        for i in range(s[j].flux.shape[0]):
             key = 'origflux'+str(i)
-            cdsdata[key] = spectra.flux[band][i]
+            cdsdata[key] = s[j].flux.value[i, :].copy()
             if with_noise :
                 key = 'orignoise'+str(i)
-                noise = np.zeros(len(spectra.ivar[band][i]))
-                w, = np.where( (spectra.ivar[band][i] > 0))
-                noise[w] = 1/np.sqrt(spectra.ivar[band][i][w])
+                ivar = s[j].uncertainty.array[i, :].copy()
+                noise = np.zeros(len(ivar))
+                w, = np.where( (ivar > 0))
+                noise[w] = 1/np.sqrt(ivar[w])
                 cdsdata[key] = noise
         cdsdata['plotflux'] = cdsdata['origflux0']
-        if with_noise : cdsdata['plotnoise'] = cdsdata['orignoise0']
+        if with_noise :
+            cdsdata['plotnoise'] = cdsdata['orignoise0']
         cds_spectra.append( bk.ColumnDataSource(cdsdata, name=band) )
 
     return cds_spectra
@@ -209,70 +215,123 @@ def make_cds_model(model) :
 
 def make_cds_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=" ") :
     """ Creates column data source for target-related metadata, from zcatalog, fibermap and VI files """
-
-    assert mask_type in ['SV1_DESI_TARGET', 'DESI_TARGET', 'CMX_TARGET']
     target_info = list()
-    for i, row in enumerate(spectra.fibermap):
-        if mask_type == 'SV1_DESI_TARGET' :
-            target_bit_names = ' '.join(sv1_desi_mask.names(row['SV1_DESI_TARGET']))
-        elif mask_type == 'DESI_TARGET' :
-            target_bit_names = ' '.join(desi_mask.names(row['DESI_TARGET']))
-        elif mask_type == 'CMX_TARGET' :
-            target_bit_names = ' '.join(cmx_mask.names(row['CMX_TARGET']))
-        txt = target_bit_names
-        if not is_coadded :
-            ## BYPASS DIV
-            #           txt += '<BR />'
-            if 'NIGHT' in spectra.fibermap.keys() : txt += "Night : {}".format(row['NIGHT'])
-            if 'EXPID' in spectra.fibermap.keys() : txt += "Exposure : {}".format(row['EXPID'])
-            if 'FIBER' in spectra.fibermap.keys() : txt += "Fiber : {}".format(row['FIBER'])
-        target_info.append(txt)
+    if isinstance(spectra, Spectrum1D):
+        assert mask_type in ['PRIMTARGET', 'SECTARGET',
+                             'BOSS_TARGET1', 'BOSS_TARGET2',
+                             'ANCILLARY_TARGET1', 'ANCILLARY_TARGET2',
+                             'EBOSS_TARGET0', 'EBOSS_TARGET1', 'EBOSS_TARGET2',]
+        nspec = spectra.flux.shape[0]
+        for i, row in enumerate(spectra.meta['plugmap']):
+            target_bit_names = mask_type + ' (DUMMY)'
+            target_info.append(target_bit_names)
 
-    cds_targetinfo = bk.ColumnDataSource(
-        dict(target_info=target_info),
-        name='target_info')
+        cds_targetinfo = bk.ColumnDataSource(
+            dict(target_info=target_info),
+            name='target_info')
 
-    ## BYPASS DIV : Added photometry fields ; also add several bands
-    bands = ['G','R','Z', 'W1', 'W2']
-    for bandname in bands :
-        mag = np.zeros(spectra.num_spectra())
-        flux = spectra.fibermap['FLUX_'+bandname]
-        extinction = np.ones(len(flux))
-        if ('MW_TRANSMISSION_'+bandname) in spectra.fibermap.keys() :
-            extinction = spectra.fibermap['MW_TRANSMISSION_'+bandname]
-        w, = np.where( (flux>0) & (extinction>0) )
-        mag[w] = -2.5*np.log10(flux[w]/extinction[w])+22.5
-        cds_targetinfo.add(mag, name='mag_'+bandname)
+        bands = ['u', 'g', 'r', 'i', 'z']
+        for i, bandname in enumerate(bands):
+            # mag = np.zeros(len(spectra.meta['plugmap']))
+            mag = spectra.meta['plugmap']['MAG'][:, i]
+            # extinction = np.ones(len(flux))
+            # if ('MW_TRANSMISSION_'+bandname) in spectra.fibermap.keys() :
+            #     extinction = spectra.fibermap['MW_TRANSMISSION_'+bandname]
+            # w, = np.where( (flux>0) & (extinction>0) )
+            # mag[w] = -2.5*np.log10(flux[w]/extinction[w])+22.5
+            cds_targetinfo.add(mag, name='mag_'+bandname)
 
-    nspec = spectra.num_spectra()
+        if zcatalog is not None :
+            cds_targetinfo.add(zcatalog['Z'], name='z')
+            cds_targetinfo.add(zcatalog['CLASS'].astype('U{0:d}'.format(zcatalog['CLASS'].dtype.itemsize)), name='spectype')
+            cds_targetinfo.add(zcatalog['Z_ERR'], name='zerr')
+            cds_targetinfo.add(zcatalog['ZWARNING'], name='zwarn')
+            cds_targetinfo.add(zcatalog['RCHI2DIFF'], name='deltachi2')
+        else :
+            cds_targetinfo.add(np.zeros(nspec), name='z')
+            cds_targetinfo.add([" " for i in range(nspec)], name='spectype')
+            cds_targetinfo.add(np.zeros(nspec), name='zerr')
+            cds_targetinfo.add([0 for i in range(nspec)], name='zwarn')
+            cds_targetinfo.add(np.zeros(nspec), name='deltachi2')
 
-    if zcatalog is not None :
-        cds_targetinfo.add(zcatalog['Z'], name='z')
-        cds_targetinfo.add(zcatalog['SPECTYPE'].astype('U{0:d}'.format(zcatalog['SPECTYPE'].dtype.itemsize)), name='spectype')
-        cds_targetinfo.add(zcatalog['ZERR'], name='zerr')
-        cds_targetinfo.add(zcatalog['ZWARN'], name='zwarn')
-        cds_targetinfo.add(zcatalog['DELTACHI2'], name='deltachi2')
-    else :
-        cds_targetinfo.add(np.zeros(nspec), name='z')
-        cds_targetinfo.add([" " for i in range(nspec)], name='spectype')
-        cds_targetinfo.add(np.zeros(nspec), name='zerr')
-        cds_targetinfo.add([0 for i in range(nspec)], name='zwarn')
-        cds_targetinfo.add(np.zeros(nspec), name='deltachi2')
-
-    if not is_coadded and 'EXPID' in spectra.fibermap.keys() :
-        cds_targetinfo.add(spectra.fibermap['EXPID'], name='expid')
-    else : # If coadd, fill VI accordingly
+        # if not is_coadded and 'EXPID' in spectra.fibermap.keys() :
+         #    cds_targetinfo.add(spectra.fibermap['EXPID'], name='expid')
+        # else : # If coadd, fill VI accordingly
         cds_targetinfo.add(['-1' for i in range(nspec)], name='expid')
-    cds_targetinfo.add([str(x) for x in spectra.fibermap['TARGETID']], name='targetid') # !! No int64 in js !!
+        cds_targetinfo.add([str(x.tolist()) for x in spectra.meta['plugmap']['OBJID']], name='targetid') # !! No int64 in js !!
 
-    #- Get desispec version
-    #- TODO : get redrock version (from zcatalog...)
-    desispec_specversion = "0"
-    for xx,yy in spectra.meta.items() :
-        if yy=="desispec" :
-            desispec_specversion = spectra.meta[xx.replace('NAM','VER')]
-    cds_targetinfo.add([desispec_specversion for i in range(nspec)], name='spec_version')
-    cds_targetinfo.add(np.zeros(nspec), name='redrock_version')
+        #- Get desispec version
+        #- TODO : get redrock version (from zcatalog...)
+        desispec_specversion = "SDSS"
+        # for xx,yy in spectra.meta.items() :
+        #     if yy=="desispec" :
+        #         desispec_specversion = spectra.meta[xx.replace('NAM','VER')]
+        cds_targetinfo.add([desispec_specversion for i in range(nspec)], name='spec_version')
+        cds_targetinfo.add(np.zeros(nspec), name='redrock_version')
+
+    else:
+        assert mask_type in ['SV1_DESI_TARGET', 'DESI_TARGET', 'CMX_TARGET']
+        for i, row in enumerate(spectra.fibermap):
+            if mask_type == 'SV1_DESI_TARGET' :
+                target_bit_names = ' '.join(sv1_desi_mask.names(row['SV1_DESI_TARGET']))
+            elif mask_type == 'DESI_TARGET' :
+                target_bit_names = ' '.join(desi_mask.names(row['DESI_TARGET']))
+            elif mask_type == 'CMX_TARGET' :
+                target_bit_names = ' '.join(cmx_mask.names(row['CMX_TARGET']))
+            txt = target_bit_names
+            if not is_coadded :
+                ## BYPASS DIV
+                #           txt += '<BR />'
+                if 'NIGHT' in spectra.fibermap.keys() : txt += "Night : {}".format(row['NIGHT'])
+                if 'EXPID' in spectra.fibermap.keys() : txt += "Exposure : {}".format(row['EXPID'])
+                if 'FIBER' in spectra.fibermap.keys() : txt += "Fiber : {}".format(row['FIBER'])
+            target_info.append(txt)
+
+        cds_targetinfo = bk.ColumnDataSource(
+            dict(target_info=target_info),
+            name='target_info')
+
+        ## BYPASS DIV : Added photometry fields ; also add several bands
+        bands = ['G','R','Z', 'W1', 'W2']
+        for bandname in bands :
+            mag = np.zeros(spectra.num_spectra())
+            flux = spectra.fibermap['FLUX_'+bandname]
+            extinction = np.ones(len(flux))
+            if ('MW_TRANSMISSION_'+bandname) in spectra.fibermap.keys() :
+                extinction = spectra.fibermap['MW_TRANSMISSION_'+bandname]
+            w, = np.where( (flux>0) & (extinction>0) )
+            mag[w] = -2.5*np.log10(flux[w]/extinction[w])+22.5
+            cds_targetinfo.add(mag, name='mag_'+bandname)
+
+        nspec = spectra.num_spectra()
+
+        if zcatalog is not None :
+            cds_targetinfo.add(zcatalog['Z'], name='z')
+            cds_targetinfo.add(zcatalog['SPECTYPE'].astype('U{0:d}'.format(zcatalog['SPECTYPE'].dtype.itemsize)), name='spectype')
+            cds_targetinfo.add(zcatalog['ZERR'], name='zerr')
+            cds_targetinfo.add(zcatalog['ZWARN'], name='zwarn')
+            cds_targetinfo.add(zcatalog['DELTACHI2'], name='deltachi2')
+        else :
+            cds_targetinfo.add(np.zeros(nspec), name='z')
+            cds_targetinfo.add([" " for i in range(nspec)], name='spectype')
+            cds_targetinfo.add(np.zeros(nspec), name='zerr')
+            cds_targetinfo.add([0 for i in range(nspec)], name='zwarn')
+            cds_targetinfo.add(np.zeros(nspec), name='deltachi2')
+
+        if not is_coadded and 'EXPID' in spectra.fibermap.keys() :
+            cds_targetinfo.add(spectra.fibermap['EXPID'], name='expid')
+        else : # If coadd, fill VI accordingly
+            cds_targetinfo.add(['-1' for i in range(nspec)], name='expid')
+        cds_targetinfo.add([str(x) for x in spectra.fibermap['TARGETID']], name='targetid') # !! No int64 in js !!
+
+        #- Get desispec version
+        #- TODO : get redrock version (from zcatalog...)
+        desispec_specversion = "0"
+        for xx,yy in spectra.meta.items() :
+            if yy=="desispec" :
+                desispec_specversion = spectra.meta[xx.replace('NAM','VER')]
+        cds_targetinfo.add([desispec_specversion for i in range(nspec)], name='spec_version')
+        cds_targetinfo.add(np.zeros(nspec), name='redrock_version')
 
     # VI inputs
     cds_targetinfo.add([username for i in range(nspec)], name='VI_scanner')
@@ -327,97 +386,112 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
     return gridplot(thumb_plots, ncols=ncols_grid, toolbar_location=None, sizing_mode='scale_width')
 
 
-def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_zcat=True, model=None, notebook=False, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, mask_type='DESI_TARGET', with_thumb_tab=True, with_vi_widgets=True, with_thumb_only_page=False, template_dir=None, archetype_fit=False, archetypes_dir=None):
+def plotspectra(spectra, zcatalog=None, notebook=False, html_dir=None, title=None,
+                with_imaging=True, with_noise=True, with_thumb_tab=True,
+                with_thumb_only_page=False, with_vi_widgets=True, is_coadded=False,
+                with_coaddcam=True, mask_type='DESI_TARGET',
+                model_from_zcat=True, model=None, template_dir=None, archetype_fit=False, archetypes_dir=None):
+    '''Main prospect routine. From a set of spectra, create a bokeh document
+    used for VI, to be displayed as an HTML page or within a Jupyter notebook.
+
+    Parameters
+    ----------
+    spectra : :class:`~specutils.Spectrum1D` or :class:`~specutils.SpectrumList`
+        Input spectra.  :class:`~specutils.SpectrumList` are assumed to be
+        DESI spectra.  Otherwise SDSS/BOSS/eBOSS is assumed.
+    zcatalog : :class:`~astropy.table.Table`, optional
+        Redshift values, matched one-to-one with the input spectra.
+    notebook : :class:`bool`, optional
+        If ``True``, bokeh outputs the viewer to a Jupyter notebook.
+    html_dir : :class:`str`, optional
+        Directory to store the HTML page if `notebook` is ``False``.
+    title : :class:`str`, optional
+        Title used to name the HTML page / the bokeh figure / the VI file.
+    with_imaging : :class:`bool`, optional
+        If ``False``, don't include thumb image from http://legacysurvey.org/viewer.
+    with_noise : :class:`bool`, optional
+        If ``False``, don't include uncertainty for each spectrum.
+    with_thumb_tab : :class:`bool`, optional
+        If ``False``, don't include a tab with spectra thumbnails.
+    with_thumb_only_page : :class:`bool`, optional
+        When creating a static HTML (`notebook` is ``False``), a light HTML
+        page including only the thumb gallery will also be produced.
+    with_vi_widgets : :class:`bool`, optional
+        Include widgets used to enter VI information. Set it to ``False`` if
+        you do not intend to record VI files.
+    is_coadded : :class:`bool`, optional
+        Set to ``True`` if `spectra` are coadds.  This will always be assumed
+        for SDSS-style inputs, but not for DESI inputs.
+    with_coaddcam : :class:`bool`, optional
+        Include camera-coaddition, only relevant for DESI.
+    mask_type : :class:`str`, optional
+        Bitmask type to identify target categories in the spectra. For DESI
+        these could be: DESI_TARGET, SV1_DESI_TARGET, CMX_TARGET.
+    model_from_zcat : :class:`bool`, optional
+        If ``True``, model spectra will be computed from the input `zcatalog`.
+    model : :func:`tuple`, optional
+        If set, use this input set of model spectra instead of computing it from `zcatalog`.
+        model consists of (mwave, mflux); model must be entry-matched to `zcatalog`.
+    template_dir : :class:`str`, optional
+        Redrock template directory.
+    archetype_fit : :class:`bool`, optional
+        If ``True``, assume `zcatalog` derived from :command:`redrock --archetypes`
+        and plot model accordingly.
+    archetypes_dir : :class:`str`, optional
+        Directory path for archetypes if not :envvar:`RR_ARCHETYPE_DIR`.
     '''
-    Main prospect routine. From a set of spectra, creates a bokeh document used for VI, to be displayed as an HTML page or within a jupyter notebook.
-
-    Main Parameter
-    ---------
-    spectra: input spectra. Supported formats: 1) a 3-band DESI spectra object, with bands 'b', 'r', 'z'. 2) a single-band
-        DESI spectra object, bandname 'brz'. 2) a list of 3 frames, associated to the b, r and z bands.
-    zcatalog (default None): astropy Table, containing the 'ZBEST' output redrock. Currently supports redrock-PCA or archetype files. The entries in zcatalog must be matched one-by-one (in order) to spectra.
-    notebook (bool): if True, bokeh outputs the viewer to a notebook, else to a (static) HTML page
-    html_dir (string): directory to store the HTML page if notebook is False
-    title (string): title used to name the HTML page / the bokeh figure / the VI file
-    mask_type : mask type to identify target categories from the fibermap. Available : DESI_TARGET,
-        SV1_DESI_TARGET, CMX_TARGET. Default : DESI_TARGET.
-    with_vi_widgets (bool): include widgets used to enter VI informations. Set it to False if you do not intend to
-        record VI files.
-    with_thumb_tab (bool): include a tab with thumbnails of spectra in bokeh viewer
-    with_thumb_only_page (bool): when creating a static HTML (notebook==False), a light HTML page including only the thumb
-        gallery will also be produced.
-
-
-    Less-useful parameters
-    ---------
-    nspec: select subsample of spectra, only for frame input
-    startspec: if nspec is set, subsample selection will be [startspec:startspec+nspec]
-    model_from_zcat: if True, model spectra will be computed from the input zcatalog
-    model: if set, use this input set of model spectra (instead of computing it from zcat)
-        model format (mwave, mflux); model must be entry-matched to zcatalog.
-    is_coadded : set to True if spectra are coadds
-    with_imaging : include thumb image from legacysurvey.org
-    with_noise : include noise for each spectrum
-    with_coaddcam : include camera-coaddition
-    template_dir: Redrock template directory
-    archetype_fit : if True, assume zbest derived from redrock --archetypes and plot model accordingly.
-    archetypes_dir : directory path for archetypes if not $RR__ARCHETYPE_DIR.
-    '''
-    frame_input = False
-    if isinstance(spectra, Spectrum1D) or isinstance(spectra, SpectrumList):
-        assert nspec is None
-        if isinstance(spectra, Spectrum1D):
-            nspec = spectra.flux.shape[0]
-            bad = (spectra.uncertainty.array == 0.0) | spectra.mask
-            spectra.flux[bad] = np.nan
-        else:
-            nspec = spectra[0].flux.shape[0]
-            for s in spectra:
-                bad = (s.uncertainty.array == 0.0) | s.mask
-                s.flux[bad] = np.nan
+    # Set masked bins to NaN for compatibility with bokeh.
+    if isinstance(spectra, Spectrum1D):
+        # We will assume this is from an SDSS/BOSS/eBOSS spPlate file.
+        sdss = True
+        is_coadded = True
+        nspec = spectra.flux.shape[0]
+        bad = (spectra.uncertainty.array == 0.0) | spectra.mask
+        spectra.flux[bad] = np.nan
+    elif isinstance(spectra, SpectrumList):
+        # We will assume this is from a DESI spectra-64 file.
+        sdss = False
+        nspec = spectra[0].flux.shape[0]
+        for s in spectra:
+            bad = (s.uncertainty.array == 0.0) | s.mask
+            s.flux[bad] = np.nan
     else:
-        if isinstance(spectra, list) and isinstance(spectra[0], desispec.frame.Frame):
-            #- If inputs are frames, convert to a spectra object
-            spectra = utils_specviewer.frames2spectra(spectra, nspec=nspec, startspec=startspec)
-            frame_input = True
-        else:
-            assert nspec is None
-            nspec = spectra.num_spectra() # NB can be less than input "nspec"
-        #- Set masked bins to NaN so that Bokeh won't plot them
-        for band in spectra.bands:
-            bad = (spectra.ivar[band] == 0.0) | (spectra.mask[band] != 0)
-            spectra.flux[band][bad] = np.nan
-        #- No coaddition if spectra is already single-band
-        if len(spectra.bands)==1 : with_coaddcam = False
+        raise ValueError('Unsupported type for input spectra!')
 
-    if frame_input and title is None:
-        meta = spectra.meta
-        title = 'Night {} ExpID {} Spectrograph {}'.format(
-            meta['NIGHT'], meta['EXPID'], meta['CAMERA'][1],
-        )
-    if title is None : title = "specviewer"
+    if title is None:
+        title = "PROSPECT"
 
     #- Input zcatalog / model
     if zcatalog is not None:
-        if np.any(zcatalog['TARGETID'] != spectra.fibermap['TARGETID']) :
-            raise RunTimeError('zcatalog and spectra do not match (different targetids)')
+        if sdss:
+            if len(zcatalog) != spectra.flux.shape[0]:
+                raise ValueError('zcatalog and spectra do not match (different lengths)')
+        else:
+            if np.any(zcatalog['TARGETID'] != spectra.fibermap['TARGETID']) :
+                raise ValueError('zcatalog and spectra do not match (different targetids)')
 
-        if model is not None :
-            assert model_from_zcat == False
+        if model is not None:
+            # SDSS spectra will supply the model.
+            assert not model_from_zcat
             mwave, mflux = model
-            if len(mflux)!=spectra.num_spectra() :
-                raise RunTimeError("model fluxes do not match spectra (different nb of entries)")
+            if len(mflux) != nspec:
+                raise ValueError("model fluxes do not match spectra (different nb of entries)")
 
-        if model_from_zcat == True :
-            model = create_model(spectra, zcatalog, archetype_fit=archetype_fit, archetypes_dir=archetypes_dir, template_dir=template_dir)
+        if model_from_zcat:
+            # DESI spectra will obtain the model from templates.
+            model = create_model(spectra, zcatalog,
+                                 archetype_fit=archetype_fit,
+                                 archetypes_dir=archetypes_dir,
+                                 template_dir=template_dir)
 
     #-----
     #- Initialize Bokeh output
     if notebook:
-        assert with_thumb_only_page == False
+        assert not with_thumb_only_page
         bk.output_notebook()
-    else :
-        if html_dir is None : raise RuntimeError("Need html_dir")
+    else:
+        if html_dir is None:
+            raise RuntimeError("Need html_dir when writing HTML.")
         html_page = os.path.join(html_dir, "specviewer_"+title+".html")
         bk.output_file(html_page, title='DESI spectral viewer')
 
@@ -450,11 +524,19 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     ymin = ymax = xmax = 0.0
     xmin = 100000.
     xmargin = 300.
-    for band in spectra.bands:
-        ymin = min(ymin, np.nanmin(spectra.flux[band][0]))
-        ymax = max(ymax, np.nanmax(spectra.flux[band][0]))
-        xmin = min(xmin, np.min(spectra.wave[band]))
-        xmax = max(xmax, np.max(spectra.wave[band]))
+    if sdss:
+        bands = ['coadd']
+        ymin = np.nanmin(spectra.flux.value[0])
+        ymax = np.nanmax(spectra.flux.value[0])
+        xmin = np.min(spectra.spectral_axis.value)
+        xmax = np.max(spectra.spectral_axis.value)
+    else:
+        bands = spectra.bands
+        for i, band in enumerate(bands):
+            ymin = min(ymin, np.nanmin(spectra[i].flux.value[0]))
+            ymax = max(ymax, np.nanmax(spectra[i].flux.value[0]))
+            xmin = min(xmin, np.min(spectra[i].spectral_axis.value))
+            xmax = max(xmax, np.max(spectra[i].spectral_axis.value))
     xmin -= xmargin
     xmax += xmargin
 
@@ -480,7 +562,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     ## overlap wavelengths are hardcoded, from 1907.10688 (Table 1)
     overlap_waves = [ [5660, 5930], [7470, 7720] ]
     overlap_bands = []
-    if spectra.bands == ['brz'] :
+    if bands == ['brz'] :
         for i in range(len(overlap_waves)) :
             overlap_bands.append( BoxAnnotation(left=overlap_waves[i][0], right=overlap_waves[i][1], fill_color='blue', fill_alpha=0.03, line_alpha=0) )
             fig.add_layout(overlap_bands[-1])
@@ -885,7 +967,11 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
     tmp_dict['Target class'] = [ cds_targetinfo.data['target_info'][0] ]
     targ_disp_cols = [ TableColumn(field='Target ID', title='Target ID', width=150),
                      TableColumn(field='Target class', title='Target class', width=plot_width-120-50-5*50-150) ] # TODO non-hardcode width
-    for band in ['G', 'R', 'Z', 'W1', 'W2'] :
+    if sdss:
+        phot_bands = ['u', 'g', 'r', 'i', 'z']
+    else:
+        phot_bands = ['G', 'R', 'Z', 'W1', 'W2']
+    for band in phot_bands:
         tmp_dict['mag_'+band] = [ "{:.2f}".format(cds_targetinfo.data['mag_'+band][0]) ]
         targ_disp_cols.append( TableColumn(field='mag_'+band, title='mag_'+band, width=50) )
     targ_disp_cds = bk.ColumnDataSource(tmp_dict, name='targ_disp_cds')
