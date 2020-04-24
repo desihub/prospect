@@ -1,5 +1,5 @@
 // update_plot() CustomJS
-// Requires to include functions in: adapt_plotrange.js, coadd_brz_cameras.js, 
+// Requires to include functions in: adapt_plotrange.js, coadd_brz_cameras.js,
 //     interp_grid.js, smooth_data.js
 
 // TODO : optimize : if cd_obj==smootherslider don't need to do everything... (change imaging data etc)
@@ -14,15 +14,23 @@ if (cb_obj == ifiberslider) { // update VI widgets + infos for current spectrum
 //    target_info_div.text = targetinfo.data['target_info'][ifiber]
     targ_disp_cds.data['TARGETID'] = [ targetinfo.data['targetid'][ifiber] ]
     targ_disp_cds.data['Target class'] = [ targetinfo.data['target_info'][ifiber] ]
-    targ_disp_cds.data['mag_G'] = [ targetinfo.data['mag_G'][ifiber].toFixed(2) ]
-    targ_disp_cds.data['mag_R'] = [ targetinfo.data['mag_R'][ifiber].toFixed(2) ]
-    targ_disp_cds.data['mag_Z'] = [ targetinfo.data['mag_Z'][ifiber].toFixed(2) ]
-    targ_disp_cds.data['mag_W1'] = [ targetinfo.data['mag_W1'][ifiber].toFixed(2) ]
-    targ_disp_cds.data['mag_W2'] = [ targetinfo.data['mag_W2'][ifiber].toFixed(2) ]
+    if (targetinfo.data.hasOwnProperty('mag_W1')) {
+        targ_disp_cds.data['mag_G'] = [ targetinfo.data['mag_G'][ifiber].toFixed(2) ]
+        targ_disp_cds.data['mag_R'] = [ targetinfo.data['mag_R'][ifiber].toFixed(2) ]
+        targ_disp_cds.data['mag_Z'] = [ targetinfo.data['mag_Z'][ifiber].toFixed(2) ]
+        targ_disp_cds.data['mag_W1'] = [ targetinfo.data['mag_W1'][ifiber].toFixed(2) ]
+        targ_disp_cds.data['mag_W2'] = [ targetinfo.data['mag_W2'][ifiber].toFixed(2) ]
+    } else {
+        targ_disp_cds.data['mag_u'] = [ targetinfo.data['mag_u'][ifiber].toFixed(2) ]
+        targ_disp_cds.data['mag_g'] = [ targetinfo.data['mag_g'][ifiber].toFixed(2) ]
+        targ_disp_cds.data['mag_r'] = [ targetinfo.data['mag_r'][ifiber].toFixed(2) ]
+        targ_disp_cds.data['mag_i'] = [ targetinfo.data['mag_i'][ifiber].toFixed(2) ]
+        targ_disp_cds.data['mag_z'] = [ targetinfo.data['mag_z'][ifiber].toFixed(2) ]
+    }
     targ_disp_cds.change.emit()
     if(targetinfo.data['z'] != undefined && zcat_disp_cds != null) {
         if (fit_results != undefined) {
-            zcat_disp_cds.data['SPECTYPE'] = fit_results['SPECTYPE'][ifiberslider.value].slice() // (0,num_best_fits)  
+            zcat_disp_cds.data['SPECTYPE'] = fit_results['SPECTYPE'][ifiberslider.value].slice() // (0,num_best_fits)
             zcat_disp_cds.data['SUBTYPE'] = fit_results['SUBTYPE'][ifiberslider.value].slice()
             zcat_disp_cds.data['Z'] = fit_results['Z'][ifiberslider.value].slice()
             zcat_disp_cds.data['ZERR'] = fit_results['ZERR'][ifiberslider.value].slice()
@@ -49,7 +57,7 @@ if (cb_obj == ifiberslider) { // update VI widgets + infos for current spectrum
         }
         zcat_disp_cds.change.emit()
     }
-    
+
     vi_std_comment_select.value = ' '
     vi_comment_input.value = targetinfo.data['VI_comment'][ifiber]
     vi_name_input.value = (targetinfo.data['VI_scanner'][ifiber]).trim()
@@ -63,7 +71,7 @@ if (cb_obj == ifiberslider) { // update VI widgets + infos for current spectrum
     vi_issue_input.active = issues_on
     vi_z_input.value = (targetinfo.data['VI_z'][ifiber]).trim()
     vi_category_select.value = targetinfo.data['VI_spectype'][ifiber]
-    
+
     // update target image
     if (imfig_source) {
         imfig_source.data.url[0] = imfig_urls[ifiber][0]
@@ -193,5 +201,3 @@ if(ymin<0) {
     fig.y_range.start = ymin * 0.6
 }
 fig.y_range.end = ymax * 1.4
-
-

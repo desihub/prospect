@@ -169,9 +169,7 @@ class Spectra(SpectrumList):
     @property
     def wave(self):
         if self._wave is None:
-            self._wave = dict()
-            for band in self.bands:
-                self._wave[band] = self.wavelength_grid(band)
+            foo = self.wavelength_grid(self.bands[0])
         return self._wave
 
     @property
@@ -250,7 +248,11 @@ class Spectra(SpectrumList):
         """
         if band not in self.bands:
             raise KeyError("{} is not a valid band.".format(band))
-        return self.wave[band]
+        if self._wave is None:
+            self._wave = dict()
+            for band in self.bands:
+                self._wave[band] = self[self.bands.index(band)].spectral_axis.value
+        return self._wave[band]
 
     def target_ids(self):
         """
@@ -765,7 +767,7 @@ def write_spectra(outfile, spec, units=None):
     return outfile
 
 
-def read_spectra(infile, single=False, coadd=False):
+def read_spectra(infile, single=False, coadd=None):
     """Read Spectra object from FITS file.
 
     This reads data written by the write_spectra function.  A new Spectra
@@ -774,7 +776,7 @@ def read_spectra(infile, single=False, coadd=False):
     Args:
         infile (str): path to read
         single (bool): if True, keep spectra as single precision in memory.
-        coadd (bool): if True, coadd all spectra from the same targetid.
+        coadd (array-like): if set, coadd all spectra from the provided targetids.
 
     Returns (Spectra):
         The object containing the data read from disk.
@@ -854,8 +856,8 @@ def read_spectra(infile, single=False, coadd=False):
                         extra[band] = {}
                     extra[band][type] = native_endian(hdulist[h].data.astype(ftype))
 
-    if coadd:
-        uniq, indices = np.unique(fmap["TARGETID"], return_index=True)
+    if coadd is not None:
+        uniq, indices = np.unique(coadd, return_index=True)
         targetids = uniq[indices.argsort()]
         ntargets = len(targetids)
         cwave = dict()
@@ -914,13 +916,15 @@ def read_spectra(infile, single=False, coadd=False):
                    scores=scores)
 
 
-def read_spPlate(filename):
+def read_spPlate(filename, limit=None):
     """Read a SDSS spPlate file.
 
     Parameters
     ----------
     filename : :class:`str`
         Name of the spPlate file.
+    limit : :class:`int`, optional
+        If set, only return the first `limit` spectra.
 
     Returns
     -------
@@ -934,30 +938,31 @@ def read_spPlate(filename):
             flux_unit = u.Unit(hdulist[0].header['BUNIT'])
         except ValueError:
             flux_unit = u.Unit('1e-17 erg / (Angstrom cm2 s)')
-        flux = hdulist[0].data * flux_unit
+        if limit is None:
+            limit = header['NAXIS2']
+        flux = hdulist[0].data[0:limit, :] * flux_unit
         wcs = WCS(header)
         dispersion_unit = u.Unit('Angstrom')
         dispersion = 10**wcs.all_pix2world(np.vstack((np.arange(flux.shape[1]),
                                                       np.zeros((flux.shape[1],)))).T,
                                            0)[:, 0]
-        try:
-            uncertainty_unit = u.Unit(hdulist[1].header['BUNIT'])
-        except ValueError:
-            uncertainty_unit = u.Unit('1e+34 (Angstrom2 cm4 s2) / erg2')
-        uncertainty = InverseVariance(hdulist[1].data * uncertainty_unit)
-        mask = hdulist[2].data != 0
-        meta['plugmap'] = Table.read(hdulist[5])
+        uncertainty = InverseVariance(hdulist[1].data[0:limit, :])
+        mask = hdulist[2].data[0:limit, :] != 0
+        meta['plugmap'] = Table.read(hdulist[5])[0:limit]
+
     return Spectrum1D(flux=flux, spectral_axis=dispersion*dispersion_unit,
                       uncertainty=uncertainty, meta=meta, mask=mask)
 
 
-def read_spZbest(filename):
+def read_spZbest(filename, limit=None):
     """Read a SDSS spZbest file.
 
     Parameters
     ----------
     filename : :class:`str`
         Name of the spZbest file.
+    limit : :class:`int`, optional
+        If set, only return the first `limit` spectra.
 
     Returns
     -------
@@ -969,8 +974,11 @@ def read_spZbest(filename):
         header = hdulist[0].header
         meta = {'header': header}
         redshifts = Table.read(hdulist[1])
+        if limit is None:
+            limit = hdulist[2].header['NAXIS2']
+        redshifts = redshifts[0:limit]
         flux_unit = u.Unit('1e-17 erg / (Angstrom cm2 s)')
-        flux = hdulist[2].data * flux_unit
+        flux = hdulist[2].data[0:limit, :] * flux_unit
         dispersion = 10**(header['CRVAL1'] +
                           header['CD1_1'] * np.arange(hdulist[2].header['NAXIS1'],
                                                       dtype=hdulist[2].data.dtype))

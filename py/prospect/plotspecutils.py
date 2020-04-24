@@ -127,8 +127,10 @@ def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, templ
 
 def _viewer_urls(spectra, zoom=13, layer='dr8'):
     """Return legacysurvey.org viewer URLs for all spectra.
+
+    Note: `layer` does not apply to the JPEG cutout service.
     """
-    u = "http://legacysurvey.org/viewer/jpeg-cutout?ra={0:f}&dec={1:f}&zoom={2:d}&layer={3}"
+    u = "http://legacysurvey.org/viewer/jpeg-cutout?ra={0:f}&dec={1:f}&zoom={2:d}"
     v = "http://legacysurvey.org/viewer/?ra={0:f}&dec={1:f}&zoom={2:d}&layer={3}"
     if hasattr(spectra, 'fibermap'):
         try:
@@ -723,7 +725,7 @@ def plotspectra(spectra, zcatalog=None, notebook=False, html_dir=None, title=Non
         var ymax = 0.0
         for (var i=0; i<spectra.length; i++) {
             var data = spectra[i].data
-            tmp = get_y_minmax(0.01, 0.99, data['plotflux'])
+            var tmp = get_y_minmax(0.01, 0.99, data['plotflux'])
             ymin = Math.min(ymin, tmp[0])
             ymax = Math.max(ymax, tmp[1])
         }
