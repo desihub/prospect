@@ -51,9 +51,7 @@ if (cb_obj == ifiberslider) { // update VI widgets + infos for current spectrum
 
 if(targetinfo.data['z'] != undefined && cb_obj == ifiberslider) {
     var z = targetinfo.data['z'][ifiber]
-    var z1 = Math.floor(z*100) / 100
-    zslider.value = z1
-    dzslider.value = (z - z1)
+    z_input.value = z.toFixed(4)
 }
 
 function get_y_minmax(pmin, pmax, data) {
