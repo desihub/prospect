@@ -95,10 +95,10 @@ for (var j=0; j<zref_vect.length; j++) zref_vect[j] = spec_z
 cds_othermodel.data['zref'] = zref_vect.slice()
 
 // Smooth plotflux
-nsmooth = smootherslider.value
+var nsmooth = smootherslider.value
 if (nsmooth > 0) {
     var kernel = [];
-    for(var i=-2*nsmooth; i<=2*nsmooth; i++) {
+    for (var i=-2*nsmooth; i<=2*nsmooth; i++) {
         kernel.push(Math.exp(-(i**2)/(2*nsmooth)))
     }
     var kernel_offset = Math.floor(kernel.length/2)

@@ -108,7 +108,7 @@ for (var i=0; i<spectra.length; i++) {
     }
     spectra[i].change.emit()
 
-    tmp = adapt_plotrange(0.01, 0.99, data['plotflux'])
+    var tmp = adapt_plotrange(0.01, 0.99, data['plotflux'])
     ymin = Math.min(ymin, tmp[0])
     ymax = Math.max(ymax, tmp[1])
 }

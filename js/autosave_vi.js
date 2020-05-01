@@ -53,7 +53,7 @@ function autosave_vi(title, vi_file_fields, cds_data) {
                 entry = entry.replace(/,/g, '","')
                 row.push(entry)
             }
-            i_rec = previously_stored_ispecs.indexOf(i_spec)
+            var i_rec = previously_stored_ispecs.indexOf(i_spec)
             if (i_rec == -1) {
                 array_to_store.push(row)
             } else {
