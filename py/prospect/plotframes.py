@@ -629,7 +629,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, model_from_z
         var ymax = 0.0
         for (var i=0; i<spectra.length; i++) {
             var data = spectra[i].data
-            tmp = get_y_minmax(0.01, 0.99, data['plotflux'])
+            var tmp = get_y_minmax(0.01, 0.99, data['plotflux'])
             ymin = Math.min(ymin, tmp[0])
             ymax = Math.max(ymax, tmp[1])
         }

@@ -222,7 +222,7 @@ for (var i=0; i<spectra.length; i++) {
     }
     spectra[i].change.emit()
 
-    tmp = get_y_minmax(0.01, 0.99, data['plotflux'])
+    var tmp = get_y_minmax(0.01, 0.99, data['plotflux'])
     ymin = Math.min(ymin, tmp[0])
     ymax = Math.max(ymax, tmp[1])
 }
