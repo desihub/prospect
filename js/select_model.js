@@ -24,6 +24,8 @@ var spec_z = 0.0
 
 if (model_select.value == 'Best fit') {
     var origflux = cds_model.data['origflux'+ifiberslider.value]
+    
+    cds_othermodel.data['origflux'] = origflux.slice()
     cds_othermodel.data['plotflux'] = origflux.slice()
     cds_othermodel.data['plotwave'] = cds_model.data['plotwave'].slice()
     cds_othermodel.data['origwave'] = cds_model.data['origwave'].slice()
@@ -31,6 +33,7 @@ if (model_select.value == 'Best fit') {
 
 } else if (model_select.value == '2nd best fit') {
     var origflux = cds_model_2ndfit.data['origflux'+ifiberslider.value]
+    cds_othermodel.data['origflux'] = origflux.slice()
     cds_othermodel.data['plotflux'] = origflux.slice()
     cds_othermodel.data['plotwave'] = cds_model_2ndfit.data['plotwave']
     cds_othermodel.data['origwave'] = cds_model_2ndfit.data['origwave']
@@ -61,6 +64,7 @@ if (model_select.value == 'Best fit') {
         scaled_template_flux[i] = scaled_template_flux[i]*median_goal/median_template
     }
     cds_othermodel.data['plotflux'] = scaled_template_flux
+    cds_othermodel.data['origflux'] = scaled_template_flux.slice()
 
     cds_othermodel.data['plotwave'] = shifted_template_wave.slice()
     cds_othermodel.data['origwave'] = shifted_template_wave.slice()
@@ -87,6 +91,7 @@ if (model_select.value == 'Best fit') {
 
     cds_othermodel.data['plotwave'] = model_wave.slice()
     cds_othermodel.data['origwave'] = model_wave.slice()
+    cds_othermodel.data['origflux'] = model_flux.slice()
     cds_othermodel.data['plotflux'] = model_flux.slice()
 }
 
@@ -102,8 +107,7 @@ if (nsmooth > 0) {
         kernel.push(Math.exp(-(i**2)/(2*nsmooth)))
     }
     var kernel_offset = Math.floor(kernel.length/2)
-    var smoothed_flux = smooth_data(cds_othermodel.data['plotflux'], kernel, kernel_offset)
-    cds_othermodel.data['plotflux'] = smoothed_flux
+    cds_othermodel.data['plotflux'] = smooth_data(cds_othermodel.data['origflux'], kernel, kernel_offset)
 }
 
 // Change value for z_input

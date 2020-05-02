@@ -513,6 +513,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         cds_othermodel = bk.ColumnDataSource({
             'plotwave' : cds_model.data['plotwave'],
             'origwave' : cds_model.data['origwave'],
+            'origflux' : cds_model.data['origflux0'],
             'plotflux' : cds_model.data['origflux0'],
             'zref' : zcatalog['Z'][0]+np.zeros(len(cds_model.data['origflux0'])) # trick to track the z reference in model
         })
@@ -721,13 +722,14 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
 
     #-----
     #- Axis reset button (superseeds the default bokeh "reset"
-    reset_plotrange_button = Button(label="Reset X-Y range",button_type="default")
+    reset_plotrange_button = Button(label="Reset X-Y range", button_type="default")
     with open(os.path.join(js_dir,"adapt_plotrange.js"), 'r') as f : reset_plotrange_code = f.read()    
     with open(os.path.join(js_dir,"reset_plotrange.js"), 'r') as f : reset_plotrange_code += f.read()
     reset_plotrange_callback = CustomJS(args = dict(fig=fig, xmin=xmin, xmax=xmax, spectra=cds_spectra), 
                                         code = reset_plotrange_code)
     reset_plotrange_button.js_on_event('button_click', reset_plotrange_callback)
 
+    
     #-----
     #- Redshift / wavelength scale widgets
     z1 = np.floor(z*100)/100
@@ -907,7 +909,41 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     )
     waveframe_buttons.js_on_click(plotrange_callback)
 
-
+    
+    #------
+    #- Zoom on the OII doublet TODO mv js code to other file
+    # TODO: is there another trick than using a cds to pass the "oii_saveinfo" ?
+    # TODO: optimize smoothing for autozoom (current value: 0)
+    cds_oii_saveinfo = bk.ColumnDataSource(
+        {'xmin':[fig.x_range.start], 'xmax':[fig.x_range.end], 'nsmooth':[smootherslider.value]})
+    oii_zoom_button = Button(label="OII-zoom", button_type="default")
+    oii_zoom_callback = CustomJS(
+        args = dict(z_input=z_input, fig=fig, smootherslider=smootherslider,
+                   cds_oii_saveinfo=cds_oii_saveinfo),
+        code = """
+        // Save previous setting (for the "Undo" button)
+        cds_oii_saveinfo.data['xmin'] = [fig.x_range.start]
+        cds_oii_saveinfo.data['xmax'] = [fig.x_range.end]
+        cds_oii_saveinfo.data['nsmooth'] = [smootherslider.value]
+        // Center on the middle of the redshifted OII doublet (vaccum)
+        var z = parseFloat(z_input.value)
+        fig.x_range.start = 3708.48 * (1+z)
+        fig.x_range.end = 3748.48 * (1+z)
+        // No smoothing (this implies a call to update_plot)
+        smootherslider.value = 0
+        """)
+    oii_zoom_button.js_on_event('button_click', oii_zoom_callback)
+    
+    oii_undo_button = Button(label="Undo", button_type="default")
+    oii_undo_callback = CustomJS(
+        args = dict(fig=fig, smootherslider=smootherslider, cds_oii_saveinfo=cds_oii_saveinfo),
+        code = """
+        fig.x_range.start = cds_oii_saveinfo.data['xmin'][0]
+        fig.x_range.end = cds_oii_saveinfo.data['xmax'][0]
+        smootherslider.value = cds_oii_saveinfo.data['nsmooth'][0]
+        """)
+    oii_undo_button.js_on_event('button_click', oii_undo_callback)
+    
     #-----
     #- Targeting image callback
     if with_imaging :
@@ -945,10 +981,10 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     tmp_dict['Target ID'] = [ cds_targetinfo.data['targetid'][0] ]
     tmp_dict['Target class'] = [ cds_targetinfo.data['target_info'][0] ]
     targ_disp_cols = [ TableColumn(field='Target ID', title='Target ID', width=150),
-                     TableColumn(field='Target class', title='Target class', width=plot_width-120-50-5*50-150) ] # TODO non-hardcode width
+                     TableColumn(field='Target class', title='Target class', width=250) ] # TODO tune width
     for band in ['G', 'R', 'Z', 'W1', 'W2'] :
         tmp_dict['mag_'+band] = [ "{:.2f}".format(cds_targetinfo.data['mag_'+band][0]) ]
-        targ_disp_cols.append( TableColumn(field='mag_'+band, title='mag_'+band, width=50) )
+        targ_disp_cols.append( TableColumn(field='mag_'+band, title='mag_'+band, width=40) )
     targ_disp_cds = bk.ColumnDataSource(tmp_dict, name='targ_disp_cds')
     targ_display = DataTable(source = targ_disp_cds, columns=targ_disp_cols,index_position=None, selectable=True, editable=True) # width=...
     targ_display.height = 2 * targ_display.row_height
@@ -1064,6 +1100,9 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         model_select.js_on_change('value',model_select_callback)
     else :
         model_select = None
+    
+    
+    
     #-----
     #- VI-related widgets
     
@@ -1379,8 +1418,12 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     main_bokehsetup = bk.Column(
         bk.Row(fig, bk.Column(imfig, zoomfig), Spacer(width=20), sizing_mode='stretch_width'),
         bk.Row(
-            widgetbox(targ_display, width=plot_width - 120),
-            widgetbox(reset_plotrange_button, width = 120)
+            widgetbox(targ_display, width=600), # plot_width - 200
+            widgetbox(Spacer(width=20)),
+            widgetbox(reset_plotrange_button, width = 120),
+            widgetbox(Spacer(width=80)),
+            widgetbox(oii_zoom_button, width=80),
+            widgetbox(oii_undo_button, width=50),
         ),
         navigator,
         full_widget_set,

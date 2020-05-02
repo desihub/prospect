@@ -149,20 +149,25 @@ if (model) {
     model.change.emit()
 }
 
-if (model_select) {
-    var old_value = model_select.value
-    
-    // Trick to force trigger select_model... (seems to work.. other way?) :
-    var trigger_value = '1st fit (approx)'
-    if (old_value == '1st fit (approx)') {
-        trigger_value = '2nd fit (approx)'
-    }
-    model_select.value = trigger_value
-    
-    if (cb_obj == ifiberslider) { // Reset model select value to default
+// update other model
+if (othermodel) {
+    if (cb_obj == smootherslider) {
+        var origflux = othermodel.data['origflux']
+        if (nsmooth == 0) {
+            othermodel.data['plotflux'] = origflux.slice()
+        } else {
+            othermodel.data['plotflux'] = smooth_data(origflux, kernel, kernel_offset)
+        }
+        othermodel.change.emit()
+    } else if (cb_obj == ifiberslider) {
+        // Trick to trigger execution of select_model.js
+        // Reset othermodel to best fit. Smoothing is done in select_model.js
+        var trigger_value = model_select.options[0]
+        if (model_select.value == trigger_value) {
+            trigger_value = model_select.options[1]
+        }
+        model_select.value = trigger_value
         model_select.value = 'Best fit'
-    } else { // Don't change model select value
-        model_select.value = old_value
     }
 }
 
