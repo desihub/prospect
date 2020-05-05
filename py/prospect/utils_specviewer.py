@@ -160,20 +160,25 @@ def match_zcat_to_spectra(zcat_in, spectra) :
     return (zcat_out, index_list)
 
 
-def match_redrock_zfit_to_spectra(redrockfile, spectra, num_best_fits=5) :
+def match_redrock_zfit_to_spectra(redrockfile, spectra, Nfit=None) :
     '''
     Read Redrock file, and return astropy Table of best fits matched to the targetids of input spectra
-    - for each target, store arrays chi2[N], coeff[N], z[N], spectype[N], subtype[N]
-    - where N = num_best_fits
+    - for each target, store arrays chi2[Nfit], coeff[Nfit], z[Nfit], spectype[Nfit], subtype[Nfit]
+    - if Nfit is None: take all available fits
     '''
-    matched_redrock_cat = Table(dtype=[('TARGETID', '<i8'), ('CHI2', '<f8', (num_best_fits,)), ('DELTACHI2', '<f8', (num_best_fits,)), ('COEFF', '<f8', (num_best_fits,10,)), ('Z', '<f8', (num_best_fits,)), ('ZERR', '<f8', (num_best_fits,)), ('ZWARN', '<i8', (num_best_fits,)), ('SPECTYPE', '<U6', (num_best_fits,)), ('SUBTYPE', '<U2', (num_best_fits,))])
+    
     dummy, rr_table = redrock.results.read_zscan(redrockfile)
     rr_targets = rr_table['targetid']
+    if Nfit is None :
+        ww, = np.where( (rr_targets == rr_targets[0]) )
+        Nfit = len(ww)
+    matched_redrock_cat = Table(dtype=[('TARGETID', '<i8'), ('CHI2', '<f8', (Nfit,)), ('DELTACHI2', '<f8', (Nfit,)), ('COEFF', '<f8', (Nfit,10,)), ('Z', '<f8', (Nfit,)), ('ZERR', '<f8', (Nfit,)), ('ZWARN', '<i8', (Nfit,)), ('SPECTYPE', '<U6', (Nfit,)), ('SUBTYPE', '<U2', (Nfit,))])
+    
     for i_spec in range(spectra.num_spectra()) :
         ww, = np.where((rr_targets == spectra.fibermap['TARGETID'][i_spec]))
-        if len(ww)<num_best_fits : 
-            raise RuntimeError("redrock table cannot match spectra with "+str(num_best_fits)+" best fits")
-        ind = np.argsort(rr_table[ww]['chi2'])[0:num_best_fits]
+        if len(ww)<Nfit : 
+            raise RuntimeError("redrock table cannot match spectra with "+str(Nfit)+" best fits")
+        ind = np.argsort(rr_table[ww]['chi2'])[0:Nfit]
         sub_table = rr_table[ww][ind]
         the_entry = [ spectra.fibermap['TARGETID'][i_spec] ]
         the_entry.append(sub_table['chi2'])
@@ -187,6 +192,7 @@ def match_redrock_zfit_to_spectra(redrockfile, spectra, num_best_fits=5) :
         matched_redrock_cat.add_row(the_entry)
      
     return matched_redrock_cat
+
 
 def create_zcat_from_redrock_cat(redrock_cat, fit_num=0) :
     '''

@@ -22,18 +22,19 @@ if (cb_obj == ifiberslider) { // update VI widgets + infos for current spectrum
     targ_disp_cds.change.emit()
     if(targetinfo.data['z'] != undefined && zcat_disp_cds != null) {
         if (fit_results != undefined) {
-            zcat_disp_cds.data['SPECTYPE'] = fit_results['SPECTYPE'][ifiberslider.value].slice(0,num_best_fits)
-            zcat_disp_cds.data['SUBTYPE'] = fit_results['SUBTYPE'][ifiberslider.value].slice(0,num_best_fits)
-            zcat_disp_cds.data['Z'] = fit_results['Z'][ifiberslider.value].slice(0,num_best_fits)
-            zcat_disp_cds.data['ZERR'] = fit_results['ZERR'][ifiberslider.value].slice(0,num_best_fits)
-            zcat_disp_cds.data['ZWARN'] = fit_results['ZWARN'][ifiberslider.value].slice(0,num_best_fits)
-            var chi2s = fit_results['CHI2'][ifiberslider.value].slice(0,num_best_fits+1) // Custom DeltaChi2 calculation
+            zcat_disp_cds.data['SPECTYPE'] = fit_results['SPECTYPE'][ifiberslider.value].slice() // (0,num_best_fits)  
+            zcat_disp_cds.data['SUBTYPE'] = fit_results['SUBTYPE'][ifiberslider.value].slice()
+            zcat_disp_cds.data['Z'] = fit_results['Z'][ifiberslider.value].slice()
+            zcat_disp_cds.data['ZERR'] = fit_results['ZERR'][ifiberslider.value].slice()
+            zcat_disp_cds.data['ZWARN'] = fit_results['ZWARN'][ifiberslider.value].slice()
+            var chi2s = fit_results['CHI2'][ifiberslider.value].slice() // Custom DeltaChi2 calculation
             var full_deltachi2s = []
-            for (var i=0; i<num_best_fits; i++) {
+            for (var i=0; i<fit_results['Nfit']-1; i++) {
                 full_deltachi2s.push(chi2s[i+1]-chi2s[i])
             }
+            full_deltachi2s.push(-1)
             zcat_disp_cds.data['DeltaChi2'] = full_deltachi2s
-            for (var i=0; i<num_best_fits; i++) {
+            for (var i=0; i<fit_results['Nfit']; i++) {
                 zcat_disp_cds.data['Z'][i] = zcat_disp_cds.data['Z'][i].toFixed(4)
                 zcat_disp_cds.data['ZERR'][i] = zcat_disp_cds.data['ZERR'][i].toFixed(4)
                 zcat_disp_cds.data['DeltaChi2'][i] = zcat_disp_cds.data['DeltaChi2'][i].toFixed(1)
