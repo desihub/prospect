@@ -83,17 +83,25 @@ if (nsmooth > 0) {
     for(var i=-2*nsmooth; i<=2*nsmooth; i++) {
         kernel.push(Math.exp(-(i**2)/(2*nsmooth)))
     }
-    var kernel_offset = Math.floor(kernel.length/2)
 }
 
 // Smooth plot and recalculate ymin/ymax TODO: ymin/max only if cb_obj==ifiberslider ?
 var ymin = 0.0
 var ymax = 0.0
+var ivar_weight = true // switch for ivar-weighting in smoothing
 for (var i=0; i<spectra.length; i++) {
     var data = spectra[i].data
     var origflux = data['origflux'+ifiber]
+    var ivar = []
     if ('plotnoise' in data) {
         var orignoise = data['orignoise'+ifiber]
+        for (var j=0; j<orignoise.length; j++) {
+            if (orignoise[j]>0) {
+                ivar.push( 1.0/(orignoise[j])**2 )
+            } else {
+                ivar.push(0)
+            }
+        }
     }
     if (nsmooth == 0) {
         data['plotflux'] = origflux.slice()
@@ -101,10 +109,15 @@ for (var i=0; i<spectra.length; i++) {
             data['plotnoise'] = orignoise.slice()
         }
     } else {
-        data['plotflux'] = smooth_data(origflux, kernel, kernel_offset)
         if ('plotnoise' in data) {
-            // Add noise in quadrature
-            data['plotnoise'] = smooth_data(orignoise, kernel, kernel_offset, quadrature=true)
+            data['plotflux'] = smooth_data(origflux, kernel, ivar_in=ivar, ivar_weight=ivar_weight)
+            if (ivar_weight==true) {
+                data['plotnoise'] = smooth_noise(ivar, kernel, ivar_weight=true)
+            } else {
+                data['plotnoise'] = smooth_noise(orignoise, kernel, ivar_weight=false)
+            }
+        } else {
+            data['plotflux'] = smooth_data(origflux, kernel, ivar_weight=false)
         }
     }
     spectra[i].change.emit()
@@ -145,7 +158,7 @@ if (model) {
     if (nsmooth == 0) {
         model.data['plotflux'] = origflux.slice()
     } else {
-        model.data['plotflux'] = smooth_data(origflux, kernel, kernel_offset)
+        model.data['plotflux'] = smooth_data(origflux, kernel)
     }
     model.change.emit()
 }
@@ -157,7 +170,7 @@ if (othermodel) {
         if (nsmooth == 0) {
             othermodel.data['plotflux'] = origflux.slice()
         } else {
-            othermodel.data['plotflux'] = smooth_data(origflux, kernel, kernel_offset)
+            othermodel.data['plotflux'] = smooth_data(origflux, kernel)
         }
         othermodel.change.emit()
     } else if (cb_obj == ifiberslider) {

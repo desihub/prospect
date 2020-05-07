@@ -106,8 +106,7 @@ if (nsmooth > 0) {
     for (var i=-2*nsmooth; i<=2*nsmooth; i++) {
         kernel.push(Math.exp(-(i**2)/(2*nsmooth)))
     }
-    var kernel_offset = Math.floor(kernel.length/2)
-    cds_othermodel.data['plotflux'] = smooth_data(cds_othermodel.data['origflux'], kernel, kernel_offset)
+    cds_othermodel.data['plotflux'] = smooth_data(cds_othermodel.data['origflux'], kernel)
 }
 
 // Change value for z_input
