@@ -81,7 +81,7 @@ if(targetinfo.data['z'] != undefined && cb_obj == ifiberslider && model_select =
 if (nsmooth > 0) {
     var kernel = [];
     for(var i=-2*nsmooth; i<=2*nsmooth; i++) {
-        kernel.push(Math.exp(-(i**2)/(2*nsmooth)))
+        kernel.push(Math.exp(-(i**2)/(2*(nsmooth**2))))
     }
 }
 
