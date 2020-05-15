@@ -1,0 +1,20 @@
+# -*- coding: utf-8 -*-
+# Comma-separated entries
+# List of absorption lines for prospect viewer
+# Sources: spZline files ($IDLSPEC2D_DIR/etc/emlines.par, wavelengths in air for lambda > 2000, vacuum for lambda < 2000)
+#          others...
+# name,longname,lambda,vacuum,major
+Mg II,Mg II 2799,2799.49,False,False
+Hζ,Balmer ζ,3889.049,False,False
+K,K (Ca II 3933),3933.7,False,False
+H,H (Ca II 3968),3968.5,False,False
+Hε,Balmer ε,3970.072,False,True
+Hδ,Balmer δ,4101.734,False,False
+G,G (Ca I 4307),4307.74,False,True
+Hγ,Balmer γ,4340.464,False,False
+Hβ,Balmer β,4861.325,False,False
+Mg I,Mg I 5175,5175.0,False,False
+D2,D2 (Na I 5889),5889.95,False,True
+# D,D (Na I doublet),5892.9,False,False
+D1,D1 (Na I 5895),5895.92, False,True
+Hα,Balmer α,6562.801,False,True

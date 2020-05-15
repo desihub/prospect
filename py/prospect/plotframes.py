@@ -1480,66 +1480,6 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     
 
 #-------------------------------------------------------------------------
-_line_list = [
-    #
-    # This is the set of emission lines from the spZline files.
-    # See $IDLSPEC2D_DIR/etc/emlines.par
-    # Wavelengths are in air for lambda > 2000, vacuum for lambda < 2000.
-    # TODO: convert to vacuum wavelengths
-    #
-    {"name" : "Lyα",      "longname" : "Lyman α",        "lambda" : 1215.67,  "emission": True, "major": True  },
-    {"name" : "Lyβ",      "longname" : "Lyman β",        "lambda" : 1025.18,  "emission": True, "major": False },
-    {"name" : "N V",      "longname" : "N V 1240",       "lambda" : 1240.81,  "emission": True, "major": False },
-    {"name" : "Si IV",    "longname" : "Si IV 1394",     "lambda" : 1393.75,  "emission": True, "major": False },
-    {"name" : "Si IV",    "longname" : "Si IV 1403",     "lambda" : 1402.77,  "emission": True, "major": False },
-    {"name" : "C IV",     "longname" : "C IV 1549",      "lambda" : 1549.48,  "emission": True, "major": True  },
-    {"name" : "He II",    "longname" : "He II 1640",     "lambda" : 1640.42,  "emission": True, "major": False },
-    {"name" : "C III]",   "longname" : "C III] 1908",    "lambda" : 1908.734, "emission": True, "major": False },
-    {"name" : "Mg II",    "longname" : "Mg II 2799",     "lambda" : 2799.49,  "emission": True, "major": False },
-    {"name" : "[O II]",   "longname" : "[O II] 3725",    "lambda" : 3726.032, "emission": True, "major": True  },
-    {"name" : "[O II]",   "longname" : "[O II] 3727",    "lambda" : 3728.815, "emission": True, "major": True  },
-    {"name" : "[Ne III]", "longname" : "[Ne III] 3868",  "lambda" : 3868.76,  "emission": True, "major": False },
-    {"name" : "Hζ",       "longname" : "Balmer ζ",       "lambda" : 3889.049, "emission": True, "major": False },
-    {"name" : "[Ne III]", "longname" : "[Ne III] 3970",  "lambda" : 3970.00,  "emission": True, "major": False },
-    {"name" : "Hε",       "longname" : "Balmer ε",       "lambda" : 3970.072, "emission": True, "major": False },
-    {"name" : "Hδ",       "longname" : "Balmer δ",       "lambda" : 4101.734, "emission": True, "major": False },
-    {"name" : "Hγ",       "longname" : "Balmer γ",       "lambda" : 4340.464, "emission": True, "major": False },
-    {"name" : "[O III]",  "longname" : "[O III] 4363",   "lambda" : 4363.209, "emission": True, "major": False },
-    {"name" : "He II",    "longname" : "He II 4685",     "lambda" : 4685.68,  "emission": True, "major": False },
-    {"name" : "Hβ",       "longname" : "Balmer β",       "lambda" : 4861.325, "emission": True, "major": False },
-    {"name" : "[O III]",  "longname" : "[O III] 4959",   "lambda" : 4958.911, "emission": True, "major": True },
-    {"name" : "[O III]",  "longname" : "[O III] 5007",   "lambda" : 5006.843, "emission": True, "major": True  },
-    {"name" : "He II",    "longname" : "He II 5411",     "lambda" : 5411.52,  "emission": True, "major": False },
-    {"name" : "[O I]",    "longname" : "[O I] 5577",     "lambda" : 5577.339, "emission": True, "major": False },
-    {"name" : "[N II]",   "longname" : "[N II] 5755",    "lambda" : 5754.59,  "emission": True, "major": False },
-    {"name" : "He I",     "longname" : "He I 5876",      "lambda" : 5875.68,  "emission": True, "major": False },
-    {"name" : "[O I]",    "longname" : "[O I] 6300",     "lambda" : 6300.304, "emission": True, "major": False },
-    {"name" : "[S III]",  "longname" : "[S III] 6312",   "lambda" : 6312.06,  "emission": True, "major": False },
-    {"name" : "[O I]",    "longname" : "[O I] 6363",     "lambda" : 6363.776, "emission": True, "major": False },
-    {"name" : "[N II]",   "longname" : "[N II] 6548",    "lambda" : 6548.05,  "emission": True, "major": False },
-    {"name" : "Hα",       "longname" : "Balmer α",       "lambda" : 6562.801, "emission": True, "major": True  },
-    {"name" : "[N II]",   "longname" : "[N II] 6583",    "lambda" : 6583.45,  "emission": True, "major": False },
-    {"name" : "[S II]",   "longname" : "[S II] 6716",    "lambda" : 6716.44,  "emission": True, "major": False },
-    {"name" : "[S II]",   "longname" : "[S II] 6730",    "lambda" : 6730.82,  "emission": True, "major": False },
-    {"name" : "[Ar III]", "longname" : "[Ar III] 7135",  "lambda" : 7135.790, "emission": True, "major": False },
-    #
-    # Absorption lines
-    #
-    {"name" : "Hζ",   "longname" : "Balmer ζ",         "lambda" : 3889.049, "emission": False, "major": False },
-    {"name" : "K",    "longname" : "K (Ca II 3933)",   "lambda" : 3933.7,   "emission": False, "major": False },
-    {"name" : "H",    "longname" : "H (Ca II 3968)",   "lambda" : 3968.5,   "emission": False, "major": False },
-    {"name" : "Hε",   "longname" : "Balmer ε",         "lambda" : 3970.072, "emission": False, "major": True },
-    {"name" : "Hδ",   "longname" : "Balmer δ",         "lambda" : 4101.734, "emission": False, "major": False },
-    {"name" : "G",    "longname" : "G (Ca I 4307)",    "lambda" : 4307.74,  "emission": False, "major": True },
-    {"name" : "Hγ",   "longname" : "Balmer γ",         "lambda" : 4340.464, "emission": False, "major": False },
-    {"name" : "Hβ",   "longname" : "Balmer β",         "lambda" : 4861.325, "emission": False, "major": False },
-    {"name" : "Mg I", "longname" : "Mg I 5175",        "lambda" : 5175.0,   "emission": False, "major": False },
-    {"name" : "D2",   "longname" : "D2 (Na I 5889)",   "lambda" : 5889.95,  "emission": False, "major": True },
-    # {"name" : "D",    "longname" : "D (Na I doublet)", "lambda": 5892.9,   "emission": False, "major": False },
-    {"name" : "D1",   "longname" : "D1 (Na I 5895)",   "lambda" : 5895.92,  "emission": False, "major": True },
-    {"name" : "Hα",   "longname" : "Balmer α",         "lambda" : 6562.801, "emission": False, "major": True },
-  ]
-
 def _airtovac(w):
     """Convert air wavelengths to vacuum wavelengths. Don't convert less than 2000 Å.
 
@@ -1569,20 +1509,37 @@ def add_lines(fig, z=0 , emission=True, fig_height=None, label_offsets=[100, 5])
     """
     
     if fig_height is None : fig_height = fig.plot_height
-
-    line_data = dict()
-    line_data['restwave'] = np.array([_airtovac(row['lambda']) for row in _line_list])
-    line_data['plotwave'] = line_data['restwave'] * (1+z)
-    line_data['name'] = [row['name'] for row in _line_list]
-    line_data['longname'] = [row['name'] for row in _line_list]
-    line_data['plotname'] = [row['name'] for row in _line_list]
-    line_data['emission'] = [row['emission'] for row in _line_list]
-    line_data['major'] = [row['major'] for row in _line_list]
+    
+    line_file_dir = os.path.join(os.path.dirname(__file__),"data")
+    line_data = dict(
+        restwave = [],
+        plotwave = [],
+        name = [],
+        longname = [],
+        plotname = [],
+        emission = [],
+        major = [],
+        y = []
+    )
+    for line_category in ['emission', 'absorption'] :
+        line_array = np.genfromtxt(os.path.join(line_file_dir,line_category+"_lines.txt"), delimiter=",",
+                                   dtype=[("name","|U20"),("longname","|U20"),("wavelength",float),("vacuum",bool),("major",bool)])
+        vacuum_wavelengths = line_array['wavelength']
+        w, = np.where(line_array['vacuum']==False)
+        vacuum_wavelengths[w] = np.array([_airtovac(wave) for wave in line_array['wavelength'][w]])
+        line_data['restwave'].extend(vacuum_wavelengths)
+        line_data['plotwave'].extend(vacuum_wavelengths * (1+z))
+        line_data['name'].extend(line_array['name'])
+        line_data['longname'].extend(line_array['longname'])
+        line_data['plotname'].extend(line_array['name'])
+        emission_flag = True if line_category=='emission' else False
+        line_data['emission'].extend([emission_flag for row in line_array])
+        line_data['major'].extend(line_array['major'])
 
     y = list()
     for i in range(len(line_data['restwave'])):
         if i == 0:
-            if _line_list[i]['emission']:
+            if line_data['emission'][i]:
                 y.append(fig_height - label_offsets[0])
             else:
                 y.append(label_offsets[1])

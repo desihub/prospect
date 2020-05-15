@@ -1,0 +1,41 @@
+# -*- coding: utf-8 -*-
+# Comma-separated entries
+# List of emission lines for prospect viewer
+# Sources: spZline files ($IDLSPEC2D_DIR/etc/emlines.par, wavelengths in air for lambda > 2000, vacuum for lambda < 2000)
+#          others...
+# name,longname,lambda,vacuum,major
+Lyα,Lyman α,1215.67,True,True
+Lyβ,Lyman β,1025.18,True,False
+N V,N V 1240,1240.81,True,False
+Si IV,Si IV 1394,1393.75,True,False
+Si IV,Si IV 1403,1402.77,True,False
+C IV,C IV 1549,1549.48,True,True
+He II,He II 1640,1640.42,True,False
+C III],C III] 1908,1908.734,True,False
+Mg II,Mg II 2799,2799.49,False,False
+[O II],[O II] 3725,3726.032,False,True
+[O II],[O II] 3727,3728.815,False,True
+[Ne III],[Ne III] 3868,3868.76,False,False
+Hζ,Balmer ζ,3889.049,False,False
+[Ne III],[Ne III] 3970,3970.00,False,False
+Hε,Balmer ε,3970.072,False,False
+Hδ,Balmer δ,4101.734,False,False
+Hγ,Balmer γ,4340.464,False,False
+[O III],[O III] 4363,4363.209,False,False
+He II,He II 4685,4685.68,False,False
+Hβ,Balmer β,4861.325,False,False
+[O III],[O III] 4959,4958.911,False,True
+[O III],[O III] 5007,5006.843,False,True
+He II,He II 5411,5411.52,False,False
+[O I],[O I] 5577,5577.339,False,False
+[N II],[N II] 5755,5754.59,False,False
+He I,He I 5876,5875.68,False,False
+[O I],[O I] 6300,6300.304,False,False
+[S III],[S III] 6312,6312.06,False,False
+[O I],[O I] 6363,6363.776,False,False
+[N II],[N II] 6548,6548.05,False,False
+Hα,Balmer α,6562.801,False,True
+[N II],[N II] 6583,6583.45,False,False
+[S II],[S II] 6716,6716.44,False,False
+[S II],[S II] 6730,6730.82,False,False
+[Ar III],[Ar III] 7135,7135.790,False,False

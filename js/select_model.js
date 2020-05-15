@@ -104,7 +104,7 @@ var nsmooth = smootherslider.value
 if (nsmooth > 0) {
     var kernel = [];
     for (var i=-2*nsmooth; i<=2*nsmooth; i++) {
-        kernel.push(Math.exp(-(i**2)/(2*(nsmooth**2)))
+        kernel.push(Math.exp( -(i**2)/(2*(nsmooth**2)) ))
     }
     cds_othermodel.data['plotflux'] = smooth_data(cds_othermodel.data['origflux'], kernel)
 }
