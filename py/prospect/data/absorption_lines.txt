@@ -1,20 +1,44 @@
 # -*- coding: utf-8 -*-
 # Comma-separated entries
 # List of absorption lines for prospect viewer
-# Sources: spZline files ($IDLSPEC2D_DIR/etc/emlines.par, wavelengths in air for lambda > 2000, vacuum for lambda < 2000)
-#          others...
+# Sources: SDSS spZline files ($IDLSPEC2D_DIR/etc/emlines.par, wavelengths in air for
+#   lambda > 2000, vacuum for lambda < 2000); A. Edge list (sent by email to T. Davis,
+#   07/04/2020); few others.
 # name,longname,lambda,vacuum,major
-Mg II,Mg II 2799,2799.49,False,False
+Si II,Si II 1260,1260.4221,True,False
+O I,O I 1302,1302.1685,True,False
+Si II,Si II 1304,1304.3702,True,False
+C II,C II 1334,1334.5323,True,False
+Si IV,Si IV 1394,1393.75,True,False
+Si IV,Si IV 1403,1402.77,True,False
+S V,S V 1501,1501.76,True,False
+Si II,Si II 1526,1526.7070,True,False
+C IV,C IV 1549,1549.48,True,False
+Fe II,Fe II 1608,1608.4509,True,False
+Al II,Al II 1670,1670.788,True,False
+Si II,Si II 1808,1808.0129,True,False
+Al III,Al III 1854,1854.7183,True,False
+Al III,Al III 1862,1862.7911,True,False
+Mg I,Mg I 2026,2026.4768,True,False
+Fe II,Fe II 2344,2344.2130,True,False
+Fe II,Fe II 2374,2374.4603,True,False
+Fe II,Fe II 2382,2382.7642,True,False
+Fe II,Fe II 2389,2389.2396,True,False
+Mg II,Mg II 2796,2796.3543,False,False
+Mg II,Mg II 2803,2803.5315,False,False
 Hζ,Balmer ζ,3889.049,False,False
-K,K (Ca II 3933),3933.7,False,False
-H,H (Ca II 3968),3968.5,False,False
-Hε,Balmer ε,3970.072,False,True
+K,K (Ca II 3933),3933.7,False,True
+H,H (Ca II 3968),3968.5,False,True
+Hε,Balmer ε,3970.072,False,False
 Hδ,Balmer δ,4101.734,False,False
 G,G (Ca I 4307),4307.74,False,True
 Hγ,Balmer γ,4340.464,False,False
 Hβ,Balmer β,4861.325,False,False
-Mg I,Mg I 5175,5175.0,False,False
+Mg I,Mg I 5175,5175.0,False,True
 D2,D2 (Na I 5889),5889.95,False,True
 # D,D (Na I doublet),5892.9,False,False
-D1,D1 (Na I 5895),5895.92, False,True
-Hα,Balmer α,6562.801,False,True
+D1,D1 (Na I 5895),5895.92,False,True
+Hα,Balmer α,6562.801,False,False
+Ca II,Ca II 8500,8500.36,True,False
+Ca II,Ca II 8544,8544.44,True,False
+Ca II,Ca II 8664,8664.52,True,False
