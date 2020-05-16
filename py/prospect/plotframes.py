@@ -138,7 +138,7 @@ def _viewer_urls(spectra, zoom=13, layer='dr8'):
     """Return legacysurvey.org viewer URLs for all spectra.
     """
     u = "http://legacysurvey.org/viewer/jpeg-cutout?ra={0:f}&dec={1:f}&zoom={2:d}&layer={3}"
-    v = "http://legacysurvey.org/viewer/?ra={0:f}&dec={1:f}&zoom={2:d}&layer={3}"
+    v = "http://legacysurvey.org/viewer/?ra={0:f}&dec={1:f}&zoom={2:d}&layer={3}&mark={0:f},{1:f}"
     try:
         ra = spectra.fibermap['RA_TARGET']
         dec = spectra.fibermap['DEC_TARGET']
@@ -675,6 +675,9 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         imfig_img = imfig.image_url('url', source=imfig_source, x=1, y=1, w=256, h=256, anchor='bottom_left')
         imfig_txt = imfig.text(10, 256-30, text='txt', source=imfig_source,
                                text_color='yellow', text_font_size='8pt')
+        # cross-hair
+        imfig.multi_line([[129-15,129-5],[129+15,129+5],[129,129],[129,129]],
+                         [[129,129],[129,129],[129-15,129-5],[129+5,129+15]], line_width=1, line_color='yellow')
     else : 
         imfig = Spacer(width=plot_height//2, height=plot_height//2)
         imfig_source = imfig_urls = None

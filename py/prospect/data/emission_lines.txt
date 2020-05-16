@@ -53,6 +53,6 @@ Hα,Balmer α,6562.801,False,True
 [S II],[S II] 6716,6716.44,False,True
 [S II],[S II] 6730,6730.82,False,True
 [Ar III],[Ar III] 7135,7135.790,False,False
-[Ar III],[Ar III]7751,7753.19,True,False
+[Ar III],[Ar III] 7751,7753.19,True,False
 [S III],[S III] 9071,9071.1,True,False
 [S III],[S III] 9532,9533.2,True,False
