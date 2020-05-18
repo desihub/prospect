@@ -50,6 +50,7 @@ if (cb_obj == ifiberslider) { // update VI widgets + infos for current spectrum
         zcat_disp_cds.change.emit()
     }
     
+    vi_std_comment_select.value = ' '
     vi_comment_input.value = targetinfo.data['VI_comment'][ifiber]
     vi_name_input.value = (targetinfo.data['VI_scanner'][ifiber]).trim()
     vi_class_input.active = vi_class_labels.indexOf(targetinfo.data['VI_class_flag'][ifiber]) // -1 if nothing

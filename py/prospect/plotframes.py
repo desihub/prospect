@@ -526,7 +526,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         cds_othermodel =  None
 
     if notebook and ("USER" in os.environ) : 
-        username = os.environ['USER']
+        username = os.environ['USER'][0:3] # 3-letter acronym
     else :
         username = " "
     cds_targetinfo = make_cds_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=username)
@@ -1126,7 +1126,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     else :
         default_vi_filename += "_unknown-user"
     default_vi_filename += ".csv"
-    vi_filename_input = TextInput(value=default_vi_filename, title="VI file name :")
+    vi_filename_input = TextInput(value=default_vi_filename, title="VI file name:")
     
     #- Optional VI flags (issues)
     vi_issue_input = CheckboxGroup(labels=vi_issue_labels, active=[])
@@ -1153,7 +1153,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     vi_issue_input.js_on_click(vi_issue_callback)
     
     #- Optional VI information on redshift
-    vi_z_input = TextInput(value='', title="VI redshift :")
+    vi_z_input = TextInput(value='', title="VI redshift:")
     with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_z_code = f.read()
     vi_z_code += """
         cds_targetinfo.data['VI_z'][ifiberslider.value]=vi_z_input.value
@@ -1177,7 +1177,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     
     #- Optional VI information on spectral type
     vi_spectypes = [" "] + utils_specviewer._vi_spectypes
-    vi_category_select = Select(value=" ", title="VI spectype :", options=vi_spectypes)
+    vi_category_select = Select(value=" ", title="VI spectype:", options=vi_spectypes)
     with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_category_code = f.read()
     vi_category_code += """
         cds_targetinfo.data['VI_spectype'][ifiberslider.value]=vi_category_select.value
@@ -1192,7 +1192,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     vi_category_select.js_on_change('value',vi_category_callback)
 
     #- Optional VI comment
-    vi_comment_input = TextInput(value='', title="VI comment (100 char max.) :")
+    vi_comment_input = TextInput(value='', title="VI comment (100 char max.):")
     with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_comment_code = f.read()
     vi_comment_code += """
         cds_targetinfo.data['VI_comment'][ifiberslider.value]=vi_comment_input.value
@@ -1205,6 +1205,24 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         code=vi_comment_code )
     vi_comment_input.js_on_change('value',vi_comment_callback)
 
+    #- List of "standard" VI comment
+    vi_std_comments = [" "] + utils_specviewer._vi_std_comments
+    vi_std_comment_select = Select(value=" ", title="Standard comment:", options=vi_std_comments)
+    with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_std_comment_code = f.read()
+    vi_std_comment_code += """
+        if (vi_std_comment_select.value != ' ') {
+            if (vi_comment_input.value != '') {
+                vi_comment_input.value = vi_comment_input.value + " " + vi_std_comment_select.value
+            } else {
+                vi_comment_input.value = vi_std_comment_select.value
+            }
+        }
+        """
+    vi_std_comment_callback = CustomJS(
+        args = dict(vi_std_comment_select=vi_std_comment_select, vi_comment_input=vi_comment_input),
+        code = vi_std_comment_code )
+    vi_std_comment_select.js_on_change('value', vi_std_comment_callback)
+    
     #- Main VI classification
     vi_class_input = RadioButtonGroup(labels=vi_class_labels)
     with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_class_code = f.read()
@@ -1232,7 +1250,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
 
     
     #- VI scanner name    
-    vi_name_input = TextInput(value=(cds_targetinfo.data['VI_scanner'][0]).strip(), title="Your name :")
+    vi_name_input = TextInput(value=(cds_targetinfo.data['VI_scanner'][0]).strip(), title="Your name (3-letter acronym):")
     with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_name_code = f.read()
     vi_name_code += """
         for (var i=0; i<nspec; i++) {
@@ -1331,6 +1349,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
             imfig_urls=imfig_urls,
             model_select = model_select,
             vi_comment_input = vi_comment_input,
+            vi_std_comment_select = vi_std_comment_select,
             vi_name_input = vi_name_input,
             vi_class_input = vi_class_input,
             vi_class_labels = vi_class_labels,
@@ -1368,9 +1387,14 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
                     widgetbox(vi_category_select, width=150),
                 )
             ),
-            widgetbox(vi_comment_input, width=300),
-            widgetbox(vi_name_input, width=150),
-            widgetbox(vi_filename_input, width=300),
+            bk.Row(
+                widgetbox(vi_comment_input, width=300),
+                widgetbox(vi_std_comment_select, width=200),
+            ),
+            bk.Row(
+                widgetbox(vi_name_input, width=200),
+                widgetbox(vi_filename_input, width=300)
+            ),
             widgetbox(save_vi_button, width=100),
             widgetbox(vi_table),        
             bk.Row(

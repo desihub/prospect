@@ -63,6 +63,14 @@ _vi_spectypes =[
     "QSO"
 ]
 
+_vi_std_comments = [
+    # Standardized VI comments
+    "Broad absorption line quasar (BAL)",
+    "Damped Lyman-alpha system (DLA)",
+    "Two objects in spectrum",
+    "Blazar"
+]
+
 def read_vi(vifile) :
     '''
     Read visual inspection file (ASCII/CSV or FITS according to file extension)
