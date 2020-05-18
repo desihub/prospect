@@ -344,10 +344,10 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=" ") 
     # VI inputs
     cds_targetinfo.add([username for i in range(nspec)], name='VI_scanner')
     cds_targetinfo.add(["-1" for i in range(nspec)], name='VI_class_flag') 
-    cds_targetinfo.add([" " for i in range(nspec)], name='VI_issue_flag')
-    cds_targetinfo.add([" " for i in range(nspec)], name='VI_z')
-    cds_targetinfo.add([" " for i in range(nspec)], name='VI_spectype')
-    cds_targetinfo.add([" " for i in range(nspec)], name='VI_comment')
+    cds_targetinfo.add(["" for i in range(nspec)], name='VI_issue_flag')
+    cds_targetinfo.add(["" for i in range(nspec)], name='VI_z')
+    cds_targetinfo.add(["" for i in range(nspec)], name='VI_spectype')
+    cds_targetinfo.add(["" for i in range(nspec)], name='VI_comment')
     
     return cds_targetinfo
 
