@@ -1130,7 +1130,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     
     #- Optional VI flags (issues)
     vi_issue_input = CheckboxGroup(labels=vi_issue_labels, active=[])
-    with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_issue_code = f.read()
+    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_issue_code = f.read()
+    with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_issue_code += f.read()
     vi_issue_code += """
         var issues = []
         for (var i=0; i<vi_issue_labels.length; i++) {
@@ -1141,7 +1142,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         } else {
             cds_targetinfo.data['VI_issue_flag'][ifiberslider.value] = " "
         }
-        autosave_vi(title, vi_file_fields, cds_targetinfo.data)
+        autosave_vi_localStorage(vi_file_fields, cds_targetinfo.data, title)
         cds_targetinfo.change.emit()
         """
     vi_issue_callback = CustomJS(
@@ -1154,10 +1155,11 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     
     #- Optional VI information on redshift
     vi_z_input = TextInput(value='', title="VI redshift:")
-    with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_z_code = f.read()
+    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_z_code = f.read()
+    with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_z_code += f.read()
     vi_z_code += """
         cds_targetinfo.data['VI_z'][ifiberslider.value]=vi_z_input.value
-        autosave_vi(title, vi_file_fields, cds_targetinfo.data)
+        autosave_vi_localStorage(vi_file_fields, cds_targetinfo.data, title)
         cds_targetinfo.change.emit()
         """
     vi_z_callback = CustomJS(
@@ -1178,10 +1180,11 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     #- Optional VI information on spectral type
     vi_spectypes = [" "] + utils_specviewer._vi_spectypes
     vi_category_select = Select(value=" ", title="VI spectype:", options=vi_spectypes)
-    with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_category_code = f.read()
+    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_category_code = f.read()
+    with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_category_code += f.read()
     vi_category_code += """
         cds_targetinfo.data['VI_spectype'][ifiberslider.value]=vi_category_select.value
-        autosave_vi(title, vi_file_fields, cds_targetinfo.data)
+        autosave_vi_localStorage(vi_file_fields, cds_targetinfo.data, title)
         cds_targetinfo.change.emit()
         """
     vi_category_callback = CustomJS(
@@ -1193,10 +1196,11 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
 
     #- Optional VI comment
     vi_comment_input = TextInput(value='', title="VI comment (100 char max.):")
-    with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_comment_code = f.read()
+    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_comment_code = f.read()
+    with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_comment_code += f.read()
     vi_comment_code += """
         cds_targetinfo.data['VI_comment'][ifiberslider.value]=vi_comment_input.value
-        autosave_vi(title, vi_file_fields, cds_targetinfo.data)
+        autosave_vi_localStorage(vi_file_fields, cds_targetinfo.data, title)
         cds_targetinfo.change.emit()
         """
     vi_comment_callback = CustomJS(
@@ -1208,8 +1212,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     #- List of "standard" VI comment
     vi_std_comments = [" "] + utils_specviewer._vi_std_comments
     vi_std_comment_select = Select(value=" ", title="Standard comment:", options=vi_std_comments)
-    with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_std_comment_code = f.read()
-    vi_std_comment_code += """
+    vi_std_comment_code = """
         if (vi_std_comment_select.value != ' ') {
             if (vi_comment_input.value != '') {
                 vi_comment_input.value = vi_comment_input.value + " " + vi_std_comment_select.value
@@ -1225,7 +1228,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     
     #- Main VI classification
     vi_class_input = RadioButtonGroup(labels=vi_class_labels)
-    with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_class_code = f.read()
+    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_class_code = f.read()
+    with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_class_code += f.read()
     vi_class_code += """
         if ( vi_class_input.active >= 0 ) {
             cds_targetinfo.data['VI_class_flag'][ifiberslider.value] = vi_class_labels[vi_class_input.active]
@@ -1237,7 +1241,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         } else {
             cds_targetinfo.data['VI_class_flag'][ifiberslider.value] = "-1"
         }
-        autosave_vi(title, vi_file_fields, cds_targetinfo.data)
+        autosave_vi_localStorage(vi_file_fields, cds_targetinfo.data, title)
         cds_targetinfo.change.emit()
     """
     vi_class_callback = CustomJS(
@@ -1251,7 +1255,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     
     #- VI scanner name    
     vi_name_input = TextInput(value=(cds_targetinfo.data['VI_scanner'][0]).strip(), title="Your name (3-letter acronym):")
-    with open(os.path.join(js_dir,"autosave_vi.js"), 'r') as f : vi_name_code = f.read()
+    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_name_code = f.read()
+    with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_name_code += f.read()
     vi_name_code += """
         for (var i=0; i<nspec; i++) {
             cds_targetinfo.data['VI_scanner'][i]=vi_name_input.value
@@ -1260,7 +1265,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         var pepe = newname.split("_")
         newname = ( pepe.slice(0,pepe.length-1).join("_") ) + ("_"+vi_name_input.value+".csv")
         vi_filename_input.value = newname
-        autosave_vi(title, vi_file_fields, cds_targetinfo.data)
+        autosave_vi_localStorage(vi_file_fields, cds_targetinfo.data, title)
         """
     vi_name_callback = CustomJS(
         args=dict(cds_targetinfo=cds_targetinfo, nspec = nspec, vi_name_input=vi_name_input,
@@ -1283,7 +1288,11 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     #- Save VI info to CSV file
     save_vi_button = Button(label="Download VI", button_type="default")
     with open(os.path.join(js_dir,"FileSaver.js"), 'r') as f : save_vi_code = f.read()
-    with open(os.path.join(js_dir,"download_vi.js"), 'r') as f : save_vi_code += f.read()
+    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : save_vi_code += f.read()
+    with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : save_vi_code += f.read()
+    save_vi_code += """
+        download_vi_file(vi_file_fields, cds_targetinfo.data, vi_filename_input.value)
+        """
     save_vi_callback = CustomJS(
         args=dict(cds_targetinfo=cds_targetinfo, 
             vi_file_fields=vi_file_fields, vi_filename_input=vi_filename_input), 
@@ -1292,7 +1301,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
 
     #- Recover auto-saved VI data in browser
     recover_vi_button = Button(label="Recover auto-saved VI", button_type="default")
-    with open(os.path.join(js_dir,"recover_autosave_vi.js"), 'r') as f : recover_vi_code = f.read()
+    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : recover_vi_code = f.read()
+    with open(os.path.join(js_dir,"recover_autosave_vi.js"), 'r') as f : recover_vi_code += f.read()
     recover_vi_callback = CustomJS(
         args = dict(title=title, vi_file_fields=vi_file_fields, cds_targetinfo=cds_targetinfo, 
                    ifiber=ifiberslider.value, vi_comment_input=vi_comment_input,
