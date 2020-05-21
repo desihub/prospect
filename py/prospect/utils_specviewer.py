@@ -41,18 +41,21 @@ _vi_file_fields = [
     #      associated variable in cds_targetinfo, 
     #      dtype in VI file ]
     # Ordered list
-    ["TargetID", "targetid", "i4"],
-    ["ExpID", "expid", "i4"],
-    ["Spec version", "spec_version", "i4"], # TODO define
-    ["Redrock version", "redrock_version", "i4"], # TODO define
-    ["Redrock spectype", "spectype", "S10"],
-    ["Redrock z", "z", "f4"],
-    ["VI scanner", "VI_scanner", "S10"],
-    ["VI class", "VI_class_flag", "i2"],
-    ["VI issue", "VI_issue_flag", "S6"],
-    ["VI z", "VI_z", "f4"],
-    ["VI spectype", "VI_spectype", "S10"],
-    ["VI comment", "VI_comment", "S100"]
+    ["TARGETID", "targetid", "i4"],
+    ["EXPID", "expid", "i4"],
+    ["NIGHT", "night", "i4"],
+    ["TILEID", "tileid", "i4"],
+    ["Spec_version", "spec_version", "i4"],
+    ["Redrock_version", "redrock_version", "i4"], # TODO define
+    ["Template_version", "template_version", "i4"], # TODO define
+    ["Redrock_spectype", "spectype", "S10"],
+    ["Redrock_z", "z", "f4"],
+    ["VI_scanner", "VI_scanner", "S10"],
+    ["VI_quality", "VI_class_flag", "i2"],
+    ["VI_issue", "VI_issue_flag", "S6"],
+    ["VI_z", "VI_z", "f4"],
+    ["VI_spectype", "VI_spectype", "S10"],
+    ["VI_comment", "VI_comment", "S100"]
 ]
 
 _vi_spectypes =[

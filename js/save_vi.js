@@ -55,7 +55,7 @@ function vi_to_csv(vi_file_fields, cds_data, for_localStorage, localStorage_key)
                 entry = entry.replace(/"/g, '""')
                 entry = entry.replace(/,/g, '","')
                 if (for_localStorage == false) {
-                    if (entry=="" || entry==" ") entry = "--"
+                    if (entry==" ") entry = ""
                 }
                 row.push(entry)
             }
@@ -76,7 +76,7 @@ function vi_to_csv(vi_file_fields, cds_data, for_localStorage, localStorage_key)
 
     var csv_to_store = ''
     for (var j=0; j<array_to_store.length; j++) {
-        var row = (array_to_store[j]).join(' , ')
+        var row = (array_to_store[j]).join(',')
         csv_to_store += ( row.concat("\n") )
     }
 

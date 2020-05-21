@@ -325,11 +325,12 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=" ") 
         cds_targetinfo.add(np.zeros(nspec), name='zerr')
         cds_targetinfo.add([0 for i in range(nspec)], name='zwarn')
         cds_targetinfo.add(np.zeros(nspec), name='deltachi2')
-        
-    if not is_coadded and 'EXPID' in spectra.fibermap.keys() :
-        cds_targetinfo.add(spectra.fibermap['EXPID'], name='expid')
-    else : # If coadd, fill VI accordingly
-        cds_targetinfo.add(['-1' for i in range(nspec)], name='expid')
+    
+    for fm_key,cds_key in [ ('EXPID','expid'), ('NIGHT','night'), ('TILEID','tileid')] :
+        if fm_key in spectra.fibermap.keys() :
+            cds_targetinfo.add(spectra.fibermap[fm_key], name=cds_key)
+        else :
+            cds_targetinfo.add(['-1' for i in range(nspec)], name=cds_key)
     cds_targetinfo.add([str(x) for x in spectra.fibermap['TARGETID']], name='targetid') # !! No int64 in js !!
 
     #- Get desispec version
@@ -339,7 +340,8 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=" ") 
         if yy=="desispec" :
             desispec_specversion = spectra.meta[xx.replace('NAM','VER')]
     cds_targetinfo.add([desispec_specversion for i in range(nspec)], name='spec_version')
-    cds_targetinfo.add(np.zeros(nspec), name='redrock_version')
+    cds_targetinfo.add(np.zeros(nspec)-1, name='redrock_version')
+    cds_targetinfo.add(np.zeros(nspec)-1, name='template_version')
 
     # VI inputs
     cds_targetinfo.add([username for i in range(nspec)], name='VI_scanner')
@@ -984,9 +986,9 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     ## BYPASS DIV to be able to copy targetid...
     ## target_info_div = Div(text=cds_targetinfo.data['target_info'][0])
     tmp_dict = dict()
-    tmp_dict['Target ID'] = [ cds_targetinfo.data['targetid'][0] ]
+    tmp_dict['TARGETID'] = [ cds_targetinfo.data['targetid'][0] ]
     tmp_dict['Target class'] = [ cds_targetinfo.data['target_info'][0] ]
-    targ_disp_cols = [ TableColumn(field='Target ID', title='Target ID', width=150),
+    targ_disp_cols = [ TableColumn(field='TARGETID', title='TARGETID', width=150),
                      TableColumn(field='Target class', title='Target class', width=250) ] # TODO tune width
     for band in ['G', 'R', 'Z', 'W1', 'W2'] :
         tmp_dict['mag_'+band] = [ "{:.2f}".format(cds_targetinfo.data['mag_'+band][0]) ]
@@ -1199,7 +1201,21 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_comment_code = f.read()
     with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_comment_code += f.read()
     vi_comment_code += """
-        cds_targetinfo.data['VI_comment'][ifiberslider.value]=vi_comment_input.value
+        var stored_comment = (vi_comment_input.value).replace(/./g, function(char){
+            if ( char==',' ) {
+                return ';'
+            } else if ( char.charCodeAt(0)<=127 ) {
+                return char
+            } else {
+                var char_list = ['Å','α','β','γ','δ','λ']
+                var char_replace = ['Angstrom','alpha','beta','gamma','delta','lambda']
+                for (var i=0; i<char_list.length; i++) {
+                    if ( char==char_list[i] ) return char_replace[i]
+                }
+                return '?'
+            }
+        })
+        cds_targetinfo.data['VI_comment'][ifiberslider.value] = stored_comment
         autosave_vi_localStorage(vi_file_fields, cds_targetinfo.data, title)
         cds_targetinfo.change.emit()
         """
