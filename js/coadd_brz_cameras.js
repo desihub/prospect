@@ -2,7 +2,7 @@
 // Requires to include functions in: interp_grid.js
 
 function coadd_brz_cameras(wave_in, flux_in, noise_in) {
-    // Camera-coadd brz spectra. Similar to the python code mycoaddcam()
+    // Camera-coadd brz spectra.
     // each "_in" must have 3 entries (brz)
     // TODO handle case of no noise
 

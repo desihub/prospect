@@ -199,7 +199,8 @@ def make_cds_coaddcam_spec(spectra, with_noise) :
         Except for the first spectrum, coaddition is done later in javascript
     """
 
-    coadd_wave, coadd_flux, coadd_ivar = mycoaddcam.mycoaddcam(spectra)
+    #coadd_wave, coadd_flux, coadd_ivar = mycoaddcam.mycoaddcam(spectra)
+    coadd_wave, coadd_flux, coadd_ivar = mycoaddcam.coaddcam_prospect(spectra)        
     cds_coaddcam_data = dict(
         origwave = coadd_wave.copy(),
         plotwave = coadd_wave.copy(),
@@ -368,7 +369,8 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
 
     if thumb_height is None : thumb_height = thumb_width//2
     if titles is not None : assert len(titles) == spectra.num_spectra()
-    thumb_wave, thumb_flux, dummy = mycoaddcam.mycoaddcam(spectra)
+    #thumb_wave, thumb_flux, dummy = mycoaddcam.mycoaddcam(spectra)
+    thumb_wave, thumb_flux, dummy = mycoaddcam.coaddcam_prospect(spectra)
     kernel = astropy.convolution.Gaussian1DKernel(stddev=resamp_factor)
     
     thumb_plots = []
@@ -939,8 +941,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         cds_oii_saveinfo.data['nsmooth'] = [smootherslider.value]
         // Center on the middle of the redshifted OII doublet (vaccum)
         var z = parseFloat(z_input.value)
-        fig.x_range.start = 3708.48 * (1+z)
-        fig.x_range.end = 3748.48 * (1+z)
+        fig.x_range.start = 3728.48 * (1+z) - 30
+        fig.x_range.end = 3728.48 * (1+z) + 30
         // No smoothing (this implies a call to update_plot)
         smootherslider.value = 0
         """)
@@ -1435,7 +1437,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
             bk.Row(
                 widgetbox(recover_vi_button, width=150),
                 widgetbox(clear_vi_button, width=150)
-            )
+            ),
+            background='#f5f5f0'
         )
     plot_widget_set = bk.Column(
         widgetbox( Div(text="Pipeline fit: ") ),
@@ -1457,7 +1460,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
             bk.Column(
                 widgetbox(z_input, width=100),
                 widgetbox(z_tovi_button, width=100)
-            )
+            ),
+            background='#fff7e6'
         ),
         widgetbox(smootherslider, width=plot_widget_width),
 #        widgetbox(display_options_group,width=120),
