@@ -73,7 +73,7 @@ def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, templ
         from redrock.archetypes import All_archetypes
     
     if np.any(zbest['TARGETID'] != spectra.fibermap['TARGETID']) :
-        raise RunTimeError('zcatalog and spectra do not match (different targetids)') 
+        raise RuntimeError('zcatalog and spectra do not match (different targetids)') 
     
     templates = load_redrock_templates(template_dir=template_dir)
     
@@ -129,7 +129,7 @@ def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, templ
             model_flux['z'][:, keep['z']],
         ], axis=1 )
     else :
-        raise RunTimeError("create_model: Set of bands for spectra not supported")
+        raise RuntimeError("create_model: Set of bands for spectra not supported")
         
     return model_wave, mflux
 
@@ -183,7 +183,11 @@ def make_cds_median_spectra(spectra) :
     cdsdata = dict(median=[])
     for i in range(spectra.num_spectra()) :
         the_flux = np.concatenate( tuple([spectra.flux[band][i] for band in spectra.bands]) )
-        cdsdata['median'].append(np.median(the_flux[~np.isnan(the_flux)]))
+        w, = np.where( ~np.isnan(the_flux) )
+        if len(w)==0 :
+            cdsdata['median'].append(1)
+        else :
+            cdsdata['median'].append(np.median(the_flux[w]))
         
     cds_median_spectra = bk.ColumnDataSource(cdsdata)
     return cds_median_spectra
@@ -461,13 +465,13 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     #- Input zcatalog / model
     if zcatalog is not None:
         if np.any(zcatalog['TARGETID'] != spectra.fibermap['TARGETID']) :
-            raise RunTimeError('zcatalog and spectra do not match (different targetids)') 
+            raise RuntimeError('zcatalog and spectra do not match (different targetids)') 
         
         if model is not None :
             assert model_from_zcat == False
             mwave, mflux = model
             if len(mflux)!=spectra.num_spectra() :
-                raise RunTimeError("model fluxes do not match spectra (different nb of entries)")
+                raise RuntimeError("model fluxes do not match spectra (different nb of entries)")
 
         if model_from_zcat == True :
             model = create_model(spectra, zcatalog, archetype_fit=archetype_fit, archetypes_dir=archetypes_dir, template_dir=template_dir)
@@ -497,7 +501,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     if redrock_cat is not None :
         # TODO unhardcode delta_lambd_templates=3
         if np.any(redrock_cat['TARGETID'] != spectra.fibermap['TARGETID']) :
-            raise RunTimeError('redrock_cat and spectra do not match (different targetids)')
+            raise RuntimeError('redrock_cat and spectra do not match (different targetids)')
         if zcatalog is None : 
             raise ValueError('Redrock_cat was provided but not zcatalog.')
         
@@ -526,7 +530,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         cds_model_2ndfit = None
         template_dicts = None
         cds_othermodel =  None
-
+        
     if notebook and ("USER" in os.environ) : 
         username = os.environ['USER'][0:3] # 3-letter acronym
     else :
@@ -575,11 +579,12 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     #- Highlight overlap regions between arms
     ## overlap wavelengths are hardcoded, from 1907.10688 (Table 1)
     overlap_waves = [ [5660, 5930], [7470, 7720] ]
+    alpha_overlapband = 0.03
     overlap_bands = []
-    if spectra.bands == ['brz'] :
-        for i in range(len(overlap_waves)) :
-            overlap_bands.append( BoxAnnotation(left=overlap_waves[i][0], right=overlap_waves[i][1], fill_color='blue', fill_alpha=0.03, line_alpha=0) )
-            fig.add_layout(overlap_bands[-1])
+    for i in range(len(overlap_waves)) :
+        fill_alpha = alpha_overlapband if with_coaddcam else 0
+        overlap_bands.append( BoxAnnotation(left=overlap_waves[i][0], right=overlap_waves[i][1], fill_color='blue', fill_alpha=fill_alpha, line_alpha=0) )
+        fig.add_layout(overlap_bands[-1])
         
     data_lines = list()
     for spec in cds_spectra:
@@ -619,7 +624,6 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     fig.add_layout(legend, 'center')
     fig.legend.click_policy = 'hide'    #- or 'mute'
 
-    
     #-----
     #- Zoom figure around mouse hover of main plot
     tooltips_zoomfig = [("wave","$x"),("flux","$y")]
@@ -967,7 +971,12 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     if cds_coaddcam_spec is not None : coaddcam_labels = ["Camera-coadded", "Single-arm"]
     coaddcam_buttons = RadioButtonGroup(labels=coaddcam_labels, active=0)
     coaddcam_callback = CustomJS(
-        args = dict(coaddcam_buttons=coaddcam_buttons, list_lines=[data_lines, noise_lines, zoom_data_lines, zoom_noise_lines], alpha_discrete=alpha_discrete), code="""
+        args = dict(coaddcam_buttons=coaddcam_buttons,
+                    list_lines=[data_lines, noise_lines, zoom_data_lines, zoom_noise_lines],
+                    alpha_discrete=alpha_discrete,
+                    overlap_bands=overlap_bands,
+                    alpha_overlapband=alpha_overlapband), 
+        code="""
         var n_lines = list_lines[0].length
         for (var i=0; i<n_lines; i++) {
             var new_alpha = 1
@@ -976,6 +985,11 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
             for (var j=0; j<list_lines.length; j++) {
                 list_lines[j][i].glyph.line_alpha = new_alpha
             }
+        }
+        var new_alpha = 0
+        if (coaddcam_buttons.active == 0) new_alpha = alpha_overlapband
+        for (var j=0; j<overlap_bands.length; j++) {
+                overlap_bands[j].fill_alpha = new_alpha
         }
         """
     )
@@ -1030,7 +1044,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     else :
         zcat_display = Div(text="Not available ")
         zcat_disp_cds = None
-        
+
     #-----
     #- Toggle lines
     lines_button_group = CheckboxButtonGroup(
@@ -1111,8 +1125,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     else :
         model_select = None
     
-    
-    
+
     #-----
     #- VI-related widgets
     
@@ -1154,7 +1167,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
                 title=title, vi_file_fields = vi_file_fields), 
         code=vi_issue_code )
     vi_issue_input.js_on_click(vi_issue_callback)
-    
+ 
     #- Optional VI information on redshift
     vi_z_input = TextInput(value='', title="VI redshift:")
     with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_z_code = f.read()
@@ -1197,7 +1210,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     vi_category_select.js_on_change('value',vi_category_callback)
 
     #- Optional VI comment
-    vi_comment_input = TextInput(value='', title="VI comment (100 char max.):")
+    vi_comment_input = TextInput(value='', title="VI comment (see guidelines):")
     with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_comment_code = f.read()
     with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_comment_code += f.read()
     vi_comment_code += """
@@ -1268,7 +1281,6 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         code=vi_class_code )
     vi_class_input.js_on_click(vi_class_callback)
 
-    
     #- VI scanner name    
     vi_name_input = TextInput(value=(cds_targetinfo.data['VI_scanner'][0]).strip(), title="Your name (3-letter acronym):")
     with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_name_code = f.read()
@@ -1291,18 +1303,19 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
 
     #- Guidelines for VI flags
     vi_guideline_txt = "<B> VI guidelines </B>"
-    vi_guideline_txt += "<BR /> <B> Classification flags : </B>"
+    vi_guideline_txt += "<BR /> <B> Classification flags: </B>"
     for flag in utils_specviewer._vi_flags :
         if flag['type'] == 'class' : vi_guideline_txt += ("<BR />&emsp;&emsp;[&emsp;"+flag['label']+"&emsp;] "+flag['description'])
-    vi_guideline_txt += "<BR /> <B> Optional indications : </B>"
+    vi_guideline_txt += "<BR /> <B> Optional indications: </B>"
     for flag in utils_specviewer._vi_flags :
         if flag['type'] == 'issue' : 
             vi_guideline_txt += ( "<BR />&emsp;&emsp;[&emsp;" + flag['label'] + 
                                  "&emsp;(" + flag['shortlabel'] + ")&emsp;] " + flag['description'] )
+    vi_guideline_txt += "<BR /> <B> Comments: </B> <BR /> 100 characters max, avoid commas (automatically replaced by semi-columns), ASCII only."
     vi_guideline_div = Div(text=vi_guideline_txt)
 
     #- Save VI info to CSV file
-    save_vi_button = Button(label="Download VI", button_type="default")
+    save_vi_button = Button(label="Download VI", button_type="success")
     with open(os.path.join(js_dir,"FileSaver.js"), 'r') as f : save_vi_code = f.read()
     with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : save_vi_code += f.read()
     with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : save_vi_code += f.read()
@@ -1344,7 +1357,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     ]
     vi_table = DataTable(source=cds_targetinfo, columns=vi_table_columns, width=500)
     vi_table.height = 10 * vi_table.row_height
-
+    
+    
     #-----
     #- Main js code to update plot
     with open(os.path.join(js_dir,"adapt_plotrange.js"), 'r') as f : update_plot_code = f.read()
@@ -1404,14 +1418,9 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         vi_widget_set = bk.Column(
             widgetbox( Div(text="VI optional indications :"), width=300 ),
             bk.Row(
-                bk.Column(
-                    widgetbox(Spacer(height=20)),
-                    widgetbox(vi_issue_input, width=150, height=100),
-                ),
-                bk.Column(
-                    widgetbox(vi_z_input, width=150),
-                    widgetbox(vi_category_select, width=150),
-                )
+                widgetbox(vi_issue_input, width=150),
+                widgetbox(vi_z_input, width=150),
+                widgetbox(vi_category_select, width=150)
             ),
             bk.Row(
                 widgetbox(vi_comment_input, width=300),
@@ -1452,8 +1461,11 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         ),
         widgetbox(smootherslider, width=plot_widget_width),
 #        widgetbox(display_options_group,width=120),
-        widgetbox(coaddcam_buttons, width=200),
-        widgetbox(waveframe_buttons, width=120),
+        bk.Row(
+            widgetbox(coaddcam_buttons, width=200),
+            widgetbox(Spacer(width=30)),
+            widgetbox(waveframe_buttons, width=120)
+        ),
         bk.Row(
             widgetbox(lines_button_group, width=200),
             widgetbox(Spacer(width=30)),
@@ -1576,7 +1588,8 @@ def add_lines(fig, z=0 , emission=True, fig_height=None, label_offsets=[100, 5])
     )
     for line_category in ['emission', 'absorption'] :
         line_array = np.genfromtxt(os.path.join(line_file_dir,line_category+"_lines.txt"), delimiter=",",
-                                   dtype=[("name","|U20"),("longname","|U20"),("wavelength",float),("vacuum",bool),("major",bool)])
+                               dtype=[("name","|U20"),("longname","|U20"),("wavelength",float),("vacuum",bool),("major",bool)],
+                               encoding='utf-8')
         vacuum_wavelengths = line_array['wavelength']
         w, = np.where(line_array['vacuum']==False)
         vacuum_wavelengths[w] = np.array([_airtovac(wave) for wave in line_array['wavelength'][w]])

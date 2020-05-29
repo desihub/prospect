@@ -89,7 +89,7 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
     night = tile_db_subset['night']
     nspec_done = 0
     all_spectra = None
-    log.info("Tile "+tile+" : reading coadds from night "+night)
+    log.info("Tile "+tile+": reading coadds from night "+night)
     if with_multiple_models : 
         rrtables = []
 
@@ -105,7 +105,7 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
             # Hardcoded: display up to 4th best fit (=> need 5 best fits in redrock table)
             if with_multiple_models :
                 fname = os.path.join(fdir,"redrock-"+petal_num+"-"+tile+'-'+night+".h5")
-                rr_table = utils_specviewer.match_redrock_zfit_to_spectra(fname, spectra, num_best_fits=5)
+                rr_table = utils_specviewer.match_redrock_zfit_to_spectra(fname, spectra)
                 rrtables.append(rr_table)
         # Merge
         if all_spectra is None :
@@ -139,7 +139,12 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
     
     if with_multiple_models :
         rrtable = vstack(rrtables)
-    else : rrtable = None
+        num_approx_fits = 4 # TODO settle option/unhardcode
+        with_full_2ndfit = True # TODO settle option/unhardcode
+    else : 
+        rrtable = None
+        num_approx_fits = None
+        with_full_2ndfit = False
     
     # Create several html pages : sort by targetid
     nspec_tile = all_spectra.num_spectra()
@@ -152,12 +157,16 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
         the_indices = sort_indices[(i_page-1)*nspecperfile:i_page*nspecperfile]            
         thespec = myspecselect.myspecselect(all_spectra, indices=the_indices, remove_scores=True)
         the_zcat, kk = utils_specviewer.match_zcat_to_spectra(zcat, thespec)
-        the_rrtable, kk = utils_specviewer.match_zcat_to_spectra(rrtable, thespec)
-
+        if with_multiple_models :
+            the_rrtable, kk = utils_specviewer.match_zcat_to_spectra(rrtable, thespec)
+        else :
+            the_rrtable = None
+        
         titlepage = titlepage_prefix+"_"+str(i_page)
-        plotframes.plotspectra(thespec, with_noise=True, with_coaddcam=False, is_coadded=True, zcatalog=the_zcat,
+        plotframes.plotspectra(thespec, with_noise=True, is_coadded=True, zcatalog=the_zcat,
                     title=titlepage, html_dir=html_dir, mask_type='CMX_TARGET', with_thumb_only_page=True,
-                    template_dir=template_dir, redrock_cat=the_rrtable)
+                    template_dir=template_dir, redrock_cat=the_rrtable, num_approx_fits=num_approx_fits,
+                    with_full_2ndfit=with_full_2ndfit)
     nspec_done += nspec_tile
         
     return nspec_done
@@ -169,7 +178,7 @@ def main(args) :
     log = get_logger()
     webdir = args.webdir
     if ( [args.tile, args.tile_list] ).count(None) != 1 :
-        log.info("Specview_cmx_coadds : Wrong set of input tiles. Exiting")
+        log.info("Specview_cmx_coadds: Wrong set of input tiles. Exiting")
         return 0
         
     # Logistics : list of "subsets" to process        
@@ -180,8 +189,8 @@ def main(args) :
     subset_db = tile_db(args.specprod_dir, tile_subset=tile_subset, petals=args.petals, with_zcatalog=args.with_zcatalog)
     tmplist = [ x['tile'] for x in subset_db ]
     missing_tiles = [ x for x in tile_subset if x not in tmplist ]
-    for x in missing_tiles : log.info("Missing tile, cannot be processed : "+x)
-    log.info(str(len(subset_db))+" tiles [exposures] to be processed")
+    for x in missing_tiles : log.info("Missing tile, cannot be processed: "+x)
+    log.info(str(len(subset_db))+" tile/night subsets to be processed")
     
     # Main loop on subsets
     nspec_done = 0
@@ -203,7 +212,7 @@ def main(args) :
         nspec_done += nspec_added
         if args.nmax_spectra is not None :
             if nspec_done >= args.nmax_spectra :
-                log.info(str(nspec_done)+" spectra done : no other exposure will be processed")
+                log.info(str(nspec_done)+" spectra done: no other exposure will be processed")
                 break
 
     log.info("End of specview_cmx_coadds script.")

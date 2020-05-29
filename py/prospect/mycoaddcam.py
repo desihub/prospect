@@ -62,7 +62,7 @@ def mycoaddcam(spectra) :
         flux = spectra.flux['brz']
         ivar = spectra.ivar['brz']
     else :
-        raise RunTimeError("mycoaddcam: set of bands for spectra not supported")
+        raise RuntimeError("mycoaddcam: set of bands for spectra not supported")
     
     
     return (wave, flux, ivar)

@@ -424,7 +424,7 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
     if chi2cut is not None :
         assert len(chi2cut)==2 # Require range [chi2min, chi2max]
         if np.any(zbest['TARGETID'] != spectra.fibermap['TARGETID']) :
-            raise RunTimeError('specviewer_selection : zbest and spectra do not match (different targetids)') 
+            raise RuntimeError('specviewer_selection : zbest and spectra do not match (different targetids)') 
 
         w, = np.where( (zbest['DELTACHI2']>chi2cut[0]) & (zbest['DELTACHI2']<chi2cut[1]) )
         if len(w) == 0 :
