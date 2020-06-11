@@ -709,7 +709,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     # These two widgets call update_plot(), later defined
     slider_end = nspec-1 if nspec > 1 else 0.5 # Slider cannot have start=end
     ifiberslider = Slider(start=0, end=slider_end, value=0, step=1, title='Spectrum (of '+str(nspec)+')')
-    smootherslider = Slider(start=0, end=51, value=0, step=1.0, title='Gaussian Sigma Smooth')
+    smootherslider = Slider(start=0, end=26, value=0, step=1.0, title='Gaussian Sigma Smooth')
 
     #-----
     #- Navigation buttons

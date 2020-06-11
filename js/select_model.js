@@ -41,10 +41,14 @@ if (model_select.value == 'Best fit') {
     
 } else if ( (model_select.value).search("STD ") == 0) {
     // TODO : adapt median to relevant waverange (fct of z_spec at least).
-    var template_key = (model_select.value).slice(4)
 
-    if ( (model_select.value).search("GALAXY") > -1) spec_z = 0.7
-    if ( (model_select.value).search("QSO") > -1) spec_z = 1.5
+    // Option (A): plot std template at an arbitrary/fixed redshift
+    //if ( (model_select.value).search("GALAXY") > -1) spec_z = 0.7
+    //if ( (model_select.value).search("QSO") > -1) spec_z = 1.5
+    // Option (B): plot std template at the redshift given by z_input
+    spec_z = parseFloat(z_input.value)
+    
+    var template_key = (model_select.value).slice(4)
     var shifted_template_wave = std_templates["wave_"+template_key].slice()
     // Median is computed in waverange [3600-9800] angstrom (RoI)
     var lambda_min_roi = 3600
