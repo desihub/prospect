@@ -41,18 +41,21 @@ _vi_file_fields = [
     #      associated variable in cds_targetinfo, 
     #      dtype in VI file ]
     # Ordered list
-    ["TargetID", "targetid", "i4"],
-    ["ExpID", "expid", "i4"],
-    ["Spec version", "spec_version", "i4"], # TODO define
-    ["Redrock version", "redrock_version", "i4"], # TODO define
-    ["Redrock spectype", "spectype", "S10"],
-    ["Redrock z", "z", "f4"],
-    ["VI scanner", "VI_scanner", "S10"],
-    ["VI class", "VI_class_flag", "i2"],
-    ["VI issue", "VI_issue_flag", "S6"],
-    ["VI z", "VI_z", "f4"],
-    ["VI spectype", "VI_spectype", "S10"],
-    ["VI comment", "VI_comment", "S100"]
+    ["TARGETID", "targetid", "i4"],
+    ["EXPID", "expid", "i4"],
+    ["NIGHT", "night", "i4"],
+    ["TILEID", "tileid", "i4"],
+    ["Spec_version", "spec_version", "i4"],
+    ["Redrock_version", "redrock_version", "i4"], # TODO define
+    ["Template_version", "template_version", "i4"], # TODO define
+    ["Redrock_spectype", "spectype", "S10"],
+    ["Redrock_z", "z", "f4"],
+    ["VI_scanner", "VI_scanner", "S10"],
+    ["VI_quality", "VI_class_flag", "i2"],
+    ["VI_issue", "VI_issue_flag", "S6"],
+    ["VI_z", "VI_z", "f4"],
+    ["VI_spectype", "VI_spectype", "S10"],
+    ["VI_comment", "VI_comment", "S100"]
 ]
 
 _vi_spectypes =[
@@ -61,6 +64,14 @@ _vi_spectypes =[
     "STAR",
     "GALAXY",
     "QSO"
+]
+
+_vi_std_comments = [
+    # Standardized VI comments
+    "Broad absorption line quasar (BAL)",
+    "Damped Lyman-alpha system (DLA)",
+    "Two objects in spectrum",
+    "Blazar"
 ]
 
 def read_vi(vifile) :
@@ -140,7 +151,13 @@ def match_zcat_to_spectra(zcat_in, spectra) :
     - creates a new astropy Table whose rows match the targetids of input spectra
     - also returns the corresponding list of indices
     - for each targetid, a unique row in zcat_in must exist.
+    TODO : maybe rename this fct ? match_table_to_spectra ?
+    => it also works whatever kind of input zcat : just has to be a table with 'TARGETID' key
+    => in particular it's useful for "redrock_cat" tables
     '''
+    
+    if zcat_in is None : return None
+    
     zcat_out = Table(dtype=zcat_in.dtype)
     index_list = list()
     for i_spec in range(spectra.num_spectra()) :
@@ -154,30 +171,57 @@ def match_zcat_to_spectra(zcat_in, spectra) :
     return (zcat_out, index_list)
 
 
-def match_redrock_zfit_to_spectra(redrockfile, spectra, num_best_fit=3) :
+def match_redrock_zfit_to_spectra(redrockfile, spectra, Nfit=None) :
     '''
     Read Redrock file, and return astropy Table of best fits matched to the targetids of input spectra
-    - for each target, returns arrays chi2[N], coeff[N], z[N], spectype[N], subtype[N]
-    - where N = num_best_fit
+    - for each target, store arrays chi2[Nfit], coeff[Nfit], z[Nfit], spectype[Nfit], subtype[Nfit]
+    - if Nfit is None: take all available fits
     '''
-    matched_redrock_cat = Table(dtype=[('TARGETID', '<i8'), ('chi2', '<f8', (num_best_fit,)), ('coeff', '<f8', (num_best_fit,10,)), ('z', '<f8', (num_best_fit,)), ('spectype', '<U6', (num_best_fit,)), ('subtype', '<U2', (num_best_fit,))])
+    
     dummy, rr_table = redrock.results.read_zscan(redrockfile)
+    rr_targets = rr_table['targetid']
+    if Nfit is None :
+        ww, = np.where( (rr_targets == rr_targets[0]) )
+        Nfit = len(ww)
+    matched_redrock_cat = Table(dtype=[('TARGETID', '<i8'), ('CHI2', '<f8', (Nfit,)), ('DELTACHI2', '<f8', (Nfit,)), ('COEFF', '<f8', (Nfit,10,)), ('Z', '<f8', (Nfit,)), ('ZERR', '<f8', (Nfit,)), ('ZWARN', '<i8', (Nfit,)), ('SPECTYPE', '<U6', (Nfit,)), ('SUBTYPE', '<U2', (Nfit,))])
+    
     for i_spec in range(spectra.num_spectra()) :
-        ww, = np.where((rr_table['targetid'] == spectra.fibermap['TARGETID'][i_spec]))
-        if len(ww)<num_best_fit : 
-            raise RuntimeError("redrock table cannot match spectra with "+str(num_best_fit)+" best fits")
-        ind = np.argsort(rr_table[ww]['chi2'])[0:num_best_fit]
-        sub_table = rr_table[ww][ind][0:num_best_fit]
+        ww, = np.where((rr_targets == spectra.fibermap['TARGETID'][i_spec]))
+        if len(ww)<Nfit : 
+            raise RuntimeError("redrock table cannot match spectra with "+str(Nfit)+" best fits")
+        ind = np.argsort(rr_table[ww]['chi2'])[0:Nfit]
+        sub_table = rr_table[ww][ind]
         the_entry = [ spectra.fibermap['TARGETID'][i_spec] ]
         the_entry.append(sub_table['chi2'])
+        the_entry.append(sub_table['deltachi2'])
         the_entry.append(sub_table['coeff'])
         the_entry.append(sub_table['z'])
+        the_entry.append(sub_table['zerr'])
+        the_entry.append(sub_table['zwarn'])
         the_entry.append(sub_table['spectype'])
         the_entry.append(sub_table['subtype'])
         matched_redrock_cat.add_row(the_entry)
-        
+     
     return matched_redrock_cat
 
+
+def create_zcat_from_redrock_cat(redrock_cat, fit_num=0) :
+    '''
+    TODO change name zcat -> zbest_cat ?
+    Extract a z catalog from redrock catalog produced in match_redrock_zfit_to_spectra()
+    The z catalog has one fit per targetid, corresponding to the (fit_num)th best fit
+    '''
+    
+    rr_cat_num_best_fits = redrock_cat['Z'].shape[1]
+    if (fit_num >= rr_cat_num_best_fits) : raise ValueError("fit_num too large wrt redrock_cat")
+    zcat_dtype=[('TARGETID', '<i8'), ('CHI2', '<f8'), ('COEFF', '<f8', (10,)), ('Z', '<f8'), ('ZERR', '<f8'), ('ZWARN', '<i8'), ('SPECTYPE', '<U6'), ('SUBTYPE', '<U2'), ('DELTACHI2', '<f8')]
+    zcat_out = Table( data=np.zeros(len(redrock_cat), dtype=zcat_dtype) )
+    zcat_out['TARGETID'] = redrock_cat['TARGETID']
+    for key in [ 'CHI2', 'DELTACHI2', 'COEFF', 'SPECTYPE', 'SUBTYPE', 'Z', 'ZERR', 'ZWARN'] :
+        zcat_out[key] = redrock_cat[key][:,fit_num]
+    
+    return zcat_out
+    
 def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None) :
     '''
     Small homemade/hack utility (based on Anand's hack)
@@ -380,7 +424,7 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
     if chi2cut is not None :
         assert len(chi2cut)==2 # Require range [chi2min, chi2max]
         if np.any(zbest['TARGETID'] != spectra.fibermap['TARGETID']) :
-            raise RunTimeError('specviewer_selection : zbest and spectra do not match (different targetids)') 
+            raise RuntimeError('specviewer_selection : zbest and spectra do not match (different targetids)') 
 
         w, = np.where( (zbest['DELTACHI2']>chi2cut[0]) & (zbest['DELTACHI2']<chi2cut[1]) )
         if len(w) == 0 :

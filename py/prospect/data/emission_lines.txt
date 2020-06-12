@@ -1,0 +1,58 @@
+# -*- coding: utf-8 -*-
+# Comma-separated entries
+# List of emission lines for prospect viewer
+# Sources: SDSS spZline files ($IDLSPEC2D_DIR/etc/emlines.par, wavelengths in air for
+#   lambda > 2000, vacuum for lambda < 2000); A. Edge list (sent by email to T. Davis,
+#   07/04/2020); desisim recombination/forbidden line lists (J. Moustakas); few others.
+# name,longname,lambda,vacuum,major
+Lyβ,Lyman β,1025.18,True,False
+Lyα,Lyman α,1215.67,True,True
+N V,N V 1240,1240.81,True,False
+Si II*,Si II* 1265,1264.738,True,False
+Si II*,Si II* 1309,1309.276,True,False
+Si IV,Si IV 1394,1393.75,True,False
+Si IV,Si IV 1403,1402.77,True,False
+Si II*,Si II* 1533,1533.431,True,False
+C IV,C IV 1549,1549.48,True,True
+He II,He II 1640,1640.42,True,False
+O III],O III] 1661,1660.809,True,False
+O III],O III] 1666,1666.150,True,False
+Si III],Si III] 1882,1882.468,True,False
+Si III],Si III] 1892,1892.030,True,False
+C III],C III] 1907,1907.640,True,False
+C III],C III] 1908,1908.734,True,True
+Mg II,Mg II 2796,2796.3543,False,True
+Mg II,Mg II 2803,2803.5315,False,True
+Ne V,Ne V 3346,3346.79,True,False
+Ne V,Ne V 3426,3426.85,True,False
+[O II],[O II] 3725,3726.032,False,True
+[O II],[O II] 3727,3728.815,False,True
+[Ne III],[Ne III] 3868,3868.76,False,False
+He I,He I 3389,3889.752,True,False
+H8,Balmer 8,3890.151,True,False
+Hζ,Balmer ζ,3889.049,False,False
+[Ne III],[Ne III] 3970,3970.00,False,False
+Hε,Balmer ε,3970.072,False,False
+Hδ,Balmer δ,4101.734,False,True
+Hγ,Balmer γ,4340.464,False,True
+[O III],[O III] 4363,4363.209,False,False
+He II,He II 4685,4685.68,False,False
+Hβ,Balmer β,4861.325,False,True
+[O III],[O III] 4959,4958.911,False,True
+[O III],[O III] 5007,5006.843,False,True
+He II,He II 5411,5411.52,False,False
+[O I],[O I] 5577,5577.339,False,False
+[N II],[N II] 5755,5754.59,False,False
+He I,He I 5876,5875.68,False,False
+[O I],[O I] 6300,6300.304,False,False
+[S III],[S III] 6312,6312.06,False,False
+[O I],[O I] 6363,6363.776,False,False
+[N II],[N II] 6548,6548.05,False,False
+Hα,Balmer α,6562.801,False,True
+[N II],[N II] 6583,6583.45,False,True
+[S II],[S II] 6716,6716.44,False,True
+[S II],[S II] 6730,6730.82,False,True
+[Ar III],[Ar III] 7135,7135.790,False,False
+[Ar III],[Ar III] 7751,7753.19,True,False
+[S III],[S III] 9071,9071.1,True,False
+[S III],[S III] 9532,9533.2,True,False
