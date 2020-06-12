@@ -24,7 +24,7 @@ from bokeh.models import ColumnDataSource, CDSView, IndexFilter
 from bokeh.models import CustomJS, LabelSet, Label, Span, Legend, Panel, Tabs, BoxAnnotation
 from bokeh.models.widgets import (
     Slider, Button, Div, CheckboxGroup, CheckboxButtonGroup, RadioButtonGroup, 
-    TextInput, Select, DataTable, TableColumn)
+    TextInput, Select, DataTable, TableColumn, Spinner)
 from bokeh.layouts import widgetbox, Spacer, gridplot
 import bokeh.events
 # from bokeh.layouts import row, column
