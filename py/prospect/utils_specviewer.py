@@ -248,25 +248,29 @@ def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None) :
                 pp = glob.glob(os.path.join(tiledir,tile,night,'zbest-'+petal+'-'+tile+'-????????.fits'))
                 if len(pp)>0 :
                     fn        = pp[0]
-                    data      = astropy.io.fits.open(fn)['fibermap'].data
-                    targetid += data['targetid'].tolist()
-                    fiber    += data['fiber'].tolist()
-                    petal_list    += [petal for i in range(len(data['targetid']))]
+                    fm = Table.read(fn, 'FIBERMAP')
+                    tid, keep = np.unique(fm['TARGETID'], return_index=True)
+                    data = fm[keep]
+                    #data      = astropy.io.fits.open(fn)['fibermap'].data # Not ok with andes
+                    targetid += data['TARGETID'].tolist()
+                    fiber    += data['FIBER'].tolist()
+                    petal_list    += [petal for i in range(len(data['TARGETID']))]
             target_dict[tile+"-"+night]['targetid'] = np.array(targetid)
             target_dict[tile+"-"+night]['fiber']    = np.array(fiber)
             target_dict[tile+"-"+night]['petal']    = np.array(petal_list)
             
     return target_dict
 
-def load_spectra_zcat_from_targets(targets, tiledir, obs_db) :
+def load_spectra_zcat_from_targets(targets, tiledir, obs_db, with_redrock=False) :
     '''
-    Creates (spectra,zcat) = (Spectra object, zcatalog Table) from a list of targetids
+    Creates (spectra,zcat,[redrock_cat]) = (Spectra object, zcatalog Table, [redrock Table]) from a list of targetids
     - targets must be a list of int64
-    - obs_db : "mini-db" produced by make_targetdict()
+    - obs_db: "mini-db" produced by make_targetdict()
+    - with_redrock: if True, also get redrock Table
     '''
     
     spectra = None
-    ztables = []
+    ztables, rrtables = [], []
     
     for target in targets :
         for tile_night in obs_db.keys() :
@@ -283,11 +287,18 @@ def load_spectra_zcat_from_targets(targets, tiledir, obs_db) :
             the_zcat = Table.read(os.path.join(tiledir,the_path,"zbest-"+the_petal+"-"+tile_night+".fits"),'ZBEST')
             the_zcat, dummy = match_zcat_to_spectra(the_zcat, the_spec)
             ztables.append(the_zcat)
+            if with_redrock :
+                rrfile = os.path.join(tiledir,the_path,"redrock-"+the_petal+"-"+tile_night+".h5")
+                the_rrcat = match_redrock_zfit_to_spectra(rrfile, the_spec, Nfit=None)
+                rrtables.append(the_rrcat)
             if spectra is None : spectra = the_spec
             else : spectra = myspecupdate.myspecupdate(spectra,the_spec)
     zcat = vstack(ztables)
-    
-    return (spectra,zcat)
+    if with_redrock : 
+        rrcat = vstack(rrtables)
+        return (spectra, zcat, rrcat)
+    else :
+        return (spectra,zcat)
 
 
 def get_y_minmax(pmin, pmax, data, ispec) :

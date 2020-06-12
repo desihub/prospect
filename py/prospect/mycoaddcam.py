@@ -106,28 +106,35 @@ def coaddcam_prospect(spectra) :
     Same input/output as mycoaddcam()
     """
     
-    if spectra.bands != ['b','r','z'] : raise RuntimeError("Cannot coaddcam spectra here if bands are not b,r,z.")
+    if np.all([ band in spectra.bands for band in ['b','r','z'] ]) :
     
-    for i_spec in range(spectra.num_spectra()) :
-        wave_in = [ spectra.wave[b] for b in spectra.bands ]
-        flux_in = [ spectra.flux[b][i_spec] for b in spectra.bands ]
-        noise_in = []
-        for b in spectra.bands :
-            the_noise = np.zeros(len(spectra.ivar[b][i_spec]))
-            w, = np.where( (spectra.ivar[b][i_spec] > 0) )
-            the_noise[w] = 1/np.sqrt(spectra.ivar[b][i_spec][w])
-            noise_in.append(the_noise)
-        the_wave, the_flux, the_noise = coadd_brz_cameras(wave_in, flux_in, noise_in)
-        the_ivar = np.zeros(len(the_noise))
-        w, = np.where( (the_noise > 0) )
-        the_ivar[w] = 1/the_noise[w]**2
-        if i_spec == 0 :
-            wave_out = np.asarray(the_wave)
-            flux_out = np.zeros((spectra.num_spectra(),len(wave_out)),dtype=spectra.flux['b'].dtype)
-            ivar_out = np.zeros((spectra.num_spectra(),len(wave_out)),dtype=spectra.ivar['b'].dtype)
-        flux_out[i_spec,:] = the_flux
-        ivar_out[i_spec,:] = the_ivar
-        
+        for i_spec in range(spectra.num_spectra()) :
+            wave_in = [ spectra.wave[b] for b in spectra.bands ]
+            flux_in = [ spectra.flux[b][i_spec] for b in spectra.bands ]
+            noise_in = []
+            for b in spectra.bands :
+                the_noise = np.zeros(len(spectra.ivar[b][i_spec]))
+                w, = np.where( (spectra.ivar[b][i_spec] > 0) )
+                the_noise[w] = 1/np.sqrt(spectra.ivar[b][i_spec][w])
+                noise_in.append(the_noise)
+            the_wave, the_flux, the_noise = coadd_brz_cameras(wave_in, flux_in, noise_in)
+            the_ivar = np.zeros(len(the_noise))
+            w, = np.where( (the_noise > 0) )
+            the_ivar[w] = 1/the_noise[w]**2
+            if i_spec == 0 :
+                wave_out = np.asarray(the_wave)
+                flux_out = np.zeros((spectra.num_spectra(),len(wave_out)),dtype=spectra.flux['b'].dtype)
+                ivar_out = np.zeros((spectra.num_spectra(),len(wave_out)),dtype=spectra.ivar['b'].dtype)
+            flux_out[i_spec,:] = the_flux
+            ivar_out[i_spec,:] = the_ivar
+
+    elif spectra.bands == ['brz'] :
+        wave_out = spectra.wave['brz']
+        flux_out = spectra.flux['brz']
+        ivar_out = spectra.ivar['brz']
+    else :
+        raise RuntimeError("Set of bands for spectra not supported.")
+ 
     return (wave_out, flux_out, ivar_out)
 
 
