@@ -5,7 +5,7 @@
 
 import desispec.spectra
 
-def myspecselect(thespec, nights=None, bands=None, targets=None, fibers=None, expids=None, indices=None, invert=False, remove_scores=False, clean_fiberstatus=False):
+def myspecselect(thespec, nights=None, bands=None, targets=None, fibers=None, expids=None, indices=None, invert=False, remove_scores=False, clean_fiberstatus=False, output_indices=False):
     """
     Select a subset of the data.
     This filters the data based on a logical AND of the different
@@ -19,6 +19,7 @@ def myspecselect(thespec, nights=None, bands=None, targets=None, fibers=None, ex
         ADDED =>indices (list) : list of raw (arbitrary) indices in the Spectra object to select. 
         invert (bool): after combining all criteria, invert selection.
         remove_scores (bool): probably tmp trick, TODO
+        output_indices (bool): if True, also returns indices of kept spectra
     Returns (Spectra):
         a new Spectra object containing the selected data.
     """
@@ -127,4 +128,7 @@ def myspecselect(thespec, nights=None, bands=None, targets=None, fibers=None, ex
         fibermap=thespec.fibermap[keep], meta=thespec.meta, extra=keep_extra,
         single=thespec._single, scores=keep_scores)
 
+    if output_indices :
+        return (ret, keep)
+    
     return ret
