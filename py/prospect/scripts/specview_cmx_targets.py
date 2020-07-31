@@ -21,8 +21,8 @@ def parse() :
     parser = argparse.ArgumentParser(description='Create static html pages from a set of targets, using CMX tile-based coadds')
     parser.add_argument('--specprod_dir', help='Location of directory tree (data in specprod_dir/tiles/)', type=str)
     parser.add_argument('--target_list', help='ASCII file providing the list of targetids', type=str)
-    parser.add_argument('--tile', help='Name of single tile to be processed (avoids to scan all tiles)', type=str, default=None)
-    parser.add_argument('--tile_list', help='ASCII file providing list of tiles (avoids to scan all tiles)', type=str, default=None)
+    parser.add_argument('--tiles', help='Name of tile[s] to be processed (avoids to scan all tiles)', nargs='+', type=str, default=None)
+    parser.add_argument('--nights', help='Name of night[s] to be processed (avoids to scan all nights)', nargs='+', type=str, default=None)
     parser.add_argument('--nspecperfile', help='Number of spectra in each html page', type=int, default=50)
     parser.add_argument('--webdir', help='Base directory for webpages', type=str)
     parser.add_argument('--titlepage_prefix', help='Prefix for webpage title', type=str, default='targetlist')
@@ -38,13 +38,11 @@ def main(args) :
     log = get_logger()
     
     tile_dir = os.path.join(args.specprod_dir,'tiles')
-    if args.tile_list :
-        tile_list = args.tile_list
-    elif args.tile :
-        tile_list = [args.tile]
+    if args.tiles :
+        tile_list = args.tiles
     else :
         tile_list = os.listdir(tile_dir)
-    obs_db = utils_specviewer.make_targetdict(tile_dir, tiles=tile_list)
+    obs_db = utils_specviewer.make_targetdict(tile_dir, tiles=tile_list, nights=args.nights)
     
     targetids = np.loadtxt(args.target_list, dtype='int64', comments='#')
     log.info(str(len(targetids))+" targets provided.")

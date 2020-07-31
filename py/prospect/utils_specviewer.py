@@ -222,11 +222,13 @@ def create_zcat_from_redrock_cat(redrock_cat, fit_num=0) :
     
     return zcat_out
     
-def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None) :
+def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None, nights=None) :
     '''
     Small homemade/hack utility (based on Anand's hack)
     Makes "mini-db" of targetids. It basically reads zbest, so it's reasonably fast
     Adapted to the directory structure tiledir/{tile}/{night}/{cframe/zbest/...}
+    - tiles: optional list of tiles (all of them must exist in tiledir)
+    - nights: optional list of nights
     '''
     target_dict = {}
     if tiles is None :
@@ -236,8 +238,10 @@ def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None) :
         assert all(x in alltiles for x in tiles)
             
     for tile in tiles :
-        nights = os.listdir(os.path.join(tiledir,tile))
-        for night in nights :
+        the_nights = os.listdir(os.path.join(tiledir,tile))
+        if nights is not None :
+            the_nights = [ x for x in the_nights if x in nights ]
+        for night in the_nights :
             target_dict[tile+"-"+night] = {}
             # exposures
             fns = np.sort(glob.glob(os.path.join(tiledir,tile,night,'cframe-b'+petals[0]+'-????????.fits')))
