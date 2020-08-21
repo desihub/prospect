@@ -28,6 +28,7 @@ from desispec.io.frame import read_frame
 from desispec.io.fibermap import fibermap_comments
 from .utils_specviewer import _coadd
 
+
 class Spectra(SpectrumList):
     """Represents a grouping of spectra.
 

@@ -27,17 +27,14 @@ from bokeh.models.widgets import (
 import bokeh.layouts as bl
 import bokeh.events
 
-import desispec.io
 from desitarget.targetmask import desi_mask
 from desitarget.cmx.cmx_targetmask import cmx_mask
 from desitarget.sv1.sv1_targetmask import desi_mask as sv1_desi_mask
-import desispec.spectra
-import desispec.frame
 
-#from . import utils_specviewer
-from prospect import utils_specviewer
-from prospect import mycoaddcam
-from prospect.plotframes import add_lines, _airtovac
+# from prospect import utils_specviewer
+from .utils_specviewer import create_zcat_from_redrock_cat, _vi_flags, _vi_file_fields, _vi_spectypes, _vi_std_comments
+from .mycoaddcam import mycoaddcam, coaddcam_prospect
+from .plotframes import add_lines, _airtovac
 
 def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, template_dir=None):
     '''
@@ -183,7 +180,7 @@ def make_cds_coaddcam_spec(spectra, with_noise) :
         Except for the first spectrum, coaddition is done later in javascript
     """
 
-    coadd_wave, coadd_flux, coadd_ivar = mycoaddcam.mycoaddcam(spectra)
+    coadd_wave, coadd_flux, coadd_ivar = mycoaddcam(spectra)
     cds_coaddcam_data = dict(
         origwave = coadd_wave.copy(),
         plotwave = coadd_wave.copy(),
@@ -361,7 +358,7 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
 
     if thumb_height is None : thumb_height = thumb_width//2
     if titles is not None : assert len(titles) == spectra.num_spectra()
-    #thumb_wave, thumb_flux, dummy = mycoaddcam.mycoaddcam(spectra)
+    # thumb_wave, thumb_flux, dummy = mycoaddcam(spectra)
     thumb_wave, thumb_flux, dummy = mycoaddcam.coaddcam_prospect(spectra)
     kernel = astropy.convolution.Gaussian1DKernel(stddev=resamp_factor)
 
@@ -531,7 +528,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
         if num_approx_fits is None : num_approx_fits = nfits_redrock_cat
         if (num_approx_fits > nfits_redrock_cat) : raise ValueError("num_approx_fits too large wrt redrock_cat")
         if with_full_2ndfit :
-            zcat_2ndfit = utils_specviewer.create_zcat_from_redrock_cat(redrock_cat, fit_num=1)
+            zcat_2ndfit = create_zcat_from_redrock_cat(redrock_cat, fit_num=1)
             model_2ndfit = create_model(spectra, zcat_2ndfit, archetype_fit=archetype_fit,
                                         archetypes_dir=archetypes_dir, template_dir=template_dir)
             cds_model_2ndfit = make_cds_model(model_2ndfit)
@@ -1160,10 +1157,10 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     #-----
     #- VI-related widgets
 
-    vi_file_fields = utils_specviewer._vi_file_fields
-    vi_class_labels = [ x["label"] for x in utils_specviewer._vi_flags if x["type"]=="class" ]
-    vi_issue_labels = [ x["label"] for x in utils_specviewer._vi_flags if x["type"]=="issue" ]
-    vi_issue_slabels = [ x["shortlabel"] for x in utils_specviewer._vi_flags if x["type"]=="issue" ]
+    vi_file_fields = _vi_file_fields
+    vi_class_labels = [ x["label"] for x in _vi_flags if x["type"]=="class" ]
+    vi_issue_labels = [ x["label"] for x in _vi_flags if x["type"]=="issue" ]
+    vi_issue_slabels = [ x["shortlabel"] for x in _vi_flags if x["type"]=="issue" ]
 
     #- VI file name
     default_vi_filename = "desi-vi_"+title
@@ -1224,7 +1221,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     z_tovi_button.js_on_event('button_click', z_tovi_callback)
 
     #- Optional VI information on spectral type
-    vi_spectypes = [" "] + utils_specviewer._vi_spectypes
+    vi_spectypes = [" "] + _vi_spectypes
     vi_category_select = Select(value=" ", title="VI spectype:", options=vi_spectypes)
     with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_category_code = f.read()
     with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_category_code += f.read()
@@ -1270,7 +1267,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     vi_comment_input.js_on_change('value',vi_comment_callback)
 
     #- List of "standard" VI comment
-    vi_std_comments = [" "] + utils_specviewer._vi_std_comments
+    vi_std_comments = [" "] + _vi_std_comments
     vi_std_comment_select = Select(value=" ", title="Standard comment:", options=vi_std_comments)
     vi_std_comment_code = """
         if (vi_std_comment_select.value != ' ') {
@@ -1335,10 +1332,10 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     #- Guidelines for VI flags
     vi_guideline_txt = "<B> VI guidelines </B>"
     vi_guideline_txt += "<BR /> <B> Classification flags: </B>"
-    for flag in utils_specviewer._vi_flags :
+    for flag in _vi_flags :
         if flag['type'] == 'class' : vi_guideline_txt += ("<BR />&emsp;&emsp;[&emsp;"+flag['label']+"&emsp;] "+flag['description'])
     vi_guideline_txt += "<BR /> <B> Optional indications: </B>"
-    for flag in utils_specviewer._vi_flags :
+    for flag in _vi_flags :
         if flag['type'] == 'issue' :
             vi_guideline_txt += ( "<BR />&emsp;&emsp;[&emsp;" + flag['label'] +
                                  "&emsp;(" + flag['shortlabel'] + ")&emsp;] " + flag['description'] )
