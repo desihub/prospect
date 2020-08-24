@@ -110,7 +110,7 @@ var ymax = 0.0;
 var ivar_weight = nsmooth > 0;
 var valid_y_range = false;
 for (var i=0; i<spectra.length; i++) {
-    console.log("Updating spectrum " + (i+1) + " (of " + spectra.length + ") of object " + ifiber + ".");
+    // console.log("Updating spectrum " + (i+1) + " (of " + spectra.length + ") of object " + ifiber + ".");
     var data = spectra[i].data;
     var origflux = data['origflux'+ifiber];
     if (origflux.filter(isFinite).length == 0) {
@@ -171,7 +171,6 @@ if (model) {
 // update other model
 //
 if (othermodel) {
-    // console.log("Updating othermodel.");
     if (cb_obj == smootherslider) {
         othermodel.data['plotflux'] = smooth_data(othermodel.data['origflux'], kernel, {});
         othermodel.change.emit();
@@ -192,5 +191,5 @@ if (othermodel) {
 if (valid_y_range) {
     fig.y_range.start = ymin < 0 ? ymin * 1.4 : ymin * 0.6;
     fig.y_range.end = ymax * 1.4;
-    console.log("fig.y_range.start = " + fig.y_range.start + "; fig.y_range.end = " + fig.y_range.end);
+    // console.log("fig.y_range.start = " + fig.y_range.start + "; fig.y_range.end = " + fig.y_range.end);
 }
