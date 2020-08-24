@@ -135,6 +135,15 @@ for (var i=0; i<spectra.length; i++) {
     spectra[i].change.emit();
 }
 //
+// After initial limits are calculated by adapt_plotrange(), add some
+// extra padding.
+//
+if (valid_y_range) {
+    fig.y_range.start = ymin < 0 ? ymin * 1.4 : ymin * 0.6;
+    fig.y_range.end = ymax * 1.4;
+    // console.log("fig.y_range.start = " + fig.y_range.start + "; fig.y_range.end = " + fig.y_range.end);
+}
+//
 // update camera-coadd
 // Here I choose to do coaddition on the smoothed spectra (should be ok?)
 //
@@ -184,12 +193,4 @@ if (othermodel) {
         model_select.value = trigger_value;
         model_select.value = 'Best fit';
     }
-}
-//
-// update fig.y_range
-//
-if (valid_y_range) {
-    fig.y_range.start = ymin < 0 ? ymin * 1.4 : ymin * 0.6;
-    fig.y_range.end = ymax * 1.4;
-    // console.log("fig.y_range.start = " + fig.y_range.start + "; fig.y_range.end = " + fig.y_range.end);
 }
