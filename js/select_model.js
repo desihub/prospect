@@ -79,10 +79,10 @@ if (model_select.value == 'Best fit') {
     var spectype =  fit_results['SPECTYPE'][ifiberslider.value][i_fit]
     var subtype =  fit_results['SUBTYPE'][ifiberslider.value][i_fit]
     spec_z = fit_results['Z'][ifiberslider.value][i_fit]
-
+    
     var template_wave = fit_templates["wave_"+spectype+"_"+subtype]
     var template_flux = fit_templates["flux_"+spectype+"_"+subtype]
-
+    
     var model_wave = template_wave.slice()
     var model_flux = template_wave.slice()
     for (var j=0; j<model_wave.length; j++) {
@@ -110,7 +110,7 @@ if (nsmooth > 0) {
     for (var i=-2*nsmooth; i<=2*nsmooth; i++) {
         kernel.push(Math.exp( -(i**2)/(2*(nsmooth**2)) ))
     }
-    cds_othermodel.data['plotflux'] = smooth_data(cds_othermodel.data['origflux'], kernel)
+    cds_othermodel.data['plotflux'] = smooth_data(cds_othermodel.data['origflux'], kernel, {})
 }
 
 // Change value for z_input

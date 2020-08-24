@@ -111,14 +111,14 @@ for (var i=0; i<spectra.length; i++) {
         }
     } else {
         if ('plotnoise' in data) {
-            data['plotflux'] = smooth_data(origflux, kernel, ivar_in=ivar, ivar_weight=ivar_weight)
+            data['plotflux'] = smooth_data(origflux, kernel, {"ivar_in": ivar, "ivar_weight": ivar_weight});
             if (ivar_weight==true) {
-                data['plotnoise'] = smooth_noise(ivar, kernel, ivar_weight=true)
+                data['plotnoise'] = smooth_noise(ivar, kernel, {"ivar_weight": ivar_weight})
             } else {
-                data['plotnoise'] = smooth_noise(orignoise, kernel, ivar_weight=false)
+                data['plotnoise'] = smooth_noise(orignoise, kernel, {"ivar_weight": ivar_weight})
             }
         } else {
-            data['plotflux'] = smooth_data(origflux, kernel, ivar_weight=false)
+            data['plotflux'] = smooth_data(origflux, kernel, {"ivar_weight": false});
         }
     }
     spectra[i].change.emit()
@@ -159,7 +159,7 @@ if (model) {
     if (nsmooth == 0) {
         model.data['plotflux'] = origflux.slice()
     } else {
-        model.data['plotflux'] = smooth_data(origflux, kernel)
+        model.data['plotflux'] = smooth_data(origflux, kernel, {})
     }
     model.change.emit()
 }
@@ -171,7 +171,7 @@ if (othermodel) {
         if (nsmooth == 0) {
             othermodel.data['plotflux'] = origflux.slice()
         } else {
-            othermodel.data['plotflux'] = smooth_data(origflux, kernel)
+            othermodel.data['plotflux'] = smooth_data(origflux, kernel, {})
         }
         othermodel.change.emit()
     } else if (cb_obj == ifiberslider) {
