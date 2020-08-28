@@ -24,7 +24,7 @@ var spec_z = 0.0
 
 if (model_select.value == 'Best fit') {
     var origflux = cds_model.data['origflux'+ifiberslider.value]
-    
+
     cds_othermodel.data['origflux'] = origflux.slice()
     cds_othermodel.data['plotflux'] = origflux.slice()
     cds_othermodel.data['plotwave'] = cds_model.data['plotwave'].slice()
@@ -38,7 +38,7 @@ if (model_select.value == 'Best fit') {
     cds_othermodel.data['plotwave'] = cds_model_2ndfit.data['plotwave']
     cds_othermodel.data['origwave'] = cds_model_2ndfit.data['origwave']
     spec_z = fit_results['Z'][ifiberslider.value][1] // entry "1" => 2nd best fit
-    
+
 } else if ( (model_select.value).search("STD ") == 0) {
     // TODO : adapt median to relevant waverange (fct of z_spec at least).
 
@@ -47,7 +47,7 @@ if (model_select.value == 'Best fit') {
     //if ( (model_select.value).search("QSO") > -1) spec_z = 1.5
     // Option (B): plot std template at the redshift given by z_input
     spec_z = parseFloat(z_input.value)
-    
+
     var template_key = (model_select.value).slice(4)
     var shifted_template_wave = std_templates["wave_"+template_key].slice()
     // Median is computed in waverange [3600-9800] angstrom (RoI)
@@ -72,7 +72,7 @@ if (model_select.value == 'Best fit') {
 
     cds_othermodel.data['plotwave'] = shifted_template_wave.slice()
     cds_othermodel.data['origwave'] = shifted_template_wave.slice()
-    
+
 } else { // recompute Nth best fit
     var i_fit = parseInt(model_select.value[0])-1 // hardcoded ("1st fit" => "1" => entry 0. Assumes N<10)
     var coeffs = fit_results['COEFF'][ifiberslider.value][i_fit]
