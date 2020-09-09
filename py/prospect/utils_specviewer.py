@@ -222,11 +222,13 @@ def create_zcat_from_redrock_cat(redrock_cat, fit_num=0) :
     
     return zcat_out
     
-def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None) :
+def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None, nights=None) :
     '''
     Small homemade/hack utility (based on Anand's hack)
     Makes "mini-db" of targetids. It basically reads zbest, so it's reasonably fast
     Adapted to the directory structure tiledir/{tile}/{night}/{cframe/zbest/...}
+    - tiles: optional list of tiles (all of them must exist in tiledir)
+    - nights: optional list of nights
     '''
     target_dict = {}
     if tiles is None :
@@ -236,8 +238,10 @@ def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None) :
         assert all(x in alltiles for x in tiles)
             
     for tile in tiles :
-        nights = os.listdir(os.path.join(tiledir,tile))
-        for night in nights :
+        the_nights = os.listdir(os.path.join(tiledir,tile))
+        if nights is not None :
+            the_nights = [ x for x in the_nights if x in nights ]
+        for night in the_nights :
             target_dict[tile+"-"+night] = {}
             # exposures
             fns = np.sort(glob.glob(os.path.join(tiledir,tile,night,'cframe-b'+petals[0]+'-????????.fits')))
@@ -255,7 +259,7 @@ def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None) :
                     targetid += data['TARGETID'].tolist()
                     fiber    += data['FIBER'].tolist()
                     petal_list    += [petal for i in range(len(data['TARGETID']))]
-            target_dict[tile+"-"+night]['targetid'] = np.array(targetid)
+            target_dict[tile+"-"+night]['targetid'] = np.array(targetid, dtype='int64')
             target_dict[tile+"-"+night]['fiber']    = np.array(fiber)
             target_dict[tile+"-"+night]['petal']    = np.array(petal_list)
             
@@ -269,30 +273,42 @@ def load_spectra_zcat_from_targets(targets, tiledir, obs_db, with_redrock=False)
     - with_redrock: if True, also get redrock Table
     '''
     
+    targets = np.asarray(targets)
+    if targets.dtype != 'int64' :
+        raise TypeError('Targetids should be int64.')
     spectra = None
     ztables, rrtables = [], []
     
+    for tile_night in obs_db.keys() :
+        petals = np.unique(obs_db[tile_night]['petal'])
+        for petal in petals :
+            targets_subset = []
+            for target in targets :
+                w, = np.where( (obs_db[tile_night]['targetid']==target) & (obs_db[tile_night]['petal']==petal) )
+                if len(w) == 0 : continue
+                if len(w) > 1 :
+                    print("Warning ! Several entries in tile/night "+tile_night+" available for target "+str(target))
+                targets_subset.append(target)
+            # Load spectra for that tile/night/petal only if there's a target from the list
+            if len(targets_subset)>0 :
+                the_path = tile_night.replace("-","/")
+                the_spec = desispec.io.read_spectra(os.path.join(tiledir,the_path,"coadd-"+petal+"-"+tile_night+".fits"))
+                the_spec = myspecselect.myspecselect(the_spec, targets=targets_subset, remove_scores=True)
+                the_zcat = Table.read(os.path.join(tiledir,the_path,"zbest-"+petal+"-"+tile_night+".fits"),'ZBEST')
+                the_zcat, dummy = match_zcat_to_spectra(the_zcat, the_spec)
+                ztables.append(the_zcat)
+                if with_redrock :
+                    rrfile = os.path.join(tiledir,the_path,"redrock-"+petal+"-"+tile_night+".h5")
+                    the_rrcat = match_redrock_zfit_to_spectra(rrfile, the_spec, Nfit=None)
+                    rrtables.append(the_rrcat)
+                if spectra is None : spectra = the_spec
+                else : spectra = myspecupdate.myspecupdate(spectra,the_spec)
+    
+    # Check if all targets were found in spectra
+    tids_spectra = spectra.fibermap['TARGETID']
     for target in targets :
-        for tile_night in obs_db.keys() :
-            w, = np.where( obs_db[tile_night]['targetid'] == target )
-            if len(w) > 1 : 
-                print("Warning ! Several entries in tile/night "+tile_night+" available for target "+str(target))
-            if len(w) == 0 : continue
-            the_path = tile_night.replace("-","/")
-            the_petal = obs_db[tile_night]['petal'][w[0]]
-            the_spec = desispec.io.read_spectra(os.path.join(tiledir,the_path,"coadd-"+the_petal+"-"+tile_night+".fits"))
-            the_spec = myspecselect.myspecselect(the_spec, targets=[target], remove_scores=True)
-            if the_spec.num_spectra() != 1 : 
-                print("Warning ! Several spectra for "+tile_night+" and target "+str(target))
-            the_zcat = Table.read(os.path.join(tiledir,the_path,"zbest-"+the_petal+"-"+tile_night+".fits"),'ZBEST')
-            the_zcat, dummy = match_zcat_to_spectra(the_zcat, the_spec)
-            ztables.append(the_zcat)
-            if with_redrock :
-                rrfile = os.path.join(tiledir,the_path,"redrock-"+the_petal+"-"+tile_night+".h5")
-                the_rrcat = match_redrock_zfit_to_spectra(rrfile, the_spec, Nfit=None)
-                rrtables.append(the_rrcat)
-            if spectra is None : spectra = the_spec
-            else : spectra = myspecupdate.myspecupdate(spectra,the_spec)
+        if target not in tids_spectra : print("Warning! targetid not found: "+str(target))
+    
     zcat = vstack(ztables)
     if with_redrock : 
         rrcat = vstack(rrtables)

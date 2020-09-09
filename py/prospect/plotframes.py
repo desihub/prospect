@@ -25,7 +25,7 @@ from bokeh.models import CustomJS, LabelSet, Label, Span, Legend, Panel, Tabs, B
 from bokeh.models.widgets import (
     Slider, Button, Div, CheckboxGroup, CheckboxButtonGroup, RadioButtonGroup, 
     TextInput, Select, DataTable, TableColumn, Spinner)
-from bokeh.layouts import widgetbox, Spacer, gridplot
+from bokeh.layouts import Column, Spacer, gridplot
 import bokeh.events
 # from bokeh.layouts import row, column
 
@@ -1195,7 +1195,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     z_tovi_button.js_on_event('button_click', z_tovi_callback)
     
     #- Optional VI information on spectral type
-    vi_spectypes = [" "] + utils_specviewer._vi_spectypes
+    vi_spectypes = [''] + utils_specviewer._vi_spectypes
     vi_category_select = Select(value=" ", title="VI spectype:", options=vi_spectypes)
     with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_category_code = f.read()
     with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_category_code += f.read()
@@ -1411,79 +1411,79 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     
     slider_width = plot_width - 2*navigation_button_width
     navigator = bk.Row(
-        widgetbox(prev_button, width=navigation_button_width+15),
-        widgetbox(next_button, width=navigation_button_width+20),
-        widgetbox(ifiberslider, width=plot_width+(plot_height//2)-(60*len(vi_class_labels)+2*navigation_button_width+35))
+        Column(prev_button, width=navigation_button_width+15),
+        Column(next_button, width=navigation_button_width+20),
+        Column(ifiberslider, width=plot_width+(plot_height//2)-(60*len(vi_class_labels)+2*navigation_button_width+35))
     )
     if with_vi_widgets :
-        navigator.children.insert(1, widgetbox(vi_class_input, width=60*len(vi_class_labels)) )
+        navigator.children.insert(1, Column(vi_class_input, width=60*len(vi_class_labels)) )
         vi_widget_set = bk.Column(
-            widgetbox( Div(text="VI optional indications :"), width=300 ),
+            Column( Div(text="VI optional indications :"), width=300 ),
             bk.Row(
-                widgetbox(vi_issue_input, width=150),
-                widgetbox(vi_z_input, width=150),
-                widgetbox(vi_category_select, width=150)
+                Column(vi_issue_input, width=150),
+                Column(vi_z_input, width=150),
+                Column(vi_category_select, width=150)
             ),
             bk.Row(
-                widgetbox(vi_comment_input, width=300),
-                widgetbox(vi_std_comment_select, width=200),
+                Column(vi_comment_input, width=300),
+                Column(vi_std_comment_select, width=200),
             ),
             bk.Row(
-                widgetbox(vi_name_input, width=200),
-                widgetbox(vi_filename_input, width=300)
+                Column(vi_name_input, width=200),
+                Column(vi_filename_input, width=300)
             ),
-            widgetbox(save_vi_button, width=100),
-            widgetbox(vi_table),        
+            Column(save_vi_button, width=100),
+            Column(vi_table),        
             bk.Row(
-                widgetbox(recover_vi_button, width=150),
-                widgetbox(clear_vi_button, width=150)
+                Column(recover_vi_button, width=150),
+                Column(clear_vi_button, width=150)
             ),
             background='#f5f5f0'
         )
     plot_widget_set = bk.Column(
-        widgetbox( Div(text="Pipeline fit: ") ),
-        widgetbox(zcat_display, width=plot_widget_width),
+        Column( Div(text="Pipeline fit: ") ),
+        Column(zcat_display, width=plot_widget_width),
         bk.Row(
             bk.Column(
                 bk.Row(
-                    widgetbox(z_minus_button, width=z_button_width+15),
-                    widgetbox(zslider, width=plot_widget_width-2*z_button_width-135),
-                    widgetbox(z_plus_button, width=z_button_width)
+                    Column(z_minus_button, width=z_button_width+15),
+                    Column(zslider, width=plot_widget_width-2*z_button_width-135),
+                    Column(z_plus_button, width=z_button_width)
                 ),
                 bk.Row(
-                    widgetbox(dzslider, width=plot_widget_width-235),
-                    widgetbox(Spacer(width=20)),
-                    widgetbox(zreset_button, width=100)
+                    Column(dzslider, width=plot_widget_width-235),
+                    Column(Spacer(width=20)),
+                    Column(zreset_button, width=100)
                 )
             ),
-            widgetbox(Spacer(width=15)),
+            Column(Spacer(width=15)),
             bk.Column(
-                widgetbox(z_input, width=100),
-                widgetbox(z_tovi_button, width=100)
+                Column(z_input, width=100),
+                Column(z_tovi_button, width=100)
             ),
             background='#fff7e6'
         ),
-        widgetbox(smootherslider, width=plot_widget_width),
+        Column(smootherslider, width=plot_widget_width),
 #        widgetbox(display_options_group,width=120),
         bk.Row(
-            widgetbox(coaddcam_buttons, width=200),
-            widgetbox(Spacer(width=30)),
-            widgetbox(waveframe_buttons, width=120)
+            Column(coaddcam_buttons, width=200),
+            Column(Spacer(width=30)),
+            Column(waveframe_buttons, width=120)
         ),
         bk.Row(
-            widgetbox(lines_button_group, width=200),
-            widgetbox(Spacer(width=30)),
-            widgetbox(majorline_checkbox, width=120)
+            Column(lines_button_group, width=200),
+            Column(Spacer(width=30)),
+            Column(majorline_checkbox, width=120)
         )
     )
     if model_select is not None :
-        plot_widget_set.children.insert(3, widgetbox(model_select, width=200))
+        plot_widget_set.children.insert(3, Column(model_select, width=200))
     if with_vi_widgets :
-        plot_widget_set.children.append( widgetbox(Spacer(height=30)) )
-        plot_widget_set.children.append( widgetbox(vi_guideline_div, width=plot_widget_width) )
+        plot_widget_set.children.append( Column(Spacer(height=30)) )
+        plot_widget_set.children.append( Column(vi_guideline_div, width=plot_widget_width) )
         full_widget_set = bk.Row(
             vi_widget_set,
-            widgetbox(Spacer(width=40)),
+            Column(Spacer(width=40)),
             plot_widget_set
         )
     else : full_widget_set = plot_widget_set
@@ -1491,12 +1491,12 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     main_bokehsetup = bk.Column(
         bk.Row(fig, bk.Column(imfig, zoomfig), Spacer(width=20), sizing_mode='stretch_width'),
         bk.Row(
-            widgetbox(targ_display, width=600), # plot_width - 200
-            widgetbox(Spacer(width=20)),
-            widgetbox(reset_plotrange_button, width = 120),
-            widgetbox(Spacer(width=80)),
-            widgetbox(oii_zoom_button, width=80),
-            widgetbox(oii_undo_button, width=50),
+            Column(targ_display, width=600), # plot_width - 200
+            Column(Spacer(width=20)),
+            Column(reset_plotrange_button, width = 120),
+            Column(Spacer(width=80)),
+            Column(oii_zoom_button, width=80),
+            Column(oii_undo_button, width=50),
         ),
         navigator,
         full_widget_set,
@@ -1539,11 +1539,11 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         miniplot_width = ( plot_width + (plot_height//2) ) // ncols_grid
         thumb_grid = grid_thumbs(spectra, miniplot_width, x_range=(xmin,xmax), ncols_grid=ncols_grid, titles=titles)
         thumb_viewer = bk.Column(
-            widgetbox( Div(text=
+            Column( Div(text=
                            " <h3> Thumbnail gallery for DESI spectra in "+title+" </h3>" +
                            " <p> Click <a href='specviewer_"+title+".html'>here</a> to access the spectral viewer corresponding to these spectra. </p>"
                           ), width=plot_width ),
-            widgetbox( thumb_grid )
+            Column( thumb_grid )
         )
         bk.save(thumb_viewer)
     

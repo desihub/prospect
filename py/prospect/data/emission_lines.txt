@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 # Comma-separated entries
 # List of emission lines for prospect viewer
-# Sources: SDSS spZline files ($IDLSPEC2D_DIR/etc/emlines.par, wavelengths in air for
-#   lambda > 2000, vacuum for lambda < 2000); A. Edge list (sent by email to T. Davis,
-#   07/04/2020); desisim recombination/forbidden line lists (J. Moustakas); few others.
+# Sources: 
+#   - SDSS spZline files ($IDLSPEC2D_DIR/etc/emlines.par, wavelengths in air for lambda > 2000, vacuum for lambda < 2000); 
+#   - A. Edge list (sent by email to T. Davis, 07/04/2020); 
+#   - desisim recombination/forbidden line lists (J. Moustakas; selected those whose quoted line-ratio wrt Hbeta is > 0.1); 
+#   - few others.
 # name,longname,lambda,vacuum,major
 Lyβ,Lyman β,1025.18,True,False
 Lyα,Lyman α,1215.67,True,True
