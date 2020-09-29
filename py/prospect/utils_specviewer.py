@@ -10,13 +10,33 @@ import astropy.io.fits
 from astropy.table import Table, vstack
 import scipy.ndimage.filters
 
-from desiutil.log import get_logger
-import desispec.spectra
-import desispec.frame
-from desitarget.targetmask import desi_mask
-from desitarget.cmx.cmx_targetmask import cmx_mask
-from desitarget.sv1.sv1_targetmask import desi_mask as sv1_desi_mask
-import redrock.results
+_desiutil_imported = True
+try:
+    from desiutil.log import get_logger
+except ImportError:
+    _desiutil_imported = False
+
+_desispec_imported = True
+try:
+    import desispec.spectra
+    import desispec.frame
+except ImportError:
+    _desispec_imported = False
+
+_desitarget_imported = True
+try:
+    from desitarget.targetmask import desi_mask
+    from desitarget.cmx.cmx_targetmask import cmx_mask
+    from desitarget.sv1.sv1_targetmask import desi_mask as sv1_desi_mask
+except ImportError:
+    _desitarget_imported = False
+
+_redrock_imported = True
+try:
+    import redrock.results
+except ImportError:
+    _redrock_imported = False
+
 
 from prospect import mycoaddcam
 from prospect import myspecselect, myspecupdate
@@ -36,9 +56,9 @@ _vi_flags = [
 ]
 
 _vi_file_fields = [
-    # Contents of VI files: [ 
-    #      field name (in VI file header), 
-    #      associated variable in cds_targetinfo, 
+    # Contents of VI files: [
+    #      field name (in VI file header),
+    #      associated variable in cds_targetinfo,
     #      dtype in VI file ]
     # Ordered list
     ["TARGETID", "targetid", "i4"],
@@ -81,7 +101,7 @@ def read_vi(vifile) :
     '''
     vi_records = [x[0] for x in _vi_file_fields]
     vi_dtypes = [x[2] for x in _vi_file_fields]
-    
+
     if (vifile[-5:] != ".fits" and vifile[-4:] not in [".fit",".fts",".csv"]) :
         raise RuntimeError("wrong file extension")
     if vifile[-4:] == ".csv" :
@@ -117,7 +137,7 @@ def convert_vi_tofits(vifile_in, overwrite=True) :
     vifile_out=vifile_in.replace(".csv",".fits")
     vi_info.write(vifile_out, format='fits', overwrite=overwrite)
     log.info("Created fits file : "+vifile_out+" ("+str(len(vi_info))+" entries).")
-    
+
 
 def initialize_master_vi(mastervifile, overwrite=False) :
     '''
@@ -129,7 +149,7 @@ def initialize_master_vi(mastervifile, overwrite=False) :
     vi_info = Table(names=vi_records, dtype=tuple(vi_dtypes))
     vi_info.write(mastervifile, format='fits', overwrite=overwrite)
     log.info("Initialized VI file : "+mastervifile+" (0 entry)")
-    
+
 
 def merge_vi(mastervifile, newvifile) :
     '''
@@ -155,14 +175,14 @@ def match_zcat_to_spectra(zcat_in, spectra) :
     => it also works whatever kind of input zcat : just has to be a table with 'TARGETID' key
     => in particular it's useful for "redrock_cat" tables
     '''
-    
+
     if zcat_in is None : return None
-    
+
     zcat_out = Table(dtype=zcat_in.dtype)
     index_list = list()
     for i_spec in range(spectra.num_spectra()) :
         ww, = np.where((zcat_in['TARGETID'] == spectra.fibermap['TARGETID'][i_spec]))
-        if len(ww)<1 : 
+        if len(ww)<1 :
                 raise RuntimeError("No zcat entry for target "+str(spectra.fibermap['TARGETID'][i_spec]))
         if len(ww)>1 :
             raise RuntimeError("Several zcat entries for target "+str(spectra.fibermap['TARGETID'][i_spec]))
@@ -177,17 +197,17 @@ def match_redrock_zfit_to_spectra(redrockfile, spectra, Nfit=None) :
     - for each target, store arrays chi2[Nfit], coeff[Nfit], z[Nfit], spectype[Nfit], subtype[Nfit]
     - if Nfit is None: take all available fits
     '''
-    
+
     dummy, rr_table = redrock.results.read_zscan(redrockfile)
     rr_targets = rr_table['targetid']
     if Nfit is None :
         ww, = np.where( (rr_targets == rr_targets[0]) )
         Nfit = len(ww)
     matched_redrock_cat = Table(dtype=[('TARGETID', '<i8'), ('CHI2', '<f8', (Nfit,)), ('DELTACHI2', '<f8', (Nfit,)), ('COEFF', '<f8', (Nfit,10,)), ('Z', '<f8', (Nfit,)), ('ZERR', '<f8', (Nfit,)), ('ZWARN', '<i8', (Nfit,)), ('SPECTYPE', '<U6', (Nfit,)), ('SUBTYPE', '<U2', (Nfit,))])
-    
+
     for i_spec in range(spectra.num_spectra()) :
         ww, = np.where((rr_targets == spectra.fibermap['TARGETID'][i_spec]))
-        if len(ww)<Nfit : 
+        if len(ww)<Nfit :
             raise RuntimeError("redrock table cannot match spectra with "+str(Nfit)+" best fits")
         ind = np.argsort(rr_table[ww]['chi2'])[0:Nfit]
         sub_table = rr_table[ww][ind]
@@ -201,7 +221,7 @@ def match_redrock_zfit_to_spectra(redrockfile, spectra, Nfit=None) :
         the_entry.append(sub_table['spectype'])
         the_entry.append(sub_table['subtype'])
         matched_redrock_cat.add_row(the_entry)
-     
+
     return matched_redrock_cat
 
 
@@ -211,7 +231,7 @@ def create_zcat_from_redrock_cat(redrock_cat, fit_num=0) :
     Extract a z catalog from redrock catalog produced in match_redrock_zfit_to_spectra()
     The z catalog has one fit per targetid, corresponding to the (fit_num)th best fit
     '''
-    
+
     rr_cat_num_best_fits = redrock_cat['Z'].shape[1]
     if (fit_num >= rr_cat_num_best_fits) : raise ValueError("fit_num too large wrt redrock_cat")
     zcat_dtype=[('TARGETID', '<i8'), ('CHI2', '<f8'), ('COEFF', '<f8', (10,)), ('Z', '<f8'), ('ZERR', '<f8'), ('ZWARN', '<i8'), ('SPECTYPE', '<U6'), ('SUBTYPE', '<U2'), ('DELTACHI2', '<f8')]
@@ -219,9 +239,9 @@ def create_zcat_from_redrock_cat(redrock_cat, fit_num=0) :
     zcat_out['TARGETID'] = redrock_cat['TARGETID']
     for key in [ 'CHI2', 'DELTACHI2', 'COEFF', 'SPECTYPE', 'SUBTYPE', 'Z', 'ZERR', 'ZWARN'] :
         zcat_out[key] = redrock_cat[key][:,fit_num]
-    
+
     return zcat_out
-    
+
 def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None, nights=None) :
     '''
     Small homemade/hack utility (based on Anand's hack)
@@ -236,7 +256,7 @@ def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None, nig
     else :
         alltiles = os.listdir(tiledir)
         assert all(x in alltiles for x in tiles)
-            
+
     for tile in tiles :
         the_nights = os.listdir(os.path.join(tiledir,tile))
         if nights is not None :
@@ -262,7 +282,7 @@ def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None, nig
             target_dict[tile+"-"+night]['targetid'] = np.array(targetid, dtype='int64')
             target_dict[tile+"-"+night]['fiber']    = np.array(fiber)
             target_dict[tile+"-"+night]['petal']    = np.array(petal_list)
-            
+
     return target_dict
 
 def load_spectra_zcat_from_targets(targets, tiledir, obs_db, with_redrock=False) :
@@ -272,13 +292,13 @@ def load_spectra_zcat_from_targets(targets, tiledir, obs_db, with_redrock=False)
     - obs_db: "mini-db" produced by make_targetdict()
     - with_redrock: if True, also get redrock Table
     '''
-    
+
     targets = np.asarray(targets)
     if targets.dtype != 'int64' :
         raise TypeError('Targetids should be int64.')
     spectra = None
     ztables, rrtables = [], []
-    
+
     for tile_night in obs_db.keys() :
         petals = np.unique(obs_db[tile_night]['petal'])
         for petal in petals :
@@ -303,14 +323,14 @@ def load_spectra_zcat_from_targets(targets, tiledir, obs_db, with_redrock=False)
                     rrtables.append(the_rrcat)
                 if spectra is None : spectra = the_spec
                 else : spectra = myspecupdate.myspecupdate(spectra,the_spec)
-    
+
     # Check if all targets were found in spectra
     tids_spectra = spectra.fibermap['TARGETID']
     for target in targets :
         if target not in tids_spectra : print("Warning! targetid not found: "+str(target))
-    
+
     zcat = vstack(ztables)
-    if with_redrock : 
+    if with_redrock :
         rrcat = vstack(rrtables)
         return (spectra, zcat, rrcat)
     else :
@@ -341,7 +361,7 @@ def frames2spectra(frames, nspec=None, startspec=None, with_scores=False, with_r
     ivar = dict()
     mask = dict()
     res = dict()
-        
+
     for fr in frames:
         fibermap = fr.fibermap
         band = fr.meta['CAMERA'][0]
@@ -358,16 +378,16 @@ def frames2spectra(frames, nspec=None, startspec=None, with_scores=False, with_r
             mask[band] = mask[band][startspec:nspec+startspec]
             res[band] = res[band][startspec:nspec+startspec,:,:]
             fibermap = fr.fibermap[startspec:nspec+startspec]
-    
+
     merged_scores = None
     if with_scores :
         scores_columns = frames[0].scores.columns
-        for i in range(1,len(frames)) : 
+        for i in range(1,len(frames)) :
             scores_columns += frames[i].scores.columns
         merged_scores = astropy.io.fits.FITS_rec.from_columns(scores_columns)
 
     if not with_resolution_data : res = None
-    
+
     spectra = desispec.spectra.Spectra(
         bands, wave, flux, ivar, mask, fibermap=fibermap, meta=fr.meta, scores=merged_scores, resolution_data=res
     )
@@ -392,15 +412,15 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
             else :
                 targetids = spectra.fibermap['TARGETID'][w]
                 spectra = myspecselect.myspecselect(spectra, targets=targetids, remove_scores=remove_scores)
-    
+
     # Target mask selection
     if mask is not None :
         assert mask_type in ['SV1_DESI_TARGET', 'DESI_TARGET', 'CMX_TARGET']
         if mask_type == 'SV1_DESI_TARGET' :
-            assert ( mask in sv1_desi_mask.names() )            
+            assert ( mask in sv1_desi_mask.names() )
             w, = np.where( (spectra.fibermap['SV1_DESI_TARGET'] & sv1_desi_mask[mask]) )
         elif mask_type == 'DESI_TARGET' :
-            assert ( mask in desi_mask.names() ) 
+            assert ( mask in desi_mask.names() )
             w, = np.where( (spectra.fibermap['DESI_TARGET'] & desi_mask[mask]) )
         elif mask_type == 'CMX_TARGET' :
             assert ( mask in cmx_mask.names() )
@@ -410,9 +430,9 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
                 if mask == 'SV0_BGS' : mask2 = 'MINI_SV_BGS_BRIGHT'
                 if mask in ['SV0_STD_FAINT', 'SV0_STD_BRIGHT'] : mask2 = mask.replace('SV0_','')
             if mask2 is None :
-                w, = np.where( (spectra.fibermap['CMX_TARGET'] & cmx_mask[mask]) )                
+                w, = np.where( (spectra.fibermap['CMX_TARGET'] & cmx_mask[mask]) )
             else :
-                w, = np.where( (spectra.fibermap['CMX_TARGET'] & cmx_mask[mask]) | 
+                w, = np.where( (spectra.fibermap['CMX_TARGET'] & cmx_mask[mask]) |
                              (spectra.fibermap['CMX_TARGET'] & cmx_mask[mask2]) )
         if len(w) == 0 :
             if log is not None : log.info(" * No spectra with mask "+mask)
@@ -446,12 +466,12 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
         else :
             targetids = spectra.fibermap['TARGETID'][w]
             spectra = myspecselect.myspecselect(spectra, targets=targetids, remove_scores=remove_scores)
-    
+
     # Chi2 selection
     if chi2cut is not None :
         assert len(chi2cut)==2 # Require range [chi2min, chi2max]
         if np.any(zbest['TARGETID'] != spectra.fibermap['TARGETID']) :
-            raise RuntimeError('specviewer_selection : zbest and spectra do not match (different targetids)') 
+            raise RuntimeError('specviewer_selection : zbest and spectra do not match (different targetids)')
 
         w, = np.where( (zbest['DELTACHI2']>chi2cut[0]) & (zbest['DELTACHI2']<chi2cut[1]) )
         if len(w) == 0 :
@@ -575,5 +595,3 @@ def coadd_targets(spectra, targetids=None):
     return desispec.spectra.Spectra(spectra.bands, wave, flux, ivar,
             mask=mask, resolution_data=rdat, fibermap=fibermap,
             meta=spectra.meta)
-
-
