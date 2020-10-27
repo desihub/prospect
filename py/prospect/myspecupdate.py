@@ -3,19 +3,12 @@
 # Reason : EXPID is not available in coadd spectra
 
 import numpy as np
-_desiutil_imported = True
-try:
-    from desiutil.io import encode_table
-except ImportError:
-    _desiutil_imported = False
 
-_desispec_imported = True
-try:
-    import desispec.spectra
-    from desispec.maskbits import specmask
-    from desispec.resolution import Resolution
-except ImportError:
-    _desispec_imported = False
+from desiutil.io import encode_table
+
+from desispec.maskbits import specmask
+from desispec.resolution import Resolution
+
 
 def myspecupdate(spectra_in, other) :
 
