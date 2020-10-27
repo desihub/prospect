@@ -4,10 +4,16 @@
 
 import numpy as np
 
-from desiutil.io import encode_table
+try:
+    from desiutil.io import encode_table
+except ImportError:
+    pass
 
-from desispec.maskbits import specmask
-from desispec.resolution import Resolution
+try:
+    from desispec.maskbits import specmask
+    from desispec.resolution import Resolution
+except ImportError:
+    pass
 
 
 def myspecupdate(spectra_in, other) :

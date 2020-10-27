@@ -38,7 +38,7 @@ except ImportError:
     _redrock_imported = False
 
 
-from prospect import mycoaddcam
+# from prospect import mycoaddcam  # Does not appear to be used in this module.
 from prospect import myspecselect, myspecupdate
 
 _vi_flags = [

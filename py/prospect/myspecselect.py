@@ -3,7 +3,10 @@
 # to include expid-based selection + indices-based selection
 # changes : fct name+args ; self=>thespec ; expid/indices-based selection + final selection
 
-from desispec.spectra import Spectra
+try:
+    from desispec.spectra import Spectra
+except ImportError:
+    pass
 
 
 def myspecselect(thespec, nights=None, bands=None, targets=None, fibers=None, expids=None, indices=None, invert=False, remove_scores=False, clean_fiberstatus=False, output_indices=False):
