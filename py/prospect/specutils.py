@@ -18,14 +18,23 @@ from astropy.table import Table
 from astropy.wcs import WCS
 from specutils import SpectrumList, Spectrum1D
 
-from desiutil.depend import add_dependencies
-from desiutil.io import encode_table
+_desiutil_imported = True
+try:
+    from desiutil.depend import add_dependencies
+    from desiutil.io import encode_table
+except ImportError:
+    _desiutil_imported = False
 
-from desispec.maskbits import specmask
-from desispec.resolution import Resolution
-from desispec.io.util import fitsheader, native_endian, add_columns
-from desispec.io.frame import read_frame
-from desispec.io.fibermap import fibermap_comments
+_desispec_imported = True
+try:
+    from desispec.maskbits import specmask
+    from desispec.resolution import Resolution
+    from desispec.io.util import fitsheader, native_endian, add_columns
+    from desispec.io.frame import read_frame
+    from desispec.io.fibermap import fibermap_comments
+except ImportError:
+    _desispec_imported = False
+
 from .utils_specviewer import _coadd
 
 
@@ -685,7 +694,8 @@ def write_spectra(outfile, spec, units=None):
 
     # metadata goes in empty primary HDU
     hdr = fitsheader(spec.meta)
-    add_dependencies(hdr)
+    if _desiutil_imported:
+        add_dependencies(hdr)
 
     all_hdus.append(fits.PrimaryHDU(header=hdr))
 

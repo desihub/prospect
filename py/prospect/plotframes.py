@@ -23,21 +23,34 @@ import bokeh.plotting as bk
 from bokeh.models import ColumnDataSource, CDSView, IndexFilter
 from bokeh.models import CustomJS, LabelSet, Label, Span, Legend, Panel, Tabs, BoxAnnotation
 from bokeh.models.widgets import (
-    Slider, Button, Div, CheckboxGroup, CheckboxButtonGroup, RadioButtonGroup, 
+    Slider, Button, Div, CheckboxGroup, CheckboxButtonGroup, RadioButtonGroup,
     TextInput, Select, DataTable, TableColumn, Spinner)
 from bokeh.layouts import Column, Spacer, gridplot
 import bokeh.events
 # from bokeh.layouts import row, column
 
-import desispec.io
-from desitarget.targetmask import desi_mask
-from desitarget.cmx.cmx_targetmask import cmx_mask
-from desitarget.sv1.sv1_targetmask import desi_mask as sv1_desi_mask
-import desispec.spectra
-import desispec.frame
-from desispec.interpolation import resample_flux
-import redrock.templates
+_desitarget_imported = True
+try:
+    from desitarget.targetmask import desi_mask
+    from desitarget.cmx.cmx_targetmask import cmx_mask
+    from desitarget.sv1.sv1_targetmask import desi_mask as sv1_desi_mask
+except ImportError:
+    _desitarget_imported = False
 
+_desispec_imported = True
+try:
+    import desispec.io
+    import desispec.spectra
+    import desispec.frame
+    from desispec.interpolation import resample_flux
+except ImportError:
+    _desispec_imported = False
+
+_redrock_imported = True
+try:
+    import redrock.templates
+except ImportError:
+    _redrock_imported = False
 
 #from . import utils_specviewer
 from prospect import utils_specviewer
@@ -68,15 +81,15 @@ def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, templ
     which can be in a different order than spectra.
     - zbest must be entry-matched to spectra.
     '''
-    
+
     if archetype_fit:
         from redrock.archetypes import All_archetypes
-    
+
     if np.any(zbest['TARGETID'] != spectra.fibermap['TARGETID']) :
-        raise RuntimeError('zcatalog and spectra do not match (different targetids)') 
-    
+        raise RuntimeError('zcatalog and spectra do not match (different targetids)')
+
     templates = load_redrock_templates(template_dir=template_dir)
-    
+
     #- Empty model flux arrays per band to fill
     model_flux = dict()
     for band in spectra.bands:
@@ -85,7 +98,7 @@ def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, templ
     for i in range(len(zbest)):
         zb = zbest[i]
 
-        if archetype_fit:            
+        if archetype_fit:
           archetypes = All_archetypes(archetypes_dir=archetypes_dir).archetypes
           archetype  = archetypes[zb['SPECTYPE']]
           coeff      = zb['COEFF']
@@ -96,7 +109,7 @@ def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, templ
               dwave               = {wavehash: wave}
               mx                  = archetype.eval(zb['SUBTYPE'], dwave, coeff, wave, zb['Z'])
               model_flux[band][i] = spectra.R[band][i].dot(mx)
-                    
+
         else:
           tx    = templates[(zb['SPECTYPE'], zb['SUBTYPE'])]
           coeff = zb['COEFF'][0:tx.nbasis]
@@ -110,7 +123,7 @@ def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, templ
     if spectra.bands == ['brz'] :
         model_wave = spectra.wave['brz']
         mflux = model_flux['brz']
-        
+
     elif np.all([ band in spectra.bands for band in ['b','r','z'] ]) :
         br_split = 0.5*(spectra.wave['b'][-1] + spectra.wave['r'][0])
         rz_split = 0.5*(spectra.wave['r'][-1] + spectra.wave['z'][0])
@@ -130,7 +143,7 @@ def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, templ
         ], axis=1 )
     else :
         raise RuntimeError("create_model: Set of bands for spectra not supported")
-        
+
     return model_wave, mflux
 
 
@@ -171,9 +184,9 @@ def make_cds_spectra(spectra, with_noise) :
                 noise[w] = 1/np.sqrt(spectra.ivar[band][i][w])
                 cdsdata[key] = noise
         cdsdata['plotflux'] = cdsdata['origflux0']
-        if with_noise : cdsdata['plotnoise'] = cdsdata['orignoise0'] 
+        if with_noise : cdsdata['plotnoise'] = cdsdata['orignoise0']
         cds_spectra.append( bk.ColumnDataSource(cdsdata, name=band) )
-    
+
     return cds_spectra
 
 
@@ -188,19 +201,19 @@ def make_cds_median_spectra(spectra) :
             cdsdata['median'].append(1)
         else :
             cdsdata['median'].append(np.median(the_flux[w]))
-        
+
     cds_median_spectra = bk.ColumnDataSource(cdsdata)
     return cds_median_spectra
 
 
 def make_cds_coaddcam_spec(spectra, with_noise) :
-    """ Creates column data source for camera-coadded observed spectra 
+    """ Creates column data source for camera-coadded observed spectra
         Do NOT store all coadded spectra in CDS obj, to reduce size of html files
         Except for the first spectrum, coaddition is done later in javascript
     """
 
     #coadd_wave, coadd_flux, coadd_ivar = mycoaddcam.mycoaddcam(spectra)
-    coadd_wave, coadd_flux, coadd_ivar = mycoaddcam.coaddcam_prospect(spectra)        
+    coadd_wave, coadd_flux, coadd_ivar = mycoaddcam.coaddcam_prospect(spectra)
     cds_coaddcam_data = dict(
         origwave = coadd_wave.copy(),
         plotwave = coadd_wave.copy(),
@@ -211,12 +224,12 @@ def make_cds_coaddcam_spec(spectra, with_noise) :
         w, = np.where( (coadd_ivar[0,:] > 0) )
         cds_coaddcam_data['plotnoise'][w] = 1/np.sqrt(coadd_ivar[0,:][w])
     cds_coaddcam_spec = bk.ColumnDataSource(cds_coaddcam_data)
-    
+
     return cds_coaddcam_spec
 
 def make_cds_model(model) :
     """ Creates column data source for model spectrum """
-    
+
     mwave, mflux = model
     cds_model_data = dict(
         origwave = mwave.copy(),
@@ -242,9 +255,9 @@ def make_template_dicts(redrock_cat, delta_lambd_templates=3, with_fit_templates
     - RR output for Nth best fits
     - list of std templates
     """
-    
+
     rr_templts = load_redrock_templates(template_dir=template_dir)
-    
+
     if with_fit_templates :
         dict_fit_templates = dict()
         for key,val in rr_templts.items() :
@@ -256,12 +269,12 @@ def make_template_dicts(redrock_cat, delta_lambd_templates=3, with_fit_templates
             dict_fit_templates["wave_"+fulltype_key] = wave_array
             dict_fit_templates["flux_"+fulltype_key] = flux_array
     else : dict_fit_templates = None
-            
+
     dict_fit_results = dict()
     for key in redrock_cat.keys() :
         dict_fit_results[key] = np.asarray(redrock_cat[key])
     dict_fit_results['Nfit'] = redrock_cat['Z'].shape[1]
-            
+
     # TODO fix the list of std templates
     # We take flux[0,:] : ie use first entry in RR template basis
     # We choose here not to convolve with a "typical" resolution (could easily be done)
@@ -301,7 +314,7 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=" ") 
     cds_targetinfo = bk.ColumnDataSource(
         dict(target_info=target_info),
         name='target_info')
-    
+
     ## BYPASS DIV : Added photometry fields ; also add several bands
     bands = ['G','R','Z', 'W1', 'W2']
     for bandname in bands :
@@ -313,9 +326,9 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=" ") 
         w, = np.where( (flux>0) & (extinction>0) )
         mag[w] = -2.5*np.log10(flux[w]/extinction[w])+22.5
         cds_targetinfo.add(mag, name='mag_'+bandname)
-    
+
     nspec = spectra.num_spectra()
-    
+
     if zcatalog is not None :
         cds_targetinfo.add(zcatalog['Z'], name='z')
         cds_targetinfo.add(zcatalog['SPECTYPE'].astype('U{0:d}'.format(zcatalog['SPECTYPE'].dtype.itemsize)), name='spectype')
@@ -330,7 +343,7 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=" ") 
         cds_targetinfo.add(np.zeros(nspec), name='zerr')
         cds_targetinfo.add([0 for i in range(nspec)], name='zwarn')
         cds_targetinfo.add(np.zeros(nspec), name='deltachi2')
-    
+
     for fm_key,cds_key in [ ('EXPID','expid'), ('NIGHT','night'), ('TILEID','tileid')] :
         if fm_key in spectra.fibermap.keys() :
             cds_targetinfo.add(spectra.fibermap[fm_key], name=cds_key)
@@ -350,12 +363,12 @@ def make_cds_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=" ") 
 
     # VI inputs
     cds_targetinfo.add([username for i in range(nspec)], name='VI_scanner')
-    cds_targetinfo.add(["-1" for i in range(nspec)], name='VI_class_flag') 
+    cds_targetinfo.add(["-1" for i in range(nspec)], name='VI_class_flag')
     cds_targetinfo.add(["" for i in range(nspec)], name='VI_issue_flag')
     cds_targetinfo.add(["" for i in range(nspec)], name='VI_z')
     cds_targetinfo.add(["" for i in range(nspec)], name='VI_spectype')
     cds_targetinfo.add(["" for i in range(nspec)], name='VI_comment')
-    
+
     return cds_targetinfo
 
 
@@ -372,7 +385,7 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
     #thumb_wave, thumb_flux, dummy = mycoaddcam.mycoaddcam(spectra)
     thumb_wave, thumb_flux, dummy = mycoaddcam.coaddcam_prospect(spectra)
     kernel = astropy.convolution.Gaussian1DKernel(stddev=resamp_factor)
-    
+
     thumb_plots = []
     for i_spec in range(spectra.num_spectra()) :
         x_vals = (thumb_wave[::resamp_factor])[resamp_factor:-resamp_factor]
@@ -408,7 +421,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
 
     Main Parameter
     ---------
-    spectra: input spectra. Supported formats: 1) a 3-band DESI spectra object, with bands 'b', 'r', 'z'. 2) a single-band 
+    spectra: input spectra. Supported formats: 1) a 3-band DESI spectra object, with bands 'b', 'r', 'z'. 2) a single-band
         DESI spectra object, bandname 'brz'. 2) a list of 3 frames, associated to the b, r and z bands.
     zcatalog (default None): astropy Table, containing the 'ZBEST' output redrock. Currently supports redrock-PCA or archetype files. The entries in zcatalog must be matched one-by-one (in order) to spectra.
     redrock_cat (default None): astropy Table, containing Redrock output (as defined in utils_specviewer.match_redrock_zfit_to_spectra). Entries must be matched one-by-one (in order) to spectra.
@@ -417,10 +430,10 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     title (string): title used to name the HTML page / the bokeh figure / the VI file
     mask_type : mask type to identify target categories from the fibermap. Available : DESI_TARGET,
         SV1_DESI_TARGET, CMX_TARGET. Default : DESI_TARGET.
-    with_vi_widgets (bool): include widgets used to enter VI informations. Set it to False if you do not intend to 
+    with_vi_widgets (bool): include widgets used to enter VI informations. Set it to False if you do not intend to
         record VI files.
     with_thumb_tab (bool): include a tab with thumbnails of spectra in bokeh viewer
-    with_thumb_only_page (bool): when creating a static HTML (notebook==False), a light HTML page including only the thumb 
+    with_thumb_only_page (bool): when creating a static HTML (notebook==False), a light HTML page including only the thumb
         gallery will also be produced.
 
 
@@ -438,7 +451,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     template_dir: Redrock template directory
     archetype_fit : if True, assume zbest derived from redrock --archetypes and plot model accordingly.
     archetypes_dir : directory path for archetypes if not $RR__ARCHETYPE_DIR.
-    num_approx_fits (default None): nb of best fit models to display if redrock_cat is given. By default, 
+    num_approx_fits (default None): nb of best fit models to display if redrock_cat is given. By default,
         num_approx_fits=(nb of best fits available in redrock_cat)
     '''
 
@@ -456,7 +469,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         spectra.flux[band][bad] = np.nan
     #- No coaddition if spectra is already single-band
     if len(spectra.bands)==1 : with_coaddcam = False
-        
+
     if frame_input and title is None:
         meta = spectra.meta
         title = 'Night {} ExpID {} Spectrograph {}'.format(
@@ -467,8 +480,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     #- Input zcatalog / model
     if zcatalog is not None:
         if np.any(zcatalog['TARGETID'] != spectra.fibermap['TARGETID']) :
-            raise RuntimeError('zcatalog and spectra do not match (different targetids)') 
-        
+            raise RuntimeError('zcatalog and spectra do not match (different targetids)')
+
         if model is not None :
             assert model_from_zcat == False
             mwave, mflux = model
@@ -499,23 +512,23 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         cds_model = make_cds_model(model)
     else:
         cds_model = None
-    
+
     if redrock_cat is not None :
         # TODO unhardcode delta_lambd_templates=3
         if np.any(redrock_cat['TARGETID'] != spectra.fibermap['TARGETID']) :
             raise RuntimeError('redrock_cat and spectra do not match (different targetids)')
-        if zcatalog is None : 
+        if zcatalog is None :
             raise ValueError('Redrock_cat was provided but not zcatalog.')
-        
+
         with_fit_templates = False if num_approx_fits==0 else True
-        template_dicts = make_template_dicts(redrock_cat, delta_lambd_templates=3, 
+        template_dicts = make_template_dicts(redrock_cat, delta_lambd_templates=3,
                                              with_fit_templates=with_fit_templates, template_dir=template_dir)
         nfits_redrock_cat = template_dicts[1]['Nfit']
         if num_approx_fits is None : num_approx_fits = nfits_redrock_cat
         if (num_approx_fits > nfits_redrock_cat) : raise ValueError("num_approx_fits too large wrt redrock_cat")
         if with_full_2ndfit :
             zcat_2ndfit = utils_specviewer.create_zcat_from_redrock_cat(redrock_cat, fit_num=1)
-            model_2ndfit = create_model(spectra, zcat_2ndfit, archetype_fit=archetype_fit, 
+            model_2ndfit = create_model(spectra, zcat_2ndfit, archetype_fit=archetype_fit,
                                         archetypes_dir=archetypes_dir, template_dir=template_dir)
             cds_model_2ndfit = make_cds_model(model_2ndfit)
         else :
@@ -532,8 +545,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         cds_model_2ndfit = None
         template_dicts = None
         cds_othermodel =  None
-        
-    if notebook and ("USER" in os.environ) : 
+
+    if notebook and ("USER" in os.environ) :
         username = os.environ['USER'][0:3] # 3-letter acronym
     else :
         username = " "
@@ -555,13 +568,13 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         ymin = min(ymin, np.nanmin(spectra.flux[band][0]))
         ymax = max(ymax, np.nanmax(spectra.flux[band][0]))
         xmin = min(xmin, np.min(spectra.wave[band]))
-        xmax = max(xmax, np.max(spectra.wave[band]))        
+        xmax = max(xmax, np.max(spectra.wave[band]))
     xmin -= xmargin
     xmax += xmargin
-    
+
     plot_width=800
     plot_height=400
-    plot_widget_width = (plot_width+(plot_height//2))//2 - 40 # used for widgets scaling 
+    plot_widget_width = (plot_width+(plot_height//2))//2 - 40 # used for widgets scaling
     tools = 'pan,box_zoom,wheel_zoom,save'
     tooltips_fig = [("wave","$x"),("flux","$y")]
     fig = bk.figure(height=plot_height, width=plot_width, title=title,
@@ -587,7 +600,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         fill_alpha = alpha_overlapband if with_coaddcam else 0
         overlap_bands.append( BoxAnnotation(left=overlap_waves[i][0], right=overlap_waves[i][1], fill_color='blue', fill_alpha=fill_alpha, line_alpha=0) )
         fig.add_layout(overlap_bands[-1])
-        
+
     data_lines = list()
     for spec in cds_spectra:
         lx = fig.line('plotwave', 'plotflux', source=spec, line_color=colors[spec.name], line_alpha=alpha_discrete)
@@ -595,7 +608,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     if with_coaddcam :
         lx = fig.line('plotwave', 'plotflux', source=cds_coaddcam_spec, line_color=colors['coadd'], line_alpha=1)
         data_lines.append(lx)
-    
+
     noise_lines = list()
     if with_noise :
         for spec in cds_spectra :
@@ -608,19 +621,19 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     model_lines = list()
     if cds_model is not None:
         lx = fig.line('plotwave', 'plotflux', source=cds_model, line_color='black')
-        model_lines.append(lx)        
-        
+        model_lines.append(lx)
+
     othermodel_lines = list()
     if cds_othermodel is not None :
         lx = fig.line('plotwave', 'plotflux', source=cds_othermodel, line_color='black', line_dash='dashed')
         othermodel_lines.append(lx)
-    
+
     legend_items = [("data",  data_lines[-1::-1])] #- reversed to get blue as lengend entry
-    if cds_model is not None : 
+    if cds_model is not None :
         legend_items.append(("pipeline fit", model_lines))
     if cds_othermodel is not None :
         legend_items.append(("other model", othermodel_lines))
-    if with_noise : 
+    if with_noise :
         legend_items.append(("noise", noise_lines[-1::-1])) # same as for data_lines
     legend = Legend(items=legend_items)
     fig.add_layout(legend, 'center')
@@ -647,7 +660,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         if with_noise :
             lx = zoomfig.line('plotwave', 'plotnoise', source=cds_coaddcam_spec, line_color=noise_colors['coadd'], line_alpha=1)
             zoom_noise_lines.append(lx)
-            
+
     if cds_model is not None:
         lx = zoomfig.line('plotwave', 'plotflux', source=cds_model, line_color='black')
     if cds_othermodel is not None :
@@ -686,7 +699,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         # cross-hair
         imfig.multi_line([[129-15,129-5],[129+15,129+5],[129,129],[129,129]],
                          [[129,129],[129,129],[129-15,129-5],[129+5,129+15]], line_width=1, line_color='yellow')
-    else : 
+    else :
         imfig = Spacer(width=plot_height//2, height=plot_height//2)
         imfig_source = imfig_urls = None
 
@@ -737,13 +750,13 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     #-----
     #- Axis reset button (superseeds the default bokeh "reset"
     reset_plotrange_button = Button(label="Reset X-Y range", button_type="default")
-    with open(os.path.join(js_dir,"adapt_plotrange.js"), 'r') as f : reset_plotrange_code = f.read()    
+    with open(os.path.join(js_dir,"adapt_plotrange.js"), 'r') as f : reset_plotrange_code = f.read()
     with open(os.path.join(js_dir,"reset_plotrange.js"), 'r') as f : reset_plotrange_code += f.read()
-    reset_plotrange_callback = CustomJS(args = dict(fig=fig, xmin=xmin, xmax=xmax, spectra=cds_spectra), 
+    reset_plotrange_callback = CustomJS(args = dict(fig=fig, xmin=xmin, xmax=xmax, spectra=cds_spectra),
                                         code = reset_plotrange_code)
     reset_plotrange_button.js_on_event('button_click', reset_plotrange_callback)
 
-    
+
     #-----
     #- Redshift / wavelength scale widgets
     z1 = np.floor(z*100)/100
@@ -769,7 +782,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
              z_input.value = new_z.toFixed(4)
             }
         """)
-    
+
     dzslider_callback  = CustomJS(
         args=dict(zslider=zslider, dzslider=dzslider, z_input=z_input),
         code="""
@@ -809,7 +822,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         """)
     z_minus_button.js_on_event('button_click', z_minus_callback)
     z_plus_button.js_on_event('button_click', z_plus_callback)
-    
+
     zreset_button = Button(label='Reset to z_pipe')
     zreset_callback = CustomJS(
         args=dict(z_input=z_input, targetinfo=cds_targetinfo, ifiberslider=ifiberslider),
@@ -844,12 +857,12 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
                 var z1 = Math.floor(z*100) / 100
                 var z2 = z-z1
                 if ( Math.abs(z1-zslider.value) >= 0.01) zslider.value = parseFloat(parseFloat(z1).toFixed(2))
-                if ( Math.abs(z2-dzslider.value) >= 0.0001) dzslider.value = parseFloat(parseFloat(z2).toFixed(4))                
+                if ( Math.abs(z2-dzslider.value) >= 0.0001) dzslider.value = parseFloat(parseFloat(z2).toFixed(4))
             } else {
                 if (z_input.value < -0.1) z_input.value = (-0.1).toFixed(4)
                 if (z_input.value > 5) z_input.value = (5.0).toFixed(4)
             }
-            
+
             var line_restwave = line_data.data['restwave']
             var ifiber = ifiberslider.value
             var waveshift_lines = (waveframe_buttons.active == 0) ? 1+z : 1 ;
@@ -923,7 +936,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     )
     waveframe_buttons.js_on_click(plotrange_callback)
 
-    
+
     #------
     #- Zoom on the OII doublet TODO mv js code to other file
     # TODO: is there another trick than using a cds to pass the "oii_saveinfo" ?
@@ -947,7 +960,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         smootherslider.value = 0
         """)
     oii_zoom_button.js_on_event('button_click', oii_zoom_callback)
-    
+
     oii_undo_button = Button(label="Undo", button_type="default")
     oii_undo_callback = CustomJS(
         args = dict(fig=fig, smootherslider=smootherslider, cds_oii_saveinfo=cds_oii_saveinfo),
@@ -957,7 +970,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         smootherslider.value = cds_oii_saveinfo.data['nsmooth'][0]
         """)
     oii_undo_button.js_on_event('button_click', oii_undo_callback)
-    
+
     #-----
     #- Targeting image callback
     if with_imaging :
@@ -966,7 +979,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
                                   code='''window.open(urls[ifiberslider.value][1], "_blank");''')
         imfig.js_on_event('tap', imfig_callback)
 
-    
+
     #-----
     #- Highlight individual-arm or camera-coadded spectra
     coaddcam_labels = []
@@ -977,7 +990,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
                     list_lines=[data_lines, noise_lines, zoom_data_lines, zoom_noise_lines],
                     alpha_discrete=alpha_discrete,
                     overlap_bands=overlap_bands,
-                    alpha_overlapband=alpha_overlapband), 
+                    alpha_overlapband=alpha_overlapband),
         code="""
         var n_lines = list_lines[0].length
         for (var i=0; i<n_lines; i++) {
@@ -1055,7 +1068,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
             labels=['Show only major lines'], active=[])
 
     lines_callback = CustomJS(
-        args = dict(line_data=line_data, lines=lines, line_labels=line_labels, zlines=zoom_lines, 
+        args = dict(line_data=line_data, lines=lines, line_labels=line_labels, zlines=zoom_lines,
                     zline_labels=zoom_line_labels, lines_button_group=lines_button_group, majorline_checkbox=majorline_checkbox),
         code="""
         var show_emission = false
@@ -1103,16 +1116,16 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         if with_full_2ndfit is False :
             model_options.remove('2nd best fit')
         for std_template in ['QSO', 'GALAXY', 'STAR'] :
-            model_options.append('STD '+std_template)            
+            model_options.append('STD '+std_template)
         model_select = Select(value=model_options[0], title="Other model (dashed curve):", options=model_options)
         cds_median_spectra = make_cds_median_spectra(spectra)
         with open(os.path.join(js_dir,"interp_grid.js"), 'r') as f : model_select_code = f.read()
-        with open(os.path.join(js_dir,"smooth_data.js"), 'r') as f : model_select_code += f.read()            
+        with open(os.path.join(js_dir,"smooth_data.js"), 'r') as f : model_select_code += f.read()
         with open(os.path.join(js_dir,"select_model.js"), 'r') as f : model_select_code += f.read()
         model_select_callback = CustomJS(
             args=dict(ifiberslider = ifiberslider,
                       model_select = model_select,
-                      fit_templates=template_dicts[0], 
+                      fit_templates=template_dicts[0],
                       cds_othermodel=cds_othermodel,
                       cds_model_2ndfit=cds_model_2ndfit,
                       cds_model = cds_model,
@@ -1126,11 +1139,11 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         model_select.js_on_change('value',model_select_callback)
     else :
         model_select = None
-    
+
 
     #-----
     #- VI-related widgets
-    
+
     vi_file_fields = utils_specviewer._vi_file_fields
     vi_class_labels = [ x["label"] for x in utils_specviewer._vi_flags if x["type"]=="class" ]
     vi_issue_labels = [ x["label"] for x in utils_specviewer._vi_flags if x["type"]=="issue" ]
@@ -1144,7 +1157,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         default_vi_filename += "_unknown-user"
     default_vi_filename += ".csv"
     vi_filename_input = TextInput(value=default_vi_filename, title="VI file name:")
-    
+
     #- Optional VI flags (issues)
     vi_issue_input = CheckboxGroup(labels=vi_issue_labels, active=[])
     with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_issue_code = f.read()
@@ -1163,13 +1176,13 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         cds_targetinfo.change.emit()
         """
     vi_issue_callback = CustomJS(
-        args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider, 
+        args=dict(cds_targetinfo=cds_targetinfo,ifiberslider = ifiberslider,
                 vi_issue_input=vi_issue_input, vi_issue_labels=vi_issue_labels,
                 vi_issue_slabels=vi_issue_slabels,
-                title=title, vi_file_fields = vi_file_fields), 
+                title=title, vi_file_fields = vi_file_fields),
         code=vi_issue_code )
     vi_issue_input.js_on_click(vi_issue_callback)
- 
+
     #- Optional VI information on redshift
     vi_z_input = TextInput(value='', title="VI redshift:")
     with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_z_code = f.read()
@@ -1180,11 +1193,11 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         cds_targetinfo.change.emit()
         """
     vi_z_callback = CustomJS(
-        args=dict(cds_targetinfo=cds_targetinfo, ifiberslider = ifiberslider, vi_z_input=vi_z_input, 
-                  title=title, vi_file_fields=vi_file_fields), 
+        args=dict(cds_targetinfo=cds_targetinfo, ifiberslider = ifiberslider, vi_z_input=vi_z_input,
+                  title=title, vi_file_fields=vi_file_fields),
         code=vi_z_code )
     vi_z_input.js_on_change('value',vi_z_callback)
-    
+
     # Copy z value from redshift slider to VI
     z_tovi_button = Button(label='Copy z to VI')
     z_tovi_callback = CustomJS(
@@ -1193,7 +1206,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
             vi_z_input.value = z_input.value
         """)
     z_tovi_button.js_on_event('button_click', z_tovi_callback)
-    
+
     #- Optional VI information on spectral type
     vi_spectypes = [''] + utils_specviewer._vi_spectypes
     vi_category_select = Select(value=" ", title="VI spectype:", options=vi_spectypes)
@@ -1207,7 +1220,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     vi_category_callback = CustomJS(
         args=dict(cds_targetinfo=cds_targetinfo, ifiberslider = ifiberslider,
                   vi_category_select=vi_category_select,
-                  title=title, vi_file_fields=vi_file_fields), 
+                  title=title, vi_file_fields=vi_file_fields),
         code=vi_category_code )
     vi_category_select.js_on_change('value',vi_category_callback)
 
@@ -1235,8 +1248,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         cds_targetinfo.change.emit()
         """
     vi_comment_callback = CustomJS(
-        args=dict(cds_targetinfo=cds_targetinfo, ifiberslider = ifiberslider, vi_comment_input=vi_comment_input, 
-                  title=title, vi_file_fields=vi_file_fields), 
+        args=dict(cds_targetinfo=cds_targetinfo, ifiberslider = ifiberslider, vi_comment_input=vi_comment_input,
+                  title=title, vi_file_fields=vi_file_fields),
         code=vi_comment_code )
     vi_comment_input.js_on_change('value',vi_comment_callback)
 
@@ -1256,7 +1269,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         args = dict(vi_std_comment_select=vi_std_comment_select, vi_comment_input=vi_comment_input),
         code = vi_std_comment_code )
     vi_std_comment_select.js_on_change('value', vi_std_comment_callback)
-    
+
     #- Main VI classification
     vi_class_input = RadioButtonGroup(labels=vi_class_labels)
     with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_class_code = f.read()
@@ -1276,14 +1289,14 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         cds_targetinfo.change.emit()
     """
     vi_class_callback = CustomJS(
-        args=dict(cds_targetinfo=cds_targetinfo, vi_class_input=vi_class_input, 
+        args=dict(cds_targetinfo=cds_targetinfo, vi_class_input=vi_class_input,
                 vi_class_labels=vi_class_labels, ifiberslider = ifiberslider,
                 title=title, vi_file_fields = vi_file_fields, targetinfo=cds_targetinfo,
-                model = cds_model, vi_z_input=vi_z_input, vi_category_select=vi_category_select), 
+                model = cds_model, vi_z_input=vi_z_input, vi_category_select=vi_category_select),
         code=vi_class_code )
     vi_class_input.js_on_click(vi_class_callback)
 
-    #- VI scanner name    
+    #- VI scanner name
     vi_name_input = TextInput(value=(cds_targetinfo.data['VI_scanner'][0]).strip(), title="Your name (3-letter acronym):")
     with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_name_code = f.read()
     with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_name_code += f.read()
@@ -1299,7 +1312,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         """
     vi_name_callback = CustomJS(
         args=dict(cds_targetinfo=cds_targetinfo, nspec = nspec, vi_name_input=vi_name_input,
-                 vi_filename_input=vi_filename_input, title=title, vi_file_fields=vi_file_fields), 
+                 vi_filename_input=vi_filename_input, title=title, vi_file_fields=vi_file_fields),
         code=vi_name_code )
     vi_name_input.js_on_change('value',vi_name_callback)
 
@@ -1310,8 +1323,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         if flag['type'] == 'class' : vi_guideline_txt += ("<BR />&emsp;&emsp;[&emsp;"+flag['label']+"&emsp;] "+flag['description'])
     vi_guideline_txt += "<BR /> <B> Optional indications: </B>"
     for flag in utils_specviewer._vi_flags :
-        if flag['type'] == 'issue' : 
-            vi_guideline_txt += ( "<BR />&emsp;&emsp;[&emsp;" + flag['label'] + 
+        if flag['type'] == 'issue' :
+            vi_guideline_txt += ( "<BR />&emsp;&emsp;[&emsp;" + flag['label'] +
                                  "&emsp;(" + flag['shortlabel'] + ")&emsp;] " + flag['description'] )
     vi_guideline_txt += "<BR /> <B> Comments: </B> <BR /> 100 characters max, avoid commas (automatically replaced by semi-columns), ASCII only."
     vi_guideline_div = Div(text=vi_guideline_txt)
@@ -1325,9 +1338,9 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         download_vi_file(vi_file_fields, cds_targetinfo.data, vi_filename_input.value)
         """
     save_vi_callback = CustomJS(
-        args=dict(cds_targetinfo=cds_targetinfo, 
-            vi_file_fields=vi_file_fields, vi_filename_input=vi_filename_input), 
-        code=save_vi_code ) 
+        args=dict(cds_targetinfo=cds_targetinfo,
+            vi_file_fields=vi_file_fields, vi_filename_input=vi_filename_input),
+        code=save_vi_code )
     save_vi_button.js_on_event('button_click', save_vi_callback)
 
     #- Recover auto-saved VI data in browser
@@ -1335,13 +1348,13 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : recover_vi_code = f.read()
     with open(os.path.join(js_dir,"recover_autosave_vi.js"), 'r') as f : recover_vi_code += f.read()
     recover_vi_callback = CustomJS(
-        args = dict(title=title, vi_file_fields=vi_file_fields, cds_targetinfo=cds_targetinfo, 
+        args = dict(title=title, vi_file_fields=vi_file_fields, cds_targetinfo=cds_targetinfo,
                    ifiber=ifiberslider.value, vi_comment_input=vi_comment_input,
                    vi_name_input=vi_name_input, vi_class_input=vi_class_input, vi_issue_input=vi_issue_input,
                    vi_issue_slabels=vi_issue_slabels, vi_class_labels=vi_class_labels),
         code = recover_vi_code )
     recover_vi_button.js_on_event('button_click', recover_vi_callback)
-    
+
     #- Clear all auto-saved VI
     clear_vi_button = Button(label="Clear all auto-saved VI", button_type="default")
     clear_vi_callback = CustomJS( args = dict(), code = """
@@ -1359,14 +1372,14 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     ]
     vi_table = DataTable(source=cds_targetinfo, columns=vi_table_columns, width=500)
     vi_table.height = 10 * vi_table.row_height
-    
-    
+
+
     #-----
     #- Main js code to update plot
     with open(os.path.join(js_dir,"adapt_plotrange.js"), 'r') as f : update_plot_code = f.read()
     with open(os.path.join(js_dir,"interp_grid.js"), 'r') as f : update_plot_code += f.read()
     with open(os.path.join(js_dir,"smooth_data.js"), 'r') as f : update_plot_code += f.read()
-    with open(os.path.join(js_dir,"coadd_brz_cameras.js"), 'r') as f : update_plot_code += f.read()    
+    with open(os.path.join(js_dir,"coadd_brz_cameras.js"), 'r') as f : update_plot_code += f.read()
     with open(os.path.join(js_dir,"update_plot.js"), 'r') as f : update_plot_code += f.read()
     # ONGOING
     the_fit_results = None if template_dicts is None else template_dicts[1] # dirty
@@ -1408,7 +1421,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     #-----
     #- Bokeh setup
     # NB widget height / width are still partly hardcoded, but not arbitrary except for Spacers
-    
+
     slider_width = plot_width - 2*navigation_button_width
     navigator = bk.Row(
         Column(prev_button, width=navigation_button_width+15),
@@ -1433,7 +1446,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
                 Column(vi_filename_input, width=300)
             ),
             Column(save_vi_button, width=100),
-            Column(vi_table),        
+            Column(vi_table),
             bk.Row(
                 Column(recover_vi_button, width=150),
                 Column(clear_vi_button, width=150)
@@ -1487,7 +1500,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
             plot_widget_set
         )
     else : full_widget_set = plot_widget_set
-    
+
     main_bokehsetup = bk.Column(
         bk.Row(fig, bk.Column(imfig, zoomfig), Spacer(width=20), sizing_mode='stretch_width'),
         bk.Row(
@@ -1502,7 +1515,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         full_widget_set,
         sizing_mode='stretch_width'
     )
-    
+
     if with_thumb_tab is False :
         full_viewer = main_bokehsetup
     else :
@@ -1514,7 +1527,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         tab1 = Panel(child = main_bokehsetup, title='Main viewer')
         tab2 = Panel(child = thumb_grid, title='Gallery')
         full_viewer.tabs=[ tab1, tab2 ]
-        
+
         # Dirty trick : callback functions on thumbs need to be defined AFTER the full_viewer is implemented
         # Otherwise, at least one issue = no toolbar anymore for main fig. (apparently due to ifiberslider in callback args)
         for i_spec in range(nspec) :
@@ -1546,7 +1559,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
             Column( thumb_grid )
         )
         bk.save(thumb_viewer)
-    
+
 
 #-------------------------------------------------------------------------
 def _airtovac(w):
@@ -1573,12 +1586,12 @@ def _airtovac(w):
 
 def add_lines(fig, z=0 , emission=True, fig_height=None, label_offsets=[100, 5]):
     """
-    label_offsets = [offset_absorption_lines, offset_emission_lines] : offsets in y-position 
+    label_offsets = [offset_absorption_lines, offset_emission_lines] : offsets in y-position
                     for line labels wrt top (resp. bottom) of the figure
     """
-    
+
     if fig_height is None : fig_height = fig.plot_height
-    
+
     line_file_dir = os.path.join(os.path.dirname(__file__),"data")
     line_data = dict(
         restwave = [],

@@ -27,9 +27,13 @@ from bokeh.models.widgets import (
 import bokeh.layouts as bl
 import bokeh.events
 
-from desitarget.targetmask import desi_mask
-from desitarget.cmx.cmx_targetmask import cmx_mask
-from desitarget.sv1.sv1_targetmask import desi_mask as sv1_desi_mask
+_desitarget_imported = True
+try:
+    from desitarget.targetmask import desi_mask
+    from desitarget.cmx.cmx_targetmask import cmx_mask
+    from desitarget.sv1.sv1_targetmask import desi_mask as sv1_desi_mask
+except ImportError:
+    _desitarget_imported = False
 
 # from prospect import utils_specviewer
 from .utils_specviewer import create_zcat_from_redrock_cat, _vi_flags, _vi_file_fields, _vi_spectypes, _vi_std_comments

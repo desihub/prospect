@@ -3,10 +3,18 @@
 # Reason : EXPID is not available in coadd spectra
 
 import numpy as np
-import desispec.spectra
-from desiutil.io import encode_table
-from desispec.maskbits import specmask
-from desispec.resolution import Resolution
+
+try:
+    from desiutil.io import encode_table
+except ImportError:
+    pass
+
+try:
+    from desispec.maskbits import specmask
+    from desispec.resolution import Resolution
+except ImportError:
+    pass
+
 
 def myspecupdate(spectra_in, other) :
 
@@ -91,7 +99,7 @@ def myspecupdate(spectra_in, other) :
         or ("FIBER" not in spectra_in.fibermap.keys())
         or ("FIBER" not in other.fibermap.keys()) ) :
         check_exists = False
-    if check_exists : 
+    if check_exists :
         for r in range(nother):
             expid = other.fibermap[r]["EXPID"]
             fiber = other.fibermap[r]["FIBER"]
@@ -106,7 +114,7 @@ def myspecupdate(spectra_in, other) :
     indx_exists = np.where(exists == 1)[0]
     indx_new = np.where(exists == 0)[0]
 
-    # Make new data arrays of the correct size to hold both the old and 
+    # Make new data arrays of the correct size to hold both the old and
     # new data
 
     nupdate = len(indx_exists)

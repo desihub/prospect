@@ -3,7 +3,11 @@
 # to include expid-based selection + indices-based selection
 # changes : fct name+args ; self=>thespec ; expid/indices-based selection + final selection
 
-import desispec.spectra
+try:
+    from desispec.spectra import Spectra
+except ImportError:
+    pass
+
 
 def myspecselect(thespec, nights=None, bands=None, targets=None, fibers=None, expids=None, indices=None, invert=False, remove_scores=False, clean_fiberstatus=False, output_indices=False):
     """
@@ -15,21 +19,21 @@ def myspecselect(thespec, nights=None, bands=None, targets=None, fibers=None, ex
         bands (list): optional list of bands to select.
         targets (list): optional list of target IDs to select.
         fibers (list): list/array of fiber indices to select.
-        ADDED=> expids (list): list/array of individual exposures to select.      
-        ADDED =>indices (list) : list of raw (arbitrary) indices in the Spectra object to select. 
+        ADDED=> expids (list): list/array of individual exposures to select.
+        ADDED =>indices (list) : list of raw (arbitrary) indices in the Spectra object to select.
         invert (bool): after combining all criteria, invert selection.
         remove_scores (bool): probably tmp trick, TODO
         output_indices (bool): if True, also returns indices of kept spectra
     Returns (Spectra):
         a new Spectra object containing the selected data.
     """
-    
+
     keep_fiberstatus = None
     if clean_fiberstatus == False :
         keep_fiberstatus = [ True for x in range(thespec.num_spectra()) ]
     else :
         keep_fiberstatus = [ (x==0) for x in thespec.fibermap["FIBERSTATUS"] ]
-    
+
     keep_bands = None
     if bands is None:
         keep_bands = thespec.bands
@@ -47,7 +51,7 @@ def myspecselect(thespec, nights=None, bands=None, targets=None, fibers=None, ex
     if sum(keep_nights) == 0:
         print("myspecselect: no valid nights were selected.")
         return None
-    
+
     keep_targets = None
     if targets is None:
         keep_targets = [ True for x in range(thespec.num_spectra()) ]
@@ -56,7 +60,7 @@ def myspecselect(thespec, nights=None, bands=None, targets=None, fibers=None, ex
     if sum(keep_targets) == 0:
         print("myspecselect: no valid targets were selected.")
         return None
-    
+
     keep_fibers = None
     if fibers is None:
         keep_fibers = [ True for x in range(thespec.num_spectra()) ]
@@ -122,13 +126,13 @@ def myspecselect(thespec, nights=None, bands=None, targets=None, fibers=None, ex
     keep_scores = None
     if not remove_scores :
         if thespec.scores is not None : keep_scores = thespec.scores[keep]
-    
-    ret = desispec.spectra.Spectra(keep_bands, keep_wave, keep_flux, keep_ivar, 
-        mask=keep_mask, resolution_data=keep_res, 
-        fibermap=thespec.fibermap[keep], meta=thespec.meta, extra=keep_extra,
-        single=thespec._single, scores=keep_scores)
+
+    ret = Spectra(keep_bands, keep_wave, keep_flux, keep_ivar,
+                  mask=keep_mask, resolution_data=keep_res,
+                  fibermap=thespec.fibermap[keep], meta=thespec.meta, extra=keep_extra,
+                  single=thespec._single, scores=keep_scores)
 
     if output_indices :
         return (ret, keep)
-    
+
     return ret
