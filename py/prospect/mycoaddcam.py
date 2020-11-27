@@ -8,6 +8,7 @@
 import numpy as np
 import math
 
+from desispec.interpolation import resample_flux
 
 def index_dichotomy(point, grid) :
     """
