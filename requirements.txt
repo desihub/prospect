@@ -1,0 +1,4 @@
+specutils
+scipy
+bokeh
+jinja2
