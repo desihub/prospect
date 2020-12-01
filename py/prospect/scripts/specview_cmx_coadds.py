@@ -1,8 +1,11 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+# -*- coding: utf-8 -*-
 """
+====================================
 prospect.scripts.specview_cmx_coadds
-===================================
+====================================
 
-Write static html files from "coadd" files in CMX data
+Write static html files from "coadd" files in CMX data, sorted by exposure.
 """
 
 import os, sys, glob
@@ -29,7 +32,7 @@ _bad_fibers_cmx = [
     [4500, 4750]  # b9 amp C readout salt-and-pepper noise
 ]
 
-def parse() :
+def _parse():
 
     parser = argparse.ArgumentParser(description='Create static html pages from CMX coadds, tile-based')
     parser.add_argument('--specprod_dir', help='Location of directory tree (data in specprod_dir/tiles/)', type=str)
@@ -175,8 +178,8 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
 
 
 
-def main(args) :
-
+def main():
+    args = _parse()
     log = get_logger()
     webdir = args.webdir
     if ( [args.tile, args.tile_list] ).count(None) != 1 :

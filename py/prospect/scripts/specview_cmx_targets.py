@@ -1,9 +1,11 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+# -*- coding: utf-8 -*-
 """
+=====================================
 prospect.scripts.specview_cmx_targets
-===================================
+=====================================
 
-Write static html files from a set of targets,
- using tile-based coadds in CMX data
+Write static html files from a set of targets, using tile-based coadds in CMX data.
 """
 
 import os
@@ -17,7 +19,7 @@ from ..plotframes import plotspectra
 from ..myspecselect import myspecselect
 from ..utilities import make_targetdict, load_spectra_zcat_from_targets  #, match_zcat_to_spectra
 
-def parse() :
+def _parse():
 
     parser = argparse.ArgumentParser(description='Create static html pages from a set of targets, using CMX tile-based coadds')
     parser.add_argument('--specprod_dir', help='Location of directory tree (data in specprod_dir/tiles/)', type=str)
@@ -34,8 +36,8 @@ def parse() :
     return args
 
 
-def main(args) :
-
+def main():
+    args = _parse()
     log = get_logger()
 
     tile_dir = os.path.join(args.specprod_dir,'tiles')

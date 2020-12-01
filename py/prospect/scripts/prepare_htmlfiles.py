@@ -1,8 +1,11 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+# -*- coding: utf-8 -*-
 """
+==================================
 prospect.scripts.prepare_htmlfiles
-===================================
+==================================
 
-Write html index pages from existing pages/images produced by plotframes
+Write html index pages from existing pages/images produced by :mod:`~prospect.plotframes`.
 """
 
 
@@ -13,7 +16,7 @@ from desiutil.log import get_logger
 from jinja2 import Environment, FileSystemLoader
 
 
-def parse() :
+def _parse():
 
     parser = argparse.ArgumentParser(description="Write html index pages")
     parser.add_argument('--webdir', help='Base directory for webpages', type=str, default=None)
@@ -29,11 +32,11 @@ def parse() :
 def prepare_subdir(subdir, entry, template_index, template_vignette, target=None, do_expo=False, info=None, with_thumbs=False) :
 
     # TODO Needs restructure !!!
-    
+
     pattern = entry
     if target is not None :
         pattern = target+"*"+entry
-    
+
     spec_pages = glob.glob( subdir+"/specviewer_"+pattern+"_*.html" )
 #     subsets = [ x[len(subdir+"/specviewer_"+pattern)+1:-5] for x in spec_pages ]
 #     subsets.sort(key=int)
@@ -75,8 +78,8 @@ def prepare_subdir(subdir, entry, template_index, template_vignette, target=None
             os.chmod(x, st.st_mode | stat.S_IROTH) # "chmod a+r "
 
 
-def main(args) :
-
+def main():
+    args = _parse()
     log = get_logger()
 
     webdir = args.webdir
@@ -130,7 +133,7 @@ def main(args) :
             target_pixels[target_dir] = os.listdir( os.path.join(webdir,target_dir) )
             for pix in target_pixels[target_dir] :
                 pixel_dir = os.path.join(webdir,target_dir,pix)
-                
+
                 prepare_subdir(pixel_dir, pix, template_targetlist, template_vignettelist, target=target_cat, info=target_list[i][2] )
                 log.info("Subdirectory done : "+pix)
         target_pixels['ELG']=None
@@ -139,9 +142,9 @@ def main(args) :
     else : target_pixels={'BGS_ANY':None,'ELG':None,'LRG':None,'QSO':None,'MWS_ANY':None}
 
     # Main index # TODO improve template handling target-based pages
-    pagetext = template_index.render(pixels=pixels, exposures=exposures, bgs_pixels=target_pixels['BGS_ANY'], 
-            elg_pixels=target_pixels['ELG'], lrg_pixels=target_pixels['lrg'], qso_pixels=target_pixels['QSO'], qsob_pix=target_pixels['qso_bluesquare'], qsog_pix=target_pixels['qso_greencircle'], elgg_pix=target_pixels['elg_greencircle'], elgb_pix=target_pixels['elg_bluesquare'], elgbb_pix=target_pixels['elg_blackdiamond'],bgsb_pix=target_pixels['bgs_bluesquare'], bgsg_pix=target_pixels['bgs_greencircle'], 
-            mws_pixels=target_pixels['mws']) 
+    pagetext = template_index.render(pixels=pixels, exposures=exposures, bgs_pixels=target_pixels['BGS_ANY'],
+            elg_pixels=target_pixels['ELG'], lrg_pixels=target_pixels['lrg'], qso_pixels=target_pixels['QSO'], qsob_pix=target_pixels['qso_bluesquare'], qsog_pix=target_pixels['qso_greencircle'], elgg_pix=target_pixels['elg_greencircle'], elgb_pix=target_pixels['elg_bluesquare'], elgbb_pix=target_pixels['elg_blackdiamond'],bgsb_pix=target_pixels['bgs_bluesquare'], bgsg_pix=target_pixels['bgs_greencircle'],
+            mws_pixels=target_pixels['mws'])
     indexfile = os.path.join(webdir,"index.html")
     with open(indexfile, "w") as fh:
         fh.write(pagetext)

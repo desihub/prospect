@@ -63,8 +63,13 @@ setup_keywords['test_suite']='{name}.test.{name}_test_suite'.format(**setup_keyw
 #
 # Autogenerate command-line scripts.
 #
-# setup_keywords['entry_points'] = {'console_scripts':['desiInstall = desiutil.install:main',
-#                                                      'desi_data_census = desiutil.census:main']}
+# setup_keywords['entry_points'] = {'console_scripts':['run_cmx_htmlfiles = prospect.scripts.prepare_cmx_htmlfiles:main',
+#                                                      'run_htmlfiles = prospect.scripts.prepare_htmlfiles:main',
+#                                                      'run_specview_cmx_coadds = prospect.scripts.specview_cmx_coadds:main',
+#                                                      'run_specview_cmx_frames = prospect.scripts.specview_cmx_frames:main',
+#                                                      'run_specview_cmx_targets = prospect.scripts.specview_cmx_targets:main',
+#                                                      'run_specview_per_night = prospect.scripts.specview_per_night:main',
+#                                                      'run_specview_per_pixel = prospect.scripts.specview_per_pixel:main']}
 #
 # Add internal data directories.
 #

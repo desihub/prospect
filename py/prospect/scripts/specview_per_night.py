@@ -1,9 +1,12 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+# -*- coding: utf-8 -*-
 """
+===================================
 prospect.scripts.specview_per_night
 ===================================
 
-Write static html files from single-exposure spectra, sorted by night/exposure
-This script uses the prototype tiles datastructure in specprod_dir/tiles
+Write static html files from single-exposure spectra, sorted by night/exposure.
+This script uses the prototype tiles datastructure in specprod_dir/tiles.
 """
 
 import os, sys, glob
@@ -22,7 +25,7 @@ from ..myspecselect import myspecselect # special (to be edited)
 from ..plotframes import plotspectra
 from ..utilities import match_zcat_to_spectra  #, match_vi_targets, miniplot_spectrum
 
-def parse() :
+def _parse():
 
     parser = argparse.ArgumentParser(description='Create night-based html pages for the spectral viewer')
     parser.add_argument('--specprod_dir', help='overrides $DESI_SPECTRO_REDUX/$SPECPROD/', type=str, default=None)
@@ -33,8 +36,8 @@ def parse() :
     return args
 
 
-def main(args):
-
+def main():
+    args = _parse()
     log = get_logger()
     specprod_dir = args.specprod_dir
     if specprod_dir is None : specprod_dir = desispec.io.specprod_root()

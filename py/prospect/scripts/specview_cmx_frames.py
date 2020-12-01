@@ -1,9 +1,12 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+# -*- coding: utf-8 -*-
 """
+====================================
 prospect.scripts.specview_cmx_frames
-===================================
+====================================
 
-Write static html files from "[s/c/..]frame" files in CMX data
-Don't know if this will be used for SV (once frames are superseeded by spectra)
+Write static html files from "[s/c/..]frame" files in CMX data.
+Don't know if this will be used for SV (once frames are superseeded by spectra).
 """
 
 import os, sys, glob
@@ -23,7 +26,7 @@ from ..myspecselect import myspecselect
 from ..myspecupdate import myspecupdate
 from ..utilities import frames2spectra, specviewer_selection, coadd_targets
 
-def parse() :
+def _parse():
 
     parser = argparse.ArgumentParser(description='Create static html pages from CMX frames, tile- or exposure-based')
     parser.add_argument('--specprod_dir', help='Location of directory tree (data in specprod_dir/exposures/)', type=str)
@@ -210,8 +213,8 @@ def page_subset_tile(fdir, tile_db_subset, frametype, html_dir, titlepage_prefix
 
 
 
-def main(args) :
-
+def main():
+    args = _parse()
     log = get_logger()
     webdir = args.webdir
     assert args.frametype in ['sframe', 'cframe']

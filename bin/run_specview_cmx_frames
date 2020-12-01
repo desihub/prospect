@@ -1,16 +1,6 @@
 #!/usr/bin/env python
-#
-# See top-level LICENSE.rst file for Copyright information
-#
-
-"""
-Write static html files from cmx frames, sorted by exposure
-"""
-
-import prospect.scripts.specview_cmx_frames as specview_cmx_frames
-
-if __name__ == '__main__':
-    args = specview_cmx_frames.parse()
-    specview_cmx_frames.main(args)
-
-
+# -*- coding: utf-8 -*-
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+from sys import exit
+from prospect.scripts.specview_cmx_frames import main
+exit(main())

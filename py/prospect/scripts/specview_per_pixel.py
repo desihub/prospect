@@ -1,8 +1,11 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+# -*- coding: utf-8 -*-
 """
+===================================
 prospect.scripts.specview_per_pixel
 ===================================
 
-Write static html files from coadded spectra, sorted by healpixels
+Write static html files from coadded spectra, sorted by healpixels.
 """
 
 import os, sys, glob
@@ -25,7 +28,7 @@ from ..plotframes import coadd_targets, create_model, plotspectra
 from ..utilities import specviewer_selection, match_zcat_to_spectra, match_vi_targets, miniplot_spectrum
 
 
-def parse() :
+def _parse():
 
     parser = argparse.ArgumentParser(description='Create pixel-based static html pages for the spectral viewer')
     parser.add_argument('--specprod_dir', help='overrides $DESI_SPECTRO_REDUX/$SPECPROD/', type=str, default=None)
@@ -44,8 +47,8 @@ def parse() :
     return args
 
 
-def main(args) :
-
+def main():
+    args = _parse()
     log = get_logger()
     specprod_dir = args.specprod_dir
     if specprod_dir is None : specprod_dir = desispec.io.specprod_root()
