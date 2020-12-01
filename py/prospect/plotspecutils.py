@@ -1,6 +1,7 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # -*- coding: utf-8 -*-
 """
+======================
 prospect.plotspecutils
 ======================
 
@@ -35,7 +36,7 @@ try:
 except ImportError:
     _desitarget_imported = False
 
-from .utilities import create_zcat_from_redrock_cat, _vi_flags, _vi_file_fields, _vi_spectypes, _vi_std_comments
+from .utilities import create_zcat_from_redrock_cat, vi_flags, vi_file_fields, vi_spectypes, vi_std_comments
 from .mycoaddcam import mycoaddcam, coaddcam_prospect
 from .plotframes import add_lines, _airtovac
 
@@ -1160,10 +1161,9 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     #-----
     #- VI-related widgets
 
-    vi_file_fields = _vi_file_fields
-    vi_class_labels = [ x["label"] for x in _vi_flags if x["type"]=="class" ]
-    vi_issue_labels = [ x["label"] for x in _vi_flags if x["type"]=="issue" ]
-    vi_issue_slabels = [ x["shortlabel"] for x in _vi_flags if x["type"]=="issue" ]
+    vi_class_labels = [ x["label"] for x in vi_flags if x["type"]=="class" ]
+    vi_issue_labels = [ x["label"] for x in vi_flags if x["type"]=="issue" ]
+    vi_issue_slabels = [ x["shortlabel"] for x in vi_flags if x["type"]=="issue" ]
 
     #- VI file name
     default_vi_filename = "desi-vi_"+title
@@ -1224,8 +1224,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     z_tovi_button.js_on_event('button_click', z_tovi_callback)
 
     #- Optional VI information on spectral type
-    vi_spectypes = [" "] + _vi_spectypes
-    vi_category_select = Select(value=" ", title="VI spectype:", options=vi_spectypes)
+    vi_category_select = Select(value=" ", title="VI spectype:", options=([''] + vi_spectypes))
     with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_category_code = f.read()
     with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_category_code += f.read()
     vi_category_code += """
@@ -1270,8 +1269,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     vi_comment_input.js_on_change('value',vi_comment_callback)
 
     #- List of "standard" VI comment
-    vi_std_comments = [" "] + _vi_std_comments
-    vi_std_comment_select = Select(value=" ", title="Standard comment:", options=vi_std_comments)
+    vi_std_comment_select = Select(value=" ", title="Standard comment:", options=([''] + vi_std_comments))
     vi_std_comment_code = """
         if (vi_std_comment_select.value != ' ') {
             if (vi_comment_input.value != '') {
@@ -1335,10 +1333,10 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     #- Guidelines for VI flags
     vi_guideline_txt = "<B> VI guidelines </B>"
     vi_guideline_txt += "<BR /> <B> Classification flags: </B>"
-    for flag in _vi_flags :
+    for flag in vi_flags :
         if flag['type'] == 'class' : vi_guideline_txt += ("<BR />&emsp;&emsp;[&emsp;"+flag['label']+"&emsp;] "+flag['description'])
     vi_guideline_txt += "<BR /> <B> Optional indications: </B>"
-    for flag in _vi_flags :
+    for flag in vi_flags :
         if flag['type'] == 'issue' :
             vi_guideline_txt += ( "<BR />&emsp;&emsp;[&emsp;" + flag['label'] +
                                  "&emsp;(" + flag['shortlabel'] + ")&emsp;] " + flag['description'] )

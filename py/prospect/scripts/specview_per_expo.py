@@ -23,7 +23,7 @@ import desispec.frame
 
 from ..myspecselect import myspecselect  # special (to be edited)
 from ..plotframes import create_model, plotspectra
-from ..utilities import match_zbest_to_spectra, match_vi_targets, miniplot_spectrum
+from ..utilities import match_zbest_to_spectra, match_vi_targets  #, miniplot_spectrum
 
 def _parse():
     parser = argparse.ArgumentParser(description='Create html pages for the spectral viewer')
@@ -85,6 +85,6 @@ def main():
                 os.mkdir(savedir)
                 os.mkdir(savedir+"/vignettes")
             plotspectra(thespec, zcatalog=thezb, vidata=vidata, model=model, title=titlepage, savedir=savedir, is_coadded=False)
-            for i_spec in range(thespec.num_spectra()) :
-                saveplot = savedir+"/vignettes/expo"+str(exposure)+"_fiberset"+str(i_page)+"_"+str(i_spec)+".png"
-                miniplot_spectrum(thespec,i_spec,model=model,saveplot=saveplot, smoothing = args.vignette_smoothing)
+            # for i_spec in range(thespec.num_spectra()) :
+            #     saveplot = savedir+"/vignettes/expo"+str(exposure)+"_fiberset"+str(i_page)+"_"+str(i_spec)+".png"
+            #     miniplot_spectrum(thespec,i_spec,model=model,saveplot=saveplot, smoothing = args.vignette_smoothing)

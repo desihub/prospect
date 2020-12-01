@@ -25,7 +25,7 @@ import desispec.frame
 
 from ..myspecselect import myspecselect  # special (to be edited)
 from ..plotframes import coadd_targets, create_model, plotspectra
-from ..utilities import specviewer_selection, match_zcat_to_spectra, match_vi_targets, miniplot_spectrum
+from ..utilities import specviewer_selection, match_zcat_to_spectra, match_vi_targets  #, miniplot_spectrum
 
 
 def _parse():

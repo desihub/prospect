@@ -1,12 +1,16 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
 # -*- coding: utf-8 -*-
-
-
 """
-TODO
+===================
+prospect.plotframes
+===================
+
+To Do
+-----
 * add target details tab
 * add code details tab (version, SPECPROD)
 * redshift model fit
-* better smoothing kernel, e.g. Gaussian
+* better smoothing kernel, *e.g.* Gaussian
 """
 
 import os, sys
@@ -414,11 +418,11 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
 
 
 def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=None, num_approx_fits=None, with_full_2ndfit=True, model_from_zcat=True, model=None, notebook=False, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, mask_type='DESI_TARGET', with_thumb_tab=True, with_vi_widgets=True, with_thumb_only_page=False, template_dir=None, archetype_fit=False, archetypes_dir=None):
-    '''
-    Main prospect routine. From a set of spectra, creates a bokeh document used for VI, to be displayed as an HTML page or within a jupyter notebook.
+    '''Main prospect routine. From a set of spectra, creates a bokeh document
+    used for VI, to be displayed as an HTML page or within a Jupyter notebook.
 
-    Main Parameter
-    ---------
+    Parameters
+    ----------
     spectra: input spectra. Supported formats: 1) a 3-band DESI spectra object, with bands 'b', 'r', 'z'. 2) a single-band
         DESI spectra object, bandname 'brz'. 2) a list of 3 frames, associated to the b, r and z bands.
     zcatalog (default None): astropy Table, containing the 'ZBEST' output redrock. Currently supports redrock-PCA or archetype files. The entries in zcatalog must be matched one-by-one (in order) to spectra.
@@ -433,10 +437,6 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     with_thumb_tab (bool): include a tab with thumbnails of spectra in bokeh viewer
     with_thumb_only_page (bool): when creating a static HTML (notebook==False), a light HTML page including only the thumb
         gallery will also be produced.
-
-
-    Less-useful parameters
-    ---------
     nspec: select subsample of spectra, only for frame input
     startspec: if nspec is set, subsample selection will be [startspec:startspec+nspec]
     model_from_zcat: if True, model spectra will be computed from the input zcatalog
