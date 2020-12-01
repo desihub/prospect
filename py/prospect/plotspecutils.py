@@ -35,8 +35,7 @@ try:
 except ImportError:
     _desitarget_imported = False
 
-# from prospect import utils_specviewer
-from .utils_specviewer import create_zcat_from_redrock_cat, _vi_flags, _vi_file_fields, _vi_spectypes, _vi_std_comments
+from .utilities import create_zcat_from_redrock_cat, _vi_flags, _vi_file_fields, _vi_spectypes, _vi_std_comments
 from .mycoaddcam import mycoaddcam, coaddcam_prospect
 from .plotframes import add_lines, _airtovac
 
@@ -411,7 +410,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     zcatalog : :class:`~astropy.table.Table`, optional
         Redshift values, matched one-to-one with the input spectra.
     redrock_cat : :class:`~astropy.table.Table`, optional
-        Redrock output (as defined in utils_specviewer.match_redrock_zfit_to_spectra).
+        Redrock output (as defined in :func:`~prospect.utilities.match_redrock_zfit_to_spectra`).
         Entries must be matched one-by-one (in order) to spectra.
     notebook : :class:`bool`, optional
         If ``True``, bokeh outputs the viewer to a Jupyter notebook.

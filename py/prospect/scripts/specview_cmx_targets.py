@@ -13,8 +13,9 @@ import numpy as np
 import desispec.io
 from desiutil.log import get_logger
 
-from prospect import plotframes
-from prospect import utils_specviewer, myspecselect
+from ..plotframes import plotspectra
+from ..myspecselect import myspecselect
+from ..utilities import make_targetdict, load_spectra_zcat_from_targets  #, match_zcat_to_spectra
 
 def parse() :
 
@@ -28,30 +29,30 @@ def parse() :
     parser.add_argument('--titlepage_prefix', help='Prefix for webpage title', type=str, default='targetlist')
     parser.add_argument('--with_multiple_models', help='Display several models (requires full redrock outputs)', action='store_true')
     parser.add_argument('--template_dir', help='Redrock template directory', type=str, default=None)
-    
+
     args = parser.parse_args()
     return args
 
 
 def main(args) :
-    
+
     log = get_logger()
-    
+
     tile_dir = os.path.join(args.specprod_dir,'tiles')
     if args.tiles :
         tile_list = args.tiles
     else :
         tile_list = os.listdir(tile_dir)
-    obs_db = utils_specviewer.make_targetdict(tile_dir, tiles=tile_list, nights=args.nights)
-    
+    obs_db = make_targetdict(tile_dir, tiles=tile_list, nights=args.nights)
+
     targetids = np.loadtxt(args.target_list, dtype='int64', comments='#')
     log.info(str(len(targetids))+" targets provided.")
 
     if args.with_multiple_models :
-        spectra, zcat, rrtable = utils_specviewer.load_spectra_zcat_from_targets(targetids, tile_dir, obs_db, with_redrock=True)
+        spectra, zcat, rrtable = load_spectra_zcat_from_targets(targetids, tile_dir, obs_db, with_redrock=True)
     else :
-        spectra, zcat = utils_specviewer.load_spectra_zcat_from_targets(targetids, tile_dir, obs_db, with_redrock=False)
-    
+        spectra, zcat = load_spectra_zcat_from_targets(targetids, tile_dir, obs_db, with_redrock=False)
+
     # TODO? this may be put in a standalone fct, avoid code duplicate with other script
     # Create several html pages : sort by targetid
     nspec = spectra.num_spectra()
@@ -61,28 +62,27 @@ def main(args) :
     for i_page in range(1,1+nbpages) :
 
         log.info(" * Page "+str(i_page)+" / "+str(nbpages))
-        the_indices = sort_indices[(i_page-1)*args.nspecperfile:i_page*args.nspecperfile]            
-        thespec, kept_ind = myspecselect.myspecselect(spectra, indices=the_indices, remove_scores=True, output_indices=True)
+        the_indices = sort_indices[(i_page-1)*args.nspecperfile:i_page*args.nspecperfile]
+        thespec, kept_ind = myspecselect(spectra, indices=the_indices, remove_scores=True, output_indices=True)
         the_zcat = zcat[kept_ind]
         if not np.array_equal(the_zcat['TARGETID'], thespec.fibermap['TARGETID']) :
             raise RuntimeError("targetids do not match between spec and zcat")
-        #the_zcat, kk = utils_specviewer.match_zcat_to_spectra(zcat, thespec)
+        #the_zcat, kk = match_zcat_to_spectra(zcat, thespec)
         if args.with_multiple_models :
             the_rrtable = rrtable[kept_ind]
-            #the_rrtable, kk = utils_specviewer.match_zcat_to_spectra(rrtable, thespec)
+            #the_rrtable, kk = match_zcat_to_spectra(rrtable, thespec)
             num_approx_fits = 4 # TODO settle option
             with_full_2ndfit = True # TODO settle option
         else :
             the_rrtable = None
             num_approx_fits = None
             with_full_2ndfit = False
-        
+
         titlepage = args.titlepage_prefix+"_"+str(i_page)
-        plotframes.plotspectra(thespec, with_noise=True, is_coadded=True, zcatalog=the_zcat,
+        plotspectra(thespec, with_noise=True, is_coadded=True, zcatalog=the_zcat,
                     title=titlepage, html_dir=args.webdir, mask_type='CMX_TARGET', with_thumb_only_page=True,
                     template_dir=args.template_dir, redrock_cat=the_rrtable, num_approx_fits=num_approx_fits,
                     with_full_2ndfit=with_full_2ndfit)
 
     log.info("End of specview_cmx_targets script.")
     return 0
-

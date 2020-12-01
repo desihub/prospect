@@ -47,5 +47,5 @@ prospect API
 .. automodule:: prospect.specutils
     :members:
 
-.. automodule:: prospect.utils_specviewer
+.. automodule:: prospect.utilities
     :members:

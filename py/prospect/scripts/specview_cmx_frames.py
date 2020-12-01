@@ -18,9 +18,10 @@ from desitarget.cmx.cmx_targetmask import cmx_mask
 import desispec.spectra
 import desispec.frame
 
-from prospect import plotframes
-from prospect import utils_specviewer, myspecselect, myspecupdate
-
+from ..plotframes import plotspectra
+from ..myspecselect import myspecselect
+from ..myspecupdate import myspecupdate
+from ..utilities import frames2spectra, specviewer_selection, coadd_targets
 
 def parse() :
 
@@ -46,7 +47,7 @@ def parse() :
 
 def exposure_db(specprod_dir, frametype='cframe', expo_subset=None, petals=None) :
     '''
-    Returns list of {exposure, night, petals} available in specprod_dir/exposures tree, 
+    Returns list of {exposure, night, petals} available in specprod_dir/exposures tree,
         with b,r,z frames whose name matches frametype
         petals = list of petal numbers from 0 to 9 (only those with 3 bands available are kept)
         expo_subset : list; if None, all available exposures will be included in the list
@@ -75,7 +76,7 @@ def exposure_db(specprod_dir, frametype='cframe', expo_subset=None, petals=None)
 
 def tile_db(specprod_dir, frametype='cframe', tile_subset=None, night_subset=None, merge_exposures=False, petals=None) :
     '''
-    Returns [ {tile, night, expo, petals} for all tile/expos available in specprod_dir/tiles tree ], 
+    Returns [ {tile, night, expo, petals} for all tile/expos available in specprod_dir/tiles tree ],
         with b,r,z frames whose name matches frametype
         tile_subset : list; if None, all available tiles will be included in the list
         night_subset : list; if not None, only frames from these nights are included
@@ -85,7 +86,7 @@ def tile_db(specprod_dir, frametype='cframe', tile_subset=None, night_subset=Non
     if petals is None : petals = [str(i) for i in range(10)]
     tiles_db = list()
     for tile in os.listdir( os.path.join(specprod_dir,'tiles') ) :
-        if (tile_subset is not None) and (tile not in tile_subset) : 
+        if (tile_subset is not None) and (tile not in tile_subset) :
             continue
         if merge_exposures : tile_subdb = { 'tile':tile, 'db_subset':list() }
         for night in os.listdir( os.path.join(specprod_dir,'tiles',tile) ) :
@@ -107,25 +108,25 @@ def tile_db(specprod_dir, frametype='cframe', tile_subset=None, night_subset=Non
                     else :
                         tiles_db.append( { 'tile':tile, 'night':night, 'exposure':expo, 'petals':petals_avail} )
         if merge_exposures and ( len(tile_subdb['db_subset'])>0 ) : tiles_db.append(tile_subdb)
-    return tiles_db    
-    
+    return tiles_db
+
 
 def page_subset_expo(fdir, exposure, frametype, petals, html_dir, titlepage_prefix, mask, log, nspecperfile, snr_cut) :
     '''
     Running prospect from frames : loop over petals for a given exposure
     '''
-    
+
     nspec_done = 0
     for petal_num in petals :
         frames = [ desispec.io.read_frame(os.path.join(fdir,frametype+"-"+band+petal_num+"-"+exposure+".fits")) for band in ['b','r','z'] ]
-        spectra = utils_specviewer.frames2spectra(frames, with_scores=True)
+        spectra = frames2spectra(frames, with_scores=True)
         if 'FIBERSTATUS' in spectra.fibermap.keys() :
-            spectra = myspecselect.myspecselect(spectra, clean_fiberstatus=True)
+            spectra = myspecselect(spectra, clean_fiberstatus=True)
             if spectra is None : return 0
 
         # Selection
         if (mask != None) or (snr_cut != None) :
-            spectra = utils_specviewer.specviewer_selection(spectra, log=log,
+            spectra = specviewer_selection(spectra, log=log,
                         mask=mask, mask_type='CMX_TARGET', snr_cut=snr_cut, with_dirty_mask_merge=True)
             if spectra == 0 : continue
 
@@ -137,13 +138,13 @@ def page_subset_expo(fdir, exposure, frametype, petals, html_dir, titlepage_pref
         for i_page in range(1,1+nbpages) :
 
             log.info(" * Page "+str(i_page)+" / "+str(nbpages))
-            the_indices = sort_indices[(i_page-1)*nspecperfile:i_page*nspecperfile]            
-            thespec = myspecselect.myspecselect(spectra, indices=the_indices)
+            the_indices = sort_indices[(i_page-1)*nspecperfile:i_page*nspecperfile]
+            thespec = myspecselect(spectra, indices=the_indices)
             titlepage = titlepage_prefix+"_petal"+petal_num+"_"+str(i_page)
-            plotframes.plotspectra(thespec, with_noise=True, with_coaddcam=True, is_coadded=False, 
+            plotspectra(thespec, with_noise=True, with_coaddcam=True, is_coadded=False,
                         title=titlepage, html_dir=html_dir, mask_type='CMX_TARGET', with_thumb_only_page=True)
         nspec_done += nspec_expo
-        
+
     return nspec_done
 
 def page_subset_tile(fdir, tile_db_subset, frametype, html_dir, titlepage_prefix, mask, log, nspecperfile, snr_cut, with_zcatalog=False) :
@@ -151,7 +152,7 @@ def page_subset_tile(fdir, tile_db_subset, frametype, html_dir, titlepage_prefix
     Running prospect from frames : tile-based, do not separate pages per exposure.
         tile_db_subset : subset of tile_db, all with the same tile
     '''
-    
+
     tile = tile_db_subset['tile']
     nspec_done = 0
     all_spectra = None
@@ -161,32 +162,32 @@ def page_subset_tile(fdir, tile_db_subset, frametype, html_dir, titlepage_prefix
         for petal_num in the_subset['petals'] :
             frames = [ desispec.io.read_frame(os.path.join(fdir, the_subset['night'],frametype+"-" + band + petal_num + "-" + the_subset['exposure'] + ".fits")) for band in ['b','r','z'] ]
             # TRICK : need resolution data in spectra to pass coadd fct (could be changed...)
-            spectra = utils_specviewer.frames2spectra(frames, with_scores=True, with_resolution_data=True)
+            spectra = frames2spectra(frames, with_scores=True, with_resolution_data=True)
             # Filtering
             if (mask != None) or (snr_cut != None) :
-                spectra = utils_specviewer.specviewer_selection(spectra, log=log,
+                spectra = specviewer_selection(spectra, log=log,
                             mask=mask, mask_type='CMX_TARGET', snr_cut=snr_cut, with_dirty_mask_merge=True)
                 if spectra == 0 : continue
             # Merge
             if all_spectra is None :
                 all_spectra = spectra
             else : # NB update() does not copy scores. Filtering was done before.
-                all_spectra = myspecupdate.myspecupdate(all_spectra, spectra)
-                
-    if all_spectra is None : 
+                all_spectra = myspecupdate(all_spectra, spectra)
+
+    if all_spectra is None :
         log.info("Tile "+tile+" : no spectra !")
         return 0
     elif 'FIBERSTATUS' in all_spectra.fibermap.keys() :
-        all_spectra = myspecselect.myspecselect(all_spectra, clean_fiberstatus=True, remove_scores=True)
+        all_spectra = myspecselect(all_spectra, clean_fiberstatus=True, remove_scores=True)
         if all_spectra is None : return 0
-    
+
     # Exposure-coadd
-    all_spectra = utils_specviewer.coadd_targets(all_spectra)
+    all_spectra = coadd_targets(all_spectra)
     # zcatalog
     if with_zcatalog :
         zcat_files = glob.glob(fdir+"/"+the_subset['night']+"/zbest*.fits") # Probably TMP ... ?
         ztables = []
-        for f in zcat_files : 
+        for f in zcat_files :
             ztables.append(Table.read(f,'ZBEST'))
         zcat = vstack(ztables)
     else : zcat = None
@@ -198,32 +199,32 @@ def page_subset_tile(fdir, tile_db_subset, frametype, html_dir, titlepage_prefix
     for i_page in range(1,1+nbpages) :
 
         log.info(" * Page "+str(i_page)+" / "+str(nbpages))
-        the_indices = sort_indices[(i_page-1)*nspecperfile:i_page*nspecperfile]            
-        thespec = myspecselect.myspecselect(all_spectra, indices=the_indices, remove_scores=True)
+        the_indices = sort_indices[(i_page-1)*nspecperfile:i_page*nspecperfile]
+        thespec = myspecselect(all_spectra, indices=the_indices, remove_scores=True)
         titlepage = titlepage_prefix+"_"+str(i_page)
-        plotframes.plotspectra(thespec, with_noise=True, with_coaddcam=True, is_coadded=True, zcatalog=zcat,
+        plotspectra(thespec, with_noise=True, with_coaddcam=True, is_coadded=True, zcatalog=zcat,
                     title=titlepage, html_dir=html_dir, mask_type='CMX_TARGET', with_thumb_only_page=True)
     nspec_done += nspec_tile
-        
+
     return nspec_done
 
 
 
 def main(args) :
-    
+
     log = get_logger()
     webdir = args.webdir
     assert args.frametype in ['sframe', 'cframe']
     if ( [args.exposure_list, args.exposure, args.tile, args.tile_list] ).count(None) != 3 :
         log.info("Specview_cmx_frames : Wrong set of input tiles/exposures. Exiting")
         return 0
-    
+
     page_sorting = "tile"
-    if (args.exposure_list is not None) or (args.exposure is not None) : 
+    if (args.exposure_list is not None) or (args.exposure is not None) :
         page_sorting = "exposure"
     else :
         if args.sort_exposures : page_sorting = "tile-expo"
-        
+
     # Logistics : list of "subsets" to process
     if page_sorting == "exposure" :
         if args.with_zcatalog : log.info("Specview_cmx_frames: ignoring --with_zcatalog option (not available in exposure directory).")
@@ -237,8 +238,8 @@ def main(args) :
             tmplist = [ x['exposure'] for x in subset_db ]
             missing_expos = [ x for x in expo_subset if x.rjust(8, "0") not in tmplist ]
             for x in missing_expos : log.info("Missing exposure, cannot be processed : "+x)
-        log.info(str(len(subset_db))+" exposures to be processed")    
-        
+        log.info(str(len(subset_db))+" exposures to be processed")
+
     if page_sorting in ["tile-expo","tile"] :
         tile_subset = None
         if args.tile_list is not None :
@@ -252,12 +253,12 @@ def main(args) :
             missing_tiles = [ x for x in tile_subset if x not in tmplist ]
             for x in missing_tiles : log.info("Missing tile, cannot be processed : "+x)
         log.info(str(len(subset_db))+" tiles [exposures] to be processed")
-            
-            
+
+
     # Main loop on subsets
     nspec_done = 0
     for the_subset in subset_db :
-        
+
         if page_sorting == 'exposure' :
             log.info("Working on exposure "+the_subset['exposure'])
             fdir = os.path.join( args.specprod_dir, 'exposures', the_subset['night'], the_subset['exposure'] )
@@ -283,14 +284,14 @@ def main(args) :
                 html_dir = os.path.join(webdir, "tiles_"+args.mask, the_subset['tile'])
                 titlepage_prefix = args.mask+"_"+titlepage_prefix
 
-        if not os.path.exists(html_dir) : 
+        if not os.path.exists(html_dir) :
             os.makedirs(html_dir)
-        
+
         if page_sorting == 'tile' :
             nspec_added = page_subset_tile(fdir, the_subset, args.frametype, html_dir, titlepage_prefix, args.mask, log, args.nspecperfile, args.snrcut, with_zcatalog=args.with_zcatalog)
         else :
             nspec_added = page_subset_expo(fdir, the_subset['exposure'], args.frametype, the_subset['petals'], html_dir, titlepage_prefix, args.mask, log, args.nspecperfile, args.snrcut)
-                    
+
         # Stop running if needed, only once a full exposure is completed
         nspec_done += nspec_added
         if args.nmax_spectra is not None :
@@ -299,5 +300,3 @@ def main(args) :
                 break
 
     return 0
-
-
