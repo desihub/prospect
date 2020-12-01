@@ -68,7 +68,7 @@ setup_keywords['test_suite']='{name}.test.{name}_test_suite'.format(**setup_keyw
 #
 # Add internal data directories.
 #
-setup_keywords['package_data'] = {'prospect': ['data/*'],}
+setup_keywords['package_data'] = {'prospect': ['data/*', 'js/*', 'templates/*'],}
 #                                   'prospect.test': ['t/*']}
 #
 # Run setup command.
