@@ -36,7 +36,7 @@ try:
 except ImportError:
     _desitarget_imported = False
 
-from .utilities import create_zcat_from_redrock_cat, vi_flags, vi_file_fields, vi_spectypes, vi_std_comments
+from .utilities import get_resources, create_zcat_from_redrock_cat, vi_flags, vi_file_fields, vi_spectypes, vi_std_comments
 from .mycoaddcam import mycoaddcam, coaddcam_prospect
 from .plotframes import add_lines, _airtovac
 
@@ -727,7 +727,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     #-- Widgets and callbacks --
     #-------------------------
 
-    js_dir = os.path.join(os.path.dirname(__file__),os.pardir,os.pardir,"js")
+    js_files = get_resources('js')
 
     #-----
     #- Ifiberslider and smoothing widgets
@@ -763,8 +763,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     #-----
     #- Axis reset button (superseeds the default bokeh "reset"
     reset_plotrange_button = Button(label="Reset X-Y range", button_type="default")
-    with open(os.path.join(js_dir,"adapt_plotrange.js"), 'r') as f : reset_plotrange_code = f.read()
-    with open(os.path.join(js_dir,"reset_plotrange.js"), 'r') as f : reset_plotrange_code += f.read()
+    reset_plotrange_code = js_files["adapt_plotrange.js"] + js_files["reset_plotrange.js"]
     reset_plotrange_callback = CustomJS(args = dict(fig=fig, xmin=xmin, xmax=xmax, spectra=cds_spectra),
                                         code = reset_plotrange_code)
     reset_plotrange_button.js_on_event('button_click', reset_plotrange_callback)
@@ -1136,9 +1135,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
             model_options.append('STD '+std_template)
         model_select = Select(value=model_options[0], title="Other model (dashed curve):", options=model_options)
         cds_median_spectra = make_cds_median_spectra(spectra)
-        with open(os.path.join(js_dir,"interp_grid.js"), 'r') as f : model_select_code = f.read()
-        with open(os.path.join(js_dir,"smooth_data.js"), 'r') as f : model_select_code += f.read()
-        with open(os.path.join(js_dir,"select_model.js"), 'r') as f : model_select_code += f.read()
+        model_select_code = js_files["interp_grid.js"] + js_files["smooth_data.js"] + js_files["select_model.js"]
         model_select_callback = CustomJS(
             args=dict(ifiberslider = ifiberslider,
                       model_select = model_select,
@@ -1176,8 +1173,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
 
     #- Optional VI flags (issues)
     vi_issue_input = CheckboxGroup(labels=vi_issue_labels, active=[])
-    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_issue_code = f.read()
-    with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_issue_code += f.read()
+    vi_issue_code = js_files["CSVtoArray.js"] + js_files["save_vi.js"]
     vi_issue_code += """
         var issues = []
         for (var i=0; i<vi_issue_labels.length; i++) {
@@ -1201,8 +1197,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
 
     #- Optional VI information on redshift
     vi_z_input = TextInput(value='', title="VI redshift:")
-    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_z_code = f.read()
-    with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_z_code += f.read()
+    vi_z_code = js_files["CSVtoArray.js"] + js_files["save_vi.js"]
     vi_z_code += """
         cds_targetinfo.data['VI_z'][ifiberslider.value]=vi_z_input.value
         autosave_vi_localStorage(vi_file_fields, cds_targetinfo.data, title)
@@ -1225,8 +1220,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
 
     #- Optional VI information on spectral type
     vi_category_select = Select(value=" ", title="VI spectype:", options=([''] + vi_spectypes))
-    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_category_code = f.read()
-    with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_category_code += f.read()
+    vi_category_code = js_files["CSVtoArray.js"] + js_files["save_vi.js"]
     vi_category_code += """
         cds_targetinfo.data['VI_spectype'][ifiberslider.value]=vi_category_select.value
         autosave_vi_localStorage(vi_file_fields, cds_targetinfo.data, title)
@@ -1241,8 +1235,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
 
     #- Optional VI comment
     vi_comment_input = TextInput(value='', title="VI comment (see guidelines):")
-    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_comment_code = f.read()
-    with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_comment_code += f.read()
+    vi_comment_code = js_files["CSVtoArray.js"] + js_files["save_vi.js"]
     vi_comment_code += """
         var stored_comment = (vi_comment_input.value).replace(/./g, function(char){
             if ( char==',' ) {
@@ -1286,8 +1279,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
 
     #- Main VI classification
     vi_class_input = RadioButtonGroup(labels=vi_class_labels)
-    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_class_code = f.read()
-    with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_class_code += f.read()
+    vi_class_code = js_files["CSVtoArray.js"] + js_files["save_vi.js"]
     vi_class_code += """
         if ( vi_class_input.active >= 0 ) {
             cds_targetinfo.data['VI_class_flag'][ifiberslider.value] = vi_class_labels[vi_class_input.active]
@@ -1312,8 +1304,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
 
     #- VI scanner name
     vi_name_input = TextInput(value=(cds_targetinfo.data['VI_scanner'][0]).strip(), title="Your name (3-letter acronym):")
-    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_name_code = f.read()
-    with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_name_code += f.read()
+    vi_name_code = js_files["CSVtoArray.js"] + js_files["save_vi.js"]
     vi_name_code += """
         for (var i=0; i<nspec; i++) {
             cds_targetinfo.data['VI_scanner'][i]=vi_name_input.value
@@ -1345,9 +1336,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
 
     #- Save VI info to CSV file
     save_vi_button = Button(label="Download VI", button_type="success")
-    with open(os.path.join(js_dir,"FileSaver.js"), 'r') as f : save_vi_code = f.read()
-    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : save_vi_code += f.read()
-    with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : save_vi_code += f.read()
+    save_vi_code = js_files["FileSaver.js"] + js_files["CSVtoArray.js"] + js_files["save_vi.js"]
     save_vi_code += """
         download_vi_file(vi_file_fields, cds_targetinfo.data, vi_filename_input.value)
         """
@@ -1359,8 +1348,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
 
     #- Recover auto-saved VI data in browser
     recover_vi_button = Button(label="Recover auto-saved VI", button_type="default")
-    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : recover_vi_code = f.read()
-    with open(os.path.join(js_dir,"recover_autosave_vi.js"), 'r') as f : recover_vi_code += f.read()
+    recover_vi_code = js_files["CSVtoArray.js"] + js_files["recover_autosave_vi.js"]
     recover_vi_callback = CustomJS(
         args = dict(title=title, vi_file_fields=vi_file_fields, cds_targetinfo=cds_targetinfo,
                    ifiber=ifiberslider.value, vi_comment_input=vi_comment_input,
@@ -1390,11 +1378,10 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
 
     #-----
     #- Main js code to update plot
-    with open(os.path.join(js_dir,"adapt_plotrange.js"), 'r') as f : update_plot_code = f.read()
-    with open(os.path.join(js_dir,"interp_grid.js"), 'r') as f : update_plot_code += f.read()
-    with open(os.path.join(js_dir,"smooth_data.js"), 'r') as f : update_plot_code += f.read()
-    with open(os.path.join(js_dir,"coadd_brz_cameras.js"), 'r') as f : update_plot_code += f.read()
-    with open(os.path.join(js_dir,"update_plot.js"), 'r') as f : update_plot_code += f.read()
+    #
+    update_plot_code = (js_files["adapt_plotrange.js"] + js_files["interp_grid.js"] +
+                        js_files["smooth_data.js"] + js_files["coadd_brz_cameras.js"] +
+                        js_files["update_plot.js"])
     # ONGOING
     the_fit_results = None if template_dicts is None else template_dicts[1] # dirty
     update_plot = CustomJS(

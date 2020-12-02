@@ -9,7 +9,7 @@ Utility functions for prospect.
 """
 
 import os, glob
-from pkg_resources import resource_filename, resource_listdir
+from pkg_resources import resource_string, resource_listdir
 
 import numpy as np
 import astropy.io.fits
@@ -116,7 +116,7 @@ def get_resources(filetype):
     Returns
     -------
     :class:`dict`
-        A dictionary mapping filename to path on disk.
+        A dictionary mapping filename to the contents of the file.
 
     Raises
     ------
@@ -129,7 +129,7 @@ def get_resources(filetype):
     if _resource_cache[filetype] is None:
         _resource_cache[filetype] = dict()
         for f in resource_listdir('prospect', filetype):
-            _resource_cache[filetype][f] = resource_filename('prospect', filetype + '/' + f)
+            _resource_cache[filetype][f] = resource_string('prospect', filetype + '/' + f).decode('utf-8')
     return _resource_cache[filetype]
 
 
@@ -146,8 +146,8 @@ def read_vi(vifile):
     :class`~astropy.table.Table`
         The full VI catalog.
     '''
-    vi_records = [x[0] for x in _vi_file_fields]
-    vi_dtypes = [x[2] for x in _vi_file_fields]
+    vi_records = [x[0] for x in vi_file_fields]
+    vi_dtypes = [x[2] for x in vi_file_fields]
 
     if (vifile[-5:] != ".fits" and vifile[-4:] not in [".fit",".fts",".csv"]) :
         raise RuntimeError("wrong file extension")
@@ -191,8 +191,8 @@ def initialize_master_vi(mastervifile, overwrite=False) :
     Create "master" VI file with no entry
     '''
     log = get_logger()
-    vi_records = [x[0] for x in _vi_file_fields]
-    vi_dtypes = [x[2] for x in _vi_file_fields]
+    vi_records = [x[0] for x in vi_file_fields]
+    vi_dtypes = [x[2] for x in vi_file_fields]
     vi_info = Table(names=vi_records, dtype=tuple(vi_dtypes))
     vi_info.write(mastervifile, format='fits', overwrite=overwrite)
     log.info("Initialized VI file : "+mastervifile+" (0 entry)")

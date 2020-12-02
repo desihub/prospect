@@ -11,6 +11,7 @@ Write html index pages from existing pages/images produced by :mod:`~prospect.pl
 
 import os, glob, stat
 import argparse
+from pkg_resources import resource_filename
 from desiutil.log import get_logger
 
 from jinja2 import Environment, FileSystemLoader
@@ -20,7 +21,7 @@ def _parse():
 
     parser = argparse.ArgumentParser(description="Write html index pages")
     parser.add_argument('--webdir', help='Base directory for webpages', type=str, default=None)
-    parser.add_argument('--template_dir', help='Template directory', type=str, default=None)
+    parser.add_argument('--template_dir', help='Template directory', type=str, default=resource_filename('prospect', 'templates'))
     parser.add_argument('--pixels', help='Pixel-based directory structure', action='store_true')
     parser.add_argument('--targets', help='Target-based directory structure', action='store_true')
     parser.add_argument('--exposures', help='Exposure-based directory structure', action='store_true')
@@ -85,7 +86,7 @@ def main():
     webdir = args.webdir
     if webdir is None : webdir = os.environ["DESI_WWW"]+"/users/armengau/svdc2019c" # TMP, for test
     template_dir = args.template_dir
-    if template_dir is None : template_dir="../templates" # TMP, to define better.
+    # if template_dir is None : template_dir="../templates" # TMP, to define better.
 
     env = Environment(loader=FileSystemLoader(template_dir))
     template_index = env.get_template('template_index.html')

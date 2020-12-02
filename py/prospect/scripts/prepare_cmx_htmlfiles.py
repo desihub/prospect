@@ -11,6 +11,8 @@ Write html index pages from existing static pages/images produced by other scrip
 
 import os, glob, stat
 import argparse
+from pkg_resources import resource_filename
+
 from desiutil.log import get_logger
 
 from jinja2 import Environment, FileSystemLoader
@@ -19,7 +21,7 @@ def _parse():
 
     parser = argparse.ArgumentParser(description="Write html index pages for CMX exposures")
     parser.add_argument('--webdir', help='Base directory for webpages', type=str)
-    parser.add_argument('--template_dir', help='Template directory', type=str, default=None)
+    parser.add_argument('--template_dir', help='Template directory', type=str, default=resource_filename('prospect', 'templates'))
     parser.add_argument('--nspecperfile', help='Number of spectra in each prospect html page', type=int, default=50)
     args = parser.parse_args()
     return args
@@ -31,8 +33,8 @@ def main():
 
     webdir = args.webdir
     template_dir = args.template_dir
-    if template_dir is None :
-        template_dir = os.path.join(os.path.dirname(__file__),os.pardir,os.pardir,os.pardir,"templates")
+    # if template_dir is None :
+    #     template_dir = os.path.join(os.path.dirname(__file__),os.pardir,os.pardir,os.pardir,"templates")
 
     env = Environment(loader=FileSystemLoader(template_dir))
     template_index = env.get_template('template_index.html')
