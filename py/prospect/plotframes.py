@@ -24,7 +24,7 @@ from bokeh.models import ColumnDataSource, CDSView, IndexFilter
 from bokeh.models import CustomJS, LabelSet, Label, Span, Legend, Panel, Tabs, BoxAnnotation
 from bokeh.models.widgets import (
     Slider, Button, Div, CheckboxGroup, CheckboxButtonGroup, RadioButtonGroup,
-    TextInput, Select, DataTable, TableColumn, Spinner)
+    TextInput, Select, DataTable, TableColumn, Spinner, Toggle)
 from bokeh.layouts import Column, Spacer, gridplot
 import bokeh.events
 # from bokeh.layouts import row, column
@@ -415,7 +415,7 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
     return gridplot(thumb_plots, ncols=ncols_grid, toolbar_location=None, sizing_mode='scale_width')
 
 
-def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=None, num_approx_fits=None, with_full_2ndfit=True, model_from_zcat=True, model=None, notebook=False, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, mask_type='DESI_TARGET', with_thumb_tab=True, with_vi_widgets=True, with_thumb_only_page=False, template_dir=None, archetype_fit=False, archetypes_dir=None):
+def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=None, num_approx_fits=None, with_full_2ndfit=True, model_from_zcat=True, model=None, notebook=False, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, mask_type='DESI_TARGET', with_thumb_tab=True, with_vi_widgets=True, with_thumb_only_page=False, template_dir=None, archetype_fit=False, archetypes_dir=None, vi_countdown=-1):
     '''
     Main prospect routine. From a set of spectra, creates a bokeh document used for VI, to be displayed as an HTML page or within a jupyter notebook.
 
@@ -453,6 +453,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     archetypes_dir : directory path for archetypes if not $RR__ARCHETYPE_DIR.
     num_approx_fits (default None): nb of best fit models to display if redrock_cat is given. By default,
         num_approx_fits=(nb of best fits available in redrock_cat)
+    vi_countdown: if >0, add a countdown widget in the VI panel, with vi_countdown = countdown value in minutes.
     '''
 
     #- If inputs are frames, convert to a spectra object
@@ -1373,7 +1374,33 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     vi_table = DataTable(source=cds_targetinfo, columns=vi_table_columns, width=500)
     vi_table.height = 10 * vi_table.row_height
 
-
+    #- VI countdown
+    if (vi_countdown > 0) :
+        vi_countdown_callback = CustomJS(args=dict(vi_countdown=vi_countdown), code="""
+            if ( (cb_obj.label).includes('Start') ) { // Callback doesn't do anything after countdown started
+                var countDownDate = new Date().getTime() + (1000 * 60 * vi_countdown);
+                var looop = setInterval(function(){
+                    var now = new Date().getTime();
+                    var distance = countDownDate - now;
+                    if (distance<0) {
+                        cb_obj.label = "Time's up !";
+                        clearInterval(looop);
+                    } else {
+                        var days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                        var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                        var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                        var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                        //var stuff = days + "d " + hours + "h " + minutes + "m " + seconds + "s ";
+                        var stuff = minutes + "m " + seconds + "s ";
+                        cb_obj.label = "Countdown: " + stuff;
+                    }
+                }, 1000);
+            }
+        """)
+        vi_countdown_toggle = Toggle(label='Start countdown ('+str(vi_countdown)+' min)', active=False, button_type="success")
+        vi_countdown_toggle.js_on_change('active', vi_countdown_callback)
+    else : vi_countdown_toggle = None
+    
     #-----
     #- Main js code to update plot
     with open(os.path.join(js_dir,"adapt_plotrange.js"), 'r') as f : update_plot_code = f.read()
@@ -1430,8 +1457,15 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     )
     if with_vi_widgets :
         navigator.children.insert(1, Column(vi_class_input, width=60*len(vi_class_labels)) )
+        if vi_countdown <= 0 :
+            vi_header_block = Column( Div(text="VI optional indications :"), width=300 )
+        else :
+            vi_header_block = bk.Row(
+                Column( Div(text="VI optional indications :"), width=300 ),
+                Column( vi_countdown_toggle, width=200 )
+            )
         vi_widget_set = bk.Column(
-            Column( Div(text="VI optional indications :"), width=300 ),
+            vi_header_block,
             bk.Row(
                 Column(vi_issue_input, width=150),
                 Column(vi_z_input, width=150),
