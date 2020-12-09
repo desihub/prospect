@@ -64,11 +64,10 @@ jobs:
               run: |
                 pytest --cov
             - name: Coveralls
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
-                CI_BRANCH=${GITHUB_REF#"ref/heads"} coveralls
-              # uses: coverallsapp/github-action@master
-              # with:
-              #     github-token: ${{ secrets.GITHUB_TOKEN }}
+                coveralls
 
     docs:
         name: Check Sphinx documentation.
