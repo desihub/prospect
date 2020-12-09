@@ -21,8 +21,8 @@ Jupyter notebooks.
     :target: https://github.com/desihub/prospect/actions
     :alt: GitHub Actions CI Status
 
-.. |Coveralls Status| image:: https://coveralls.io/repos/desihub/prospect/badge.svg?service=github
-    :target: https://coveralls.io/github/desihub/prospect
+.. |Coveralls Status| image:: https://coveralls.io/repos/desihub/prospect/badge.svg?branch=pip-installable-package
+    :target: https://coveralls.io/github/desihub/prospect?branch=pip-installable-package
     :alt: Test Coverage Status
 
 .. |Documentation Status| image:: https://readthedocs.org/projects/desi-prospect/badge/?version=latest
