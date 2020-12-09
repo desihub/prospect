@@ -4,6 +4,8 @@ prospect
 Digging into DESI spectra, looking for stuff.
 ---------------------------------------------
 
+|Actions Status| |Coveralls Status| |Documentation Status|
+
 This repository is a rewrite of inspector_, which itself is very much a work
 in progress.  This repository is intended to provide similar functionality
 as inspector, but do so without using ipywidgets so that it can be used as
@@ -14,6 +16,18 @@ Jupyter notebooks.
     :alt: Prospect Screenshot
 
 .. _inspector: https://github.com/desihub/inspector
+
+.. |Actions Status| image:: https://github.com/desihub/prospect/workflows/CI/badge.svg
+    :target: https://github.com/desihub/prospect/actions
+    :alt: GitHub Actions CI Status
+
+.. |Coveralls Status| image:: https://coveralls.io/repos/desihub/prospect/badge.svg?service=github
+    :target: https://coveralls.io/github/desihub/prospect
+    :alt: Test Coverage Status
+
+.. |Documentation Status| image:: https://readthedocs.org/projects/prospect/badge/?version=latest
+    :target: http://prospect.readthedocs.org/en/latest/
+    :alt: Documentation Status
 
 What it does
 ~~~~~~~~~~~~
