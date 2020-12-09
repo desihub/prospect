@@ -22,6 +22,9 @@ jobs:
                     - name: Coverage with Python 3.8
                       python-version: 3.8
                       coverage: true
+                    - name: Coverage with Python 3.8
+                      python-version: 3.8
+                      sphinx: true
 
         steps:
             - name: Checkout code
@@ -36,16 +39,21 @@ jobs:
               run: |
                 python -m pip install --upgrade pip
                 python -m pip install pytest
-                if [ "${{ matrix.coverage }}" = "true" ]; then pip install pytest-cov coveralls; fi
+                if [ -n "${{ matrix.sphinx }}" ]; then pip install Sphinx; fi
+                if [ -n "${{ matrix.coverage }}" ]; then pip install pytest-cov coveralls; fi
                 if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
             - name: Run the test
               if: ${{ ! matrix.coverage }}
               run: |
                 pytest
             - name: Run the test with coverage
-              if: ${{ matrix.coverage }}
+              if: matrix.coverage
               run: |
                 pytest --cov
+            - name: Check Sphinx documentation
+              if: matrix.sphinx
+              run: |
+                sphinx-build -W --keep-going -b html doc doc/_build/html
 
     docs:
         name: Check Sphinx documentation.
@@ -95,7 +103,7 @@ jobs:
               run: |
                 python -m pip install --upgrade pip
                 python -m pip install pycodestyle
-            - name: Test the documentation
+            - name: Test the style
               # This is equivalent to an allowed falure.
               continue-on-error: true
               run: |
