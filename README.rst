@@ -25,8 +25,8 @@ Jupyter notebooks.
     :target: https://coveralls.io/github/desihub/prospect
     :alt: Test Coverage Status
 
-.. |Documentation Status| image:: https://readthedocs.org/projects/prospect/badge/?version=latest
-    :target: http://prospect.readthedocs.org/en/latest/
+.. |Documentation Status| image:: https://readthedocs.org/projects/desi-prospect/badge/?version=latest
+    :target: http://desi-prospect.readthedocs.org/en/latest/
     :alt: Documentation Status
 
 What it does
