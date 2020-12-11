@@ -11,7 +11,7 @@ on:
 
 jobs:
     tests:
-        name: Standard Python tests.
+        name: Unit tests
         runs-on: ${{ matrix.os }}
         strategy:
             fail-fast: true
@@ -30,15 +30,14 @@ jobs:
                 python-version: ${{ matrix.python-version }}
             - name: Install Python dependencies
               run: |
-                python -m pip install --upgrade pip
+                python -m pip install --upgrade pip wheel
                 python -m pip install pytest
                 if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
             - name: Run the test
-              run: |
-                pytest
+              run: pytest
 
     coverage:
-        name: Code coverage test.
+        name: Test coverage
         runs-on: ${{ matrix.os }}
         strategy:
             fail-fast: true
@@ -57,20 +56,18 @@ jobs:
                 python-version: ${{ matrix.python-version }}
             - name: Install Python dependencies
               run: |
-                python -m pip install --upgrade pip
+                python -m pip install --upgrade pip wheel
                 python -m pip install pytest pytest-cov coveralls
                 if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
             - name: Run the test with coverage
-              run: |
-                pytest --cov
+              run: pytest --cov
             - name: Coveralls
               env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              run: |
-                coveralls
+              run: coveralls
 
     docs:
-        name: Check Sphinx documentation.
+        name: Doc test
         runs-on: ${{ matrix.os }}
         strategy:
             fail-fast: false
@@ -88,15 +85,12 @@ jobs:
               with:
                 python-version: ${{ matrix.python-version }}
             - name: Install Python dependencies
-              run: |
-                python -m pip install --upgrade pip
-                python -m pip install Sphinx
+              run: python -m pip install --upgrade pip wheel Sphinx
             - name: Test the documentation
-              run: |
-                sphinx-build -W --keep-going -b html doc doc/_build/html
+              run: sphinx-build -W --keep-going -b html doc doc/_build/html
 
     style:
-        name: Check code style; allow failures.
+        name: Style check
         runs-on: ${{ matrix.os }}
         strategy:
             fail-fast: false
@@ -114,11 +108,8 @@ jobs:
               with:
                 python-version: ${{ matrix.python-version }}
             - name: Install Python dependencies
-              run: |
-                python -m pip install --upgrade pip
-                python -m pip install pycodestyle
-            - name: Test the style
+              run: python -m pip install --upgrade pip wheel pycodestyle
+            - name: Test the style; failures are allowed
               # This is equivalent to an allowed falure.
               continue-on-error: true
-              run: |
-                pycodestyle --count py/prospect
+              run: pycodestyle --count py/prospect
