@@ -1574,7 +1574,6 @@ def add_lines(fig, z=0 , emission=True, fig_height=None, label_offsets=[100, 5])
 
     if fig_height is None : fig_height = fig.plot_height
 
-    line_file_dir = os.path.join(os.path.dirname(__file__),"data")
     line_data = dict(
         restwave = [],
         plotwave = [],
