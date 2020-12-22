@@ -1,10 +1,16 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
 # -*- coding: utf-8 -*-
-
 """
-Utility functions for prospect
+==================
+prospect.utilities
+==================
+
+Utility functions for prospect.
 """
 
 import os, glob
+from pkg_resources import resource_string, resource_listdir
+
 import numpy as np
 import astropy.io.fits
 from astropy.table import Table, vstack
@@ -41,7 +47,7 @@ except ImportError:
 # from prospect import mycoaddcam  # Does not appear to be used in this module.
 from prospect import myspecselect, myspecupdate
 
-_vi_flags = [
+vi_flags = [
     # Definition of VI flags
     # Replaces former list viflags = ["Yes","No","Maybe","LowSNR","Bad"]
     # shortlabels for "issue" flags must be a unique single-letter identifier
@@ -55,7 +61,7 @@ _vi_flags = [
     {"label" : "Bad spectrum", "shortlabel" : "S", "type" : "issue", "description" : "Bad spectrum, eg. cosmic / skyline subtraction residuals..."}
 ]
 
-_vi_file_fields = [
+vi_file_fields = [
     # Contents of VI files: [
     #      field name (in VI file header),
     #      associated variable in cds_targetinfo,
@@ -78,7 +84,7 @@ _vi_file_fields = [
     ["VI_comment", "VI_comment", "S100"]
 ]
 
-_vi_spectypes =[
+vi_spectypes =[
     # List of spectral types to fill in VI categories
     # in principle, it should match somehow redrock spectypes...
     "STAR",
@@ -86,7 +92,7 @@ _vi_spectypes =[
     "QSO"
 ]
 
-_vi_std_comments = [
+vi_std_comments = [
     # Standardized VI comments
     "Broad absorption line quasar (BAL)",
     "Damped Lyman-alpha system (DLA)",
@@ -94,13 +100,54 @@ _vi_std_comments = [
     "Blazar"
 ]
 
-def read_vi(vifile) :
+_resource_cache = {'templates': None, 'js': None}
+
+
+def get_resources(filetype):
+    """Find all HTML template or JavaScript files in the package.
+
+    Caches the results for quick access.
+
+    Parameters
+    ----------
+    filetype : {'templates', 'js'}
+        The type of file resource needed.
+
+    Returns
+    -------
+    :class:`dict`
+        A dictionary mapping filename to the contents of the file.
+
+    Raises
+    ------
+    ValueError
+        If `filetype` is unknown.
+    """
+    global _resource_cache
+    if filetype not in _resource_cache:
+        raise ValueError("Unknown filetype '{0}' for get_resources()!".format(filetype))
+    if _resource_cache[filetype] is None:
+        _resource_cache[filetype] = dict()
+        for f in resource_listdir('prospect', filetype):
+            _resource_cache[filetype][f] = resource_string('prospect', filetype + '/' + f).decode('utf-8')
+    return _resource_cache[filetype]
+
+
+def read_vi(vifile):
+    '''Read visual inspection file (ASCII/CSV or FITS according to file extension).
+
+    Parameters
+    ----------
+    vifile : :class:`str`
+        Catalog filename.
+
+    Returns
+    -------
+    :class`~astropy.table.Table`
+        The full VI catalog.
     '''
-    Read visual inspection file (ASCII/CSV or FITS according to file extension)
-    Return full VI catalog, in Table format
-    '''
-    vi_records = [x[0] for x in _vi_file_fields]
-    vi_dtypes = [x[2] for x in _vi_file_fields]
+    vi_records = [x[0] for x in vi_file_fields]
+    vi_dtypes = [x[2] for x in vi_file_fields]
 
     if (vifile[-5:] != ".fits" and vifile[-4:] not in [".fit",".fts",".csv"]) :
         raise RuntimeError("wrong file extension")
@@ -144,8 +191,8 @@ def initialize_master_vi(mastervifile, overwrite=False) :
     Create "master" VI file with no entry
     '''
     log = get_logger()
-    vi_records = [x[0] for x in _vi_file_fields]
-    vi_dtypes = [x[2] for x in _vi_file_fields]
+    vi_records = [x[0] for x in vi_file_fields]
+    vi_dtypes = [x[2] for x in vi_file_fields]
     vi_info = Table(names=vi_records, dtype=tuple(vi_dtypes))
     vi_info.write(mastervifile, format='fits', overwrite=overwrite)
     log.info("Initialized VI file : "+mastervifile+" (0 entry)")
@@ -162,7 +209,6 @@ def merge_vi(mastervifile, newvifile) :
     mergedvi = vstack([mastervi,newvi], join_type='exact')
     mergedvi.write(mastervifile, format='fits', overwrite=True)
     log.info("Updated master VI file : "+mastervifile+" (now "+str(len(mergedvi))+" entries).")
-
 
 
 def match_zcat_to_spectra(zcat_in, spectra) :

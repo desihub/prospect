@@ -1,34 +1,40 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+# -*- coding: utf-8 -*-
 """
+======================================
 prospect.scripts.prepare_cmx_htmlfiles
-===================================
+======================================
 
-Derived from prepare_htmlfiles
+Write html index pages from existing static pages/images produced by other scripts.
 """
 
 
 import os, glob, stat
 import argparse
+from pkg_resources import resource_filename
+
 from desiutil.log import get_logger
 
 from jinja2 import Environment, FileSystemLoader
 
-def parse() :
+def _parse():
 
     parser = argparse.ArgumentParser(description="Write html index pages for CMX exposures")
     parser.add_argument('--webdir', help='Base directory for webpages', type=str)
-    parser.add_argument('--template_dir', help='Template directory', type=str, default=None)
+    parser.add_argument('--template_dir', help='Template directory', type=str, default=resource_filename('prospect', 'templates'))
     parser.add_argument('--nspecperfile', help='Number of spectra in each prospect html page', type=int, default=50)
     args = parser.parse_args()
     return args
 
-def main(args) :
+def main():
 
+    args = _parse()
     log = get_logger()
 
     webdir = args.webdir
     template_dir = args.template_dir
-    if template_dir is None : 
-        template_dir = os.path.join(os.path.dirname(__file__),os.pardir,os.pardir,os.pardir,"templates")
+    # if template_dir is None :
+    #     template_dir = os.path.join(os.path.dirname(__file__),os.pardir,os.pardir,os.pardir,"templates")
 
     env = Environment(loader=FileSystemLoader(template_dir))
     template_index = env.get_template('template_index.html')
@@ -37,7 +43,7 @@ def main(args) :
     exposures = os.listdir( os.path.join(webdir,"exposures") )
     for expo in exposures :
         expo_dir = os.path.join(webdir,"exposures",expo)
-        
+
         available_subsets = {}
         for specnum in ["0","1","2","3","4","5","6","7","8","9"] :
             subsets = []
@@ -67,4 +73,3 @@ def main(args) :
         st = os.stat(indexfile)
         os.chmod(indexfile, st.st_mode | stat.S_IROTH) # "chmod a+r"
         log.info("Main index done")
-
