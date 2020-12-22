@@ -2,11 +2,14 @@
 prospect's Change Log
 =====================
 
-1.0.0 (unreleased)
+1.0.0 (2020-12-22)
 ------------------
 
-*This is planned to be a major refactor to allow prospect to be ``pip``-installable,
-along with other standard Python package features.*
+*This is a major refactor to allow prospect to be ``pip``-installable,
+along with other standard Python package features.*  Some API changes should
+be expected.  See PR `#54`_ for details.
+
+.. _`#54`: https://github.com/desihub/prospect/pull/54
 
 0.3.0 (2020-10-27)
 ------------------
