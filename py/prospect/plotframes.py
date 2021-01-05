@@ -1585,6 +1585,7 @@ def add_lines(fig, z=0 , emission=True, fig_height=None, label_offsets=[100, 5])
         y = []
     )
     for line_category in ('emission', 'absorption'):
+        # encoding=utf-8 is needed to read greek letters
         line_array = np.genfromtxt(resource_filename('prospect', "data/{0}_lines.txt".format(line_category)),
                                    delimiter=",",
                                    dtype=[("name", "|U20"),

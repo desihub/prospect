@@ -38,6 +38,8 @@ def _parse():
     parser.add_argument('--specprod_dir', help='Location of directory tree (data in specprod_dir/tiles/)', type=str)
     parser.add_argument('--tile', help='Name of single tile to be processed',type=str, default=None)
     parser.add_argument('--tile_list', help='ASCII file providing list of tiles', type=str, default=None)
+    parser.add_argument('--night', help='Filter night to be processed (night name can also be "deep")',type=str, default=None)
+    parser.add_argument('--night_list', help='Filter set of nights to be processed (can include night name "deep")', type=str, default=None)
     parser.add_argument('--nspecperfile', help='Number of spectra in each html page', type=int, default=50)
     parser.add_argument('--webdir', help='Base directory for webpages', type=str)
     parser.add_argument('--nmax_spectra', help='Stop the production of HTML pages once a given number of spectra are done', type=int, default=None)
@@ -185,13 +187,22 @@ def main():
     if ( [args.tile, args.tile_list] ).count(None) != 1 :
         log.info("Specview_cmx_coadds: Wrong set of input tiles. Exiting")
         return 0
-
+    if args.night is not None and args.night_list is not None :
+        log.info("Specview_cmx_coadds: Wrong set of input nights. Exiting")
+        return 0
+    
     # Logistics : list of "subsets" to process
     if args.tile_list is not None :
         tile_subset = np.loadtxt(args.tile_list, dtype=str, comments='#')
     if args.tile is not None :
         tile_subset = [ args.tile ]
-    subset_db = tile_db(args.specprod_dir, tile_subset=tile_subset, petals=args.petals, with_zcatalog=args.with_zcatalog)
+    if args.night is not None :
+        night_subset = [ args.night ]
+    elif args.night_list is not None :
+        night_subset = np.loadtxt(args.night_list, dtype=str, comments='#')
+    else : night_subset = None
+    subset_db = tile_db(args.specprod_dir, tile_subset=tile_subset, night_subset=night_subset,
+                        petals=args.petals, with_zcatalog=args.with_zcatalog)
     tmplist = [ x['tile'] for x in subset_db ]
     missing_tiles = [ x for x in tile_subset if x not in tmplist ]
     for x in missing_tiles : log.info("Missing tile, cannot be processed: "+x)
