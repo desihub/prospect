@@ -15,8 +15,6 @@ from astropy.table import Table, vstack
 
 import desispec.io
 from desiutil.log import get_logger
-from desitarget.targetmask import desi_mask
-from desitarget.cmx.cmx_targetmask import cmx_mask
 import desispec.spectra
 import desispec.frame
 

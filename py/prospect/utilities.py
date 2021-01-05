@@ -34,6 +34,7 @@ try:
     from desitarget.targetmask import desi_mask
     from desitarget.cmx.cmx_targetmask import cmx_mask
     from desitarget.sv1.sv1_targetmask import desi_mask as sv1_desi_mask
+    from desitarget.sv1.sv1_targetmask import bgs_mask as sv1_bgs_mask
 except ImportError:
     _desitarget_imported = False
 
@@ -461,10 +462,13 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
 
     # Target mask selection
     if mask is not None :
-        assert mask_type in ['SV1_DESI_TARGET', 'DESI_TARGET', 'CMX_TARGET']
+        assert mask_type in ['SV1_DESI_TARGET', 'DESI_TARGET', 'CMX_TARGET', 'SV1_BGS_TARGET']
         if mask_type == 'SV1_DESI_TARGET' :
             assert ( mask in sv1_desi_mask.names() )
             w, = np.where( (spectra.fibermap['SV1_DESI_TARGET'] & sv1_desi_mask[mask]) )
+        elif mask_type == 'SV1_BGS_TARGET' :
+            assert ( mask in sv1_bgs_mask.names() )
+            w, = np.where( (spectra.fibermap['SV1_BGS_TARGET'] & sv1_bgs_mask[mask]) )
         elif mask_type == 'DESI_TARGET' :
             assert ( mask in desi_mask.names() )
             w, = np.where( (spectra.fibermap['DESI_TARGET'] & desi_mask[mask]) )

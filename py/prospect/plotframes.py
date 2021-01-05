@@ -39,6 +39,7 @@ try:
     from desitarget.targetmask import desi_mask
     from desitarget.cmx.cmx_targetmask import cmx_mask
     from desitarget.sv1.sv1_targetmask import desi_mask as sv1_desi_mask
+    from desitarget.sv1.sv1_targetmask import bgs_mask as sv1_bgs_mask
 except ImportError:
     _desitarget_imported = False
 
@@ -296,11 +297,13 @@ def make_template_dicts(redrock_cat, delta_lambd_templates=3, with_fit_templates
 def make_cds_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=" ") :
     """ Creates column data source for target-related metadata, from zcatalog, fibermap and VI files """
 
-    assert mask_type in ['SV1_DESI_TARGET', 'DESI_TARGET', 'CMX_TARGET']
+    assert mask_type in ['SV1_DESI_TARGET', 'SV1_BGS_TARGET', 'DESI_TARGET', 'CMX_TARGET']
     target_info = list()
     for i, row in enumerate(spectra.fibermap):
         if mask_type == 'SV1_DESI_TARGET' :
             target_bit_names = ' '.join(sv1_desi_mask.names(row['SV1_DESI_TARGET']))
+        elif mask_type == 'SV1_BGS_TARGET' :
+            target_bit_names = ' '.join(sv1_bgs_mask.names(row['SV1_BGS_TARGET']))
         elif mask_type == 'DESI_TARGET' :
             target_bit_names = ' '.join(desi_mask.names(row['DESI_TARGET']))
         elif mask_type == 'CMX_TARGET' :
