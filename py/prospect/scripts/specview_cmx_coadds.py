@@ -43,7 +43,8 @@ def _parse():
     parser.add_argument('--nspecperfile', help='Number of spectra in each html page', type=int, default=50)
     parser.add_argument('--webdir', help='Base directory for webpages', type=str)
     parser.add_argument('--nmax_spectra', help='Stop the production of HTML pages once a given number of spectra are done', type=int, default=None)
-    parser.add_argument('--mask', help='Select only objects with a given CMX_TARGET target mask', type=str, default=None)
+    parser.add_argument('--mask', help='Select only objects with a given target mask', type=str, default=None)
+    parser.add_argument('--mask_type', help='Target mask type', type=str, default='CMX_TARGET')
     parser.add_argument('--snrcut', help='Select only objects in a given range for MEDIAN_CALIB_SNR_B+R+Z', nargs='+', type=float, default=None)
     parser.add_argument('--with_zcatalog', help='Include redshift fit results (zbest files)', action='store_true')
     parser.add_argument('--with_multiple_models', help='Display several models (requires full redrock outputs)', action='store_true')
@@ -87,7 +88,7 @@ def tile_db(specprod_dir, tile_subset=None, night_subset=None, petals=None, with
     return tiles_db
 
 
-def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log, nspecperfile, snr_cut, with_zcatalog=False, template_dir=None, clean_bad_fibers_cmx=False, with_multiple_models=False) :
+def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log, nspecperfile, snr_cut, with_zcatalog=False, template_dir=None, clean_bad_fibers_cmx=False, with_multiple_models=False, mask_type='CMX_TARGET') :
     '''
     Running prospect from coadds.
     '''
@@ -106,7 +107,7 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
         # Filtering
         if (mask != None) or (snr_cut != None) :
             spectra = specviewer_selection(spectra, log=log,
-                        mask=mask, mask_type='CMX_TARGET', snr_cut=snr_cut, with_dirty_mask_merge=True)
+                        mask=mask, mask_type=mask_type, snr_cut=snr_cut, with_dirty_mask_merge=True)
             if spectra == 0 : continue
             # Display multiple models: requires redrock catalog
             # Hardcoded: display up to 4th best fit (=> need 5 best fits in redrock table)
@@ -171,7 +172,7 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
 
         titlepage = titlepage_prefix+"_"+str(i_page)
         plotspectra(thespec, with_noise=True, is_coadded=True, zcatalog=the_zcat,
-                    title=titlepage, html_dir=html_dir, mask_type='CMX_TARGET', with_thumb_only_page=True,
+                    title=titlepage, html_dir=html_dir, mask_type=mask_type, with_thumb_only_page=True,
                     template_dir=template_dir, redrock_cat=the_rrtable, num_approx_fits=num_approx_fits,
                     with_full_2ndfit=with_full_2ndfit)
     nspec_done += nspec_tile
@@ -222,7 +223,7 @@ def main():
         if not os.path.exists(html_dir) :
             os.makedirs(html_dir)
 
-        nspec_added = page_subset_tile(fdir, the_subset, html_dir, titlepage_prefix, args.mask, log, args.nspecperfile, args.snrcut, with_zcatalog=args.with_zcatalog, template_dir=args.template_dir, clean_bad_fibers_cmx=args.clean_bad_fibers_cmx, with_multiple_models=args.with_multiple_models)
+        nspec_added = page_subset_tile(fdir, the_subset, html_dir, titlepage_prefix, args.mask, log, args.nspecperfile, args.snrcut, with_zcatalog=args.with_zcatalog, template_dir=args.template_dir, clean_bad_fibers_cmx=args.clean_bad_fibers_cmx, with_multiple_models=args.with_multiple_models, mask_type=args.mask_type)
 
         # Stop running if needed, only once a full exposure is completed
         nspec_done += nspec_added
