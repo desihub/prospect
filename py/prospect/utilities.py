@@ -310,13 +310,14 @@ def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None, nig
             the_nights = [ x for x in the_nights if x in nights ]
         for night in the_nights :
             target_dict[tile+"-"+night] = {}
-            # exposures
+            # exposures (included in dict only if 'cframe-b' files are present - which is not the case for "deep" coadds in blanc)
             fns = np.sort(glob.glob(os.path.join(tiledir,tile,night,'cframe-b'+petals[0]+'-????????.fits')))
-            target_dict[tile+"-"+night]['exps'] = np.array([fn.replace('.','-').split('-')[-2] for fn in fns])
+            if len(fns)>0 :
+                target_dict[tile+"-"+night]['exps'] = np.array([fn.replace('.','-').split('-')[-2] for fn in fns])
             # targetid, fibres
             targetid,fiber,petal_list = [],[],[]
             for petal in petals:
-                pp = glob.glob(os.path.join(tiledir,tile,night,'zbest-'+petal+'-'+tile+'-????????.fits'))
+                pp = glob.glob(os.path.join(tiledir,tile,night,'zbest-'+petal+'-'+tile+'-'+night+'.fits'))
                 if len(pp)>0 :
                     fn        = pp[0]
                     fm = Table.read(fn, 'FIBERMAP')
