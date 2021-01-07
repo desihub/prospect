@@ -2,7 +2,7 @@
 prospect's Change Log
 =====================
 
-1.0.1 (unreleased)
+1.0.1 (2021-01-07)
 ------------------
 
 * Make desiutil_ imports optional in ``setup.py`` (PR `#56`_).
