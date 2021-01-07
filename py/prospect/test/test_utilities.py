@@ -5,7 +5,8 @@
 import unittest
 import re
 import sys
-from ..utilities import get_resources
+from pkg_resources import resource_filename
+from ..utilities import vi_file_fields, get_resources, read_vi
 
 
 class TestUtilities(unittest.TestCase):
@@ -14,7 +15,8 @@ class TestUtilities(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        pass
+        cls.vi_colnames = [v[0] for v in vi_file_fields]
+        cls.vi_dtype = [v[2] for v in vi_file_fields]
 
     @classmethod
     def tearDownClass(cls):
@@ -33,6 +35,16 @@ class TestUtilities(unittest.TestCase):
         bar = get_resources('js')
         with self.assertRaises(ValueError):
             bad = get_resources('foo')
+
+    # def test_read_vi(self):
+    #     """Test reading of VI files.
+    #     """
+    #     with self.assertRaises(ValueError) as e:
+    #         vi = read_vi('foo.txt')
+    #     self.assertEqual(str(e.exception), 'Invalid file extension: .txt!')
+    #     csv = resource_filename('prospect.test', 't/test_read_vi.csv')
+    #     vi = read_vi(csv)
+    #     self.assertListEqual(vi.colnames, self.vi_colnames)
 
 
 def test_suite():

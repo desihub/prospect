@@ -5,7 +5,14 @@ prospect's Change Log
 1.0.1 (unreleased)
 ------------------
 
-* No changes yet.
+* Make desiutil_ imports optional in ``setup.py`` (PR `#56`_).
+* Adapt scripts to blanc ("deep" directories) (8552fd8e_).
+* Support ``SV1_BGS_TARGET`` (7a5ca41f_).
+
+.. _desiutil: https://github.com/desihub/desiutil
+.. _`#56`: https://github.com/desihub/prospect/pull/56
+.. _8552fd8e: https://github.com/desihub/prospect/commit/8552fd8ec1801d322e9df3b468ed319109410763
+.. _7a5ca41f: https://github.com/desihub/prospect/commit/7a5ca41f41d1e7475c579b256b1e9fdccafe530f
 
 1.0.0 (2020-12-22)
 ------------------
@@ -21,10 +28,11 @@ be expected.  See PR `#54`_ for details.
 
 * Planned final reference tag before package refactor.
 * Allow prospect to be loaded in an environment without the DESI software stack (PR `#50`_).
-* Allow specutils objects to be plotted (PR `#43`_).
+* Allow specutils_ objects to be plotted (PR `#43`_).
 
 .. _`#50`: https://github.com/desihub/prospect/pull/50
 .. _`#43`: https://github.com/desihub/prospect/pull/43
+.. _specutils: https://specutils.readthedocs.io
 
 0.2.2 (2020-07-04)
 ------------------
