@@ -68,7 +68,7 @@ vi_file_fields = [
     #      associated variable in cds_targetinfo,
     #      dtype in VI file ]
     # Ordered list
-    ["TARGETID", "targetid", "i4"],
+    ["TARGETID", "targetid", "i8"],
     ["EXPID", "expid", "i4"],
     ["NIGHT", "night", "i4"],
     ["TILEID", "tileid", "i4"],
@@ -146,21 +146,25 @@ def read_vi(vifile):
     -------
     :class`~astropy.table.Table`
         The full VI catalog.
+
+    Raises
+    ------
+    ValueError
+        If the extension is invalid, or if the file contains invalid columns.
     '''
     vi_records = [x[0] for x in vi_file_fields]
     vi_dtypes = [x[2] for x in vi_file_fields]
-
-    if (vifile[-5:] != ".fits" and vifile[-4:] not in [".fit",".fts",".csv"]) :
-        raise RuntimeError("wrong file extension")
-    if vifile[-4:] == ".csv" :
-        vi_info = Table.read(vifile,format='ascii.csv', names=vi_records)
-        for i,rec in enumerate(vi_records) :
+    _, ext = os.path.splitext(vifile)
+    if ext not in ('.fits', '.fit', '.fts', '.csv'):
+        raise ValueError(f"Invalid file extension: {ext}!")
+    if ext == ".csv":
+        vi_info = Table.read(vifile, format='ascii.csv', names=vi_records)
+        for i, rec in enumerate(vi_records):
             vi_info[rec] = vi_info[rec].astype(vi_dtypes[i])
-    else :
-        vi_info = astropy.io.fits.getdata(vifile,1)
-        if [(x in vi_info.names) for x in vi_records]!=[1 for x in vi_records] :
-            raise RuntimeError("wrong record names in VI fits file")
-        vi_info = Table(vi_info)
+    else:
+        vi_info = Table.read(vifile)
+        if [(x in vi_info.names) for x in vi_records] != [True for x in vi_records]:
+            raise ValueError("Wrong record names in VI fits file!")
 
     return vi_info
 

@@ -1,0 +1,3 @@
+TARGETID,EXPID,NIGHT,TILEID,Spec_version,Redrock_version,Template_version,Redrock_spectype,Redrock_z,VI_scanner,VI_quality,VI_issue,VI_z,VI_spectype,VI_comment
+123456789,12345,20200703,65432,0.33.3,0.22.2,1.0,GALAXY,0.22,Desi Arnaz,1,R,0.23,QSO,"This is a comment containing a , comma."
+987654321,12345,20200703,65432,0.33.3,0.22.2,1.0,STAR,0.0003,Desi Arnaz,4,C,0.0004,STAR,"This looks nice"
