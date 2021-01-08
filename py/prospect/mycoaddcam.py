@@ -16,7 +16,10 @@ Coadds things.
 import numpy as np
 from math import floor
 
-from desispec.interpolation import resample_flux
+try:
+    from desispec.interpolation import resample_flux
+except ImportError:
+    pass
 
 def index_dichotomy(point, grid):
     """Find nearest index in `grid`, left from `point`; use dichotomy method.
