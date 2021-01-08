@@ -1,10 +1,16 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
 # -*- coding: utf-8 -*-
-
 """
-Utility functions for prospect
+==================
+prospect.utilities
+==================
+
+Utility functions for prospect.
 """
 
 import os, glob
+from pkg_resources import resource_string, resource_listdir
+
 import numpy as np
 import astropy.io.fits
 from astropy.table import Table, vstack
@@ -28,6 +34,7 @@ try:
     from desitarget.targetmask import desi_mask
     from desitarget.cmx.cmx_targetmask import cmx_mask
     from desitarget.sv1.sv1_targetmask import desi_mask as sv1_desi_mask
+    from desitarget.sv1.sv1_targetmask import bgs_mask as sv1_bgs_mask
 except ImportError:
     _desitarget_imported = False
 
@@ -41,7 +48,7 @@ except ImportError:
 # from prospect import mycoaddcam  # Does not appear to be used in this module.
 from prospect import myspecselect, myspecupdate
 
-_vi_flags = [
+vi_flags = [
     # Definition of VI flags
     # Replaces former list viflags = ["Yes","No","Maybe","LowSNR","Bad"]
     # shortlabels for "issue" flags must be a unique single-letter identifier
@@ -55,13 +62,13 @@ _vi_flags = [
     {"label" : "Bad spectrum", "shortlabel" : "S", "type" : "issue", "description" : "Bad spectrum, eg. cosmic / skyline subtraction residuals..."}
 ]
 
-_vi_file_fields = [
+vi_file_fields = [
     # Contents of VI files: [
     #      field name (in VI file header),
     #      associated variable in cds_targetinfo,
     #      dtype in VI file ]
     # Ordered list
-    ["TARGETID", "targetid", "i4"],
+    ["TARGETID", "targetid", "i8"],
     ["EXPID", "expid", "i4"],
     ["NIGHT", "night", "i4"],
     ["TILEID", "tileid", "i4"],
@@ -78,7 +85,7 @@ _vi_file_fields = [
     ["VI_comment", "VI_comment", "S100"]
 ]
 
-_vi_spectypes =[
+vi_spectypes =[
     # List of spectral types to fill in VI categories
     # in principle, it should match somehow redrock spectypes...
     "STAR",
@@ -86,7 +93,7 @@ _vi_spectypes =[
     "QSO"
 ]
 
-_vi_std_comments = [
+vi_std_comments = [
     # Standardized VI comments
     "Broad absorption line quasar (BAL)",
     "Damped Lyman-alpha system (DLA)",
@@ -94,25 +101,70 @@ _vi_std_comments = [
     "Blazar"
 ]
 
-def read_vi(vifile) :
-    '''
-    Read visual inspection file (ASCII/CSV or FITS according to file extension)
-    Return full VI catalog, in Table format
-    '''
-    vi_records = [x[0] for x in _vi_file_fields]
-    vi_dtypes = [x[2] for x in _vi_file_fields]
+_resource_cache = {'templates': None, 'js': None}
 
-    if (vifile[-5:] != ".fits" and vifile[-4:] not in [".fit",".fts",".csv"]) :
-        raise RuntimeError("wrong file extension")
-    if vifile[-4:] == ".csv" :
-        vi_info = Table.read(vifile,format='ascii.csv', names=vi_records)
-        for i,rec in enumerate(vi_records) :
+
+def get_resources(filetype):
+    """Find all HTML template or JavaScript files in the package.
+
+    Caches the results for quick access.
+
+    Parameters
+    ----------
+    filetype : {'templates', 'js'}
+        The type of file resource needed.
+
+    Returns
+    -------
+    :class:`dict`
+        A dictionary mapping filename to the contents of the file.
+
+    Raises
+    ------
+    ValueError
+        If `filetype` is unknown.
+    """
+    global _resource_cache
+    if filetype not in _resource_cache:
+        raise ValueError("Unknown filetype '{0}' for get_resources()!".format(filetype))
+    if _resource_cache[filetype] is None:
+        _resource_cache[filetype] = dict()
+        for f in resource_listdir('prospect', filetype):
+            _resource_cache[filetype][f] = resource_string('prospect', filetype + '/' + f).decode('utf-8')
+    return _resource_cache[filetype]
+
+
+def read_vi(vifile):
+    '''Read visual inspection file (ASCII/CSV or FITS according to file extension).
+
+    Parameters
+    ----------
+    vifile : :class:`str`
+        Catalog filename.
+
+    Returns
+    -------
+    :class`~astropy.table.Table`
+        The full VI catalog.
+
+    Raises
+    ------
+    ValueError
+        If the extension is invalid, or if the file contains invalid columns.
+    '''
+    vi_records = [x[0] for x in vi_file_fields]
+    vi_dtypes = [x[2] for x in vi_file_fields]
+    _, ext = os.path.splitext(vifile)
+    if ext not in ('.fits', '.fit', '.fts', '.csv'):
+        raise ValueError(f"Invalid file extension: {ext}!")
+    if ext == ".csv":
+        vi_info = Table.read(vifile, format='ascii.csv', names=vi_records)
+        for i, rec in enumerate(vi_records):
             vi_info[rec] = vi_info[rec].astype(vi_dtypes[i])
-    else :
-        vi_info = astropy.io.fits.getdata(vifile,1)
-        if [(x in vi_info.names) for x in vi_records]!=[1 for x in vi_records] :
-            raise RuntimeError("wrong record names in VI fits file")
-        vi_info = Table(vi_info)
+    else:
+        vi_info = Table.read(vifile)
+        if [(x in vi_info.names) for x in vi_records] != [True for x in vi_records]:
+            raise ValueError("Wrong record names in VI fits file!")
 
     return vi_info
 
@@ -144,8 +196,8 @@ def initialize_master_vi(mastervifile, overwrite=False) :
     Create "master" VI file with no entry
     '''
     log = get_logger()
-    vi_records = [x[0] for x in _vi_file_fields]
-    vi_dtypes = [x[2] for x in _vi_file_fields]
+    vi_records = [x[0] for x in vi_file_fields]
+    vi_dtypes = [x[2] for x in vi_file_fields]
     vi_info = Table(names=vi_records, dtype=tuple(vi_dtypes))
     vi_info.write(mastervifile, format='fits', overwrite=overwrite)
     log.info("Initialized VI file : "+mastervifile+" (0 entry)")
@@ -162,7 +214,6 @@ def merge_vi(mastervifile, newvifile) :
     mergedvi = vstack([mastervi,newvi], join_type='exact')
     mergedvi.write(mastervifile, format='fits', overwrite=True)
     log.info("Updated master VI file : "+mastervifile+" (now "+str(len(mergedvi))+" entries).")
-
 
 
 def match_zcat_to_spectra(zcat_in, spectra) :
@@ -263,13 +314,14 @@ def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None, nig
             the_nights = [ x for x in the_nights if x in nights ]
         for night in the_nights :
             target_dict[tile+"-"+night] = {}
-            # exposures
+            # exposures (included in dict only if 'cframe-b' files are present - which is not the case for "deep" coadds in blanc)
             fns = np.sort(glob.glob(os.path.join(tiledir,tile,night,'cframe-b'+petals[0]+'-????????.fits')))
-            target_dict[tile+"-"+night]['exps'] = np.array([fn.replace('.','-').split('-')[-2] for fn in fns])
+            if len(fns)>0 :
+                target_dict[tile+"-"+night]['exps'] = np.array([fn.replace('.','-').split('-')[-2] for fn in fns])
             # targetid, fibres
             targetid,fiber,petal_list = [],[],[]
             for petal in petals:
-                pp = glob.glob(os.path.join(tiledir,tile,night,'zbest-'+petal+'-'+tile+'-????????.fits'))
+                pp = glob.glob(os.path.join(tiledir,tile,night,'zbest-'+petal+'-'+tile+'-'+night+'.fits'))
                 if len(pp)>0 :
                     fn        = pp[0]
                     fm = Table.read(fn, 'FIBERMAP')
@@ -415,10 +467,13 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
 
     # Target mask selection
     if mask is not None :
-        assert mask_type in ['SV1_DESI_TARGET', 'DESI_TARGET', 'CMX_TARGET']
+        assert mask_type in ['SV1_DESI_TARGET', 'DESI_TARGET', 'CMX_TARGET', 'SV1_BGS_TARGET']
         if mask_type == 'SV1_DESI_TARGET' :
             assert ( mask in sv1_desi_mask.names() )
             w, = np.where( (spectra.fibermap['SV1_DESI_TARGET'] & sv1_desi_mask[mask]) )
+        elif mask_type == 'SV1_BGS_TARGET' :
+            assert ( mask in sv1_bgs_mask.names() )
+            w, = np.where( (spectra.fibermap['SV1_BGS_TARGET'] & sv1_bgs_mask[mask]) )
         elif mask_type == 'DESI_TARGET' :
             assert ( mask in desi_mask.names() )
             w, = np.where( (spectra.fibermap['DESI_TARGET'] & desi_mask[mask]) )

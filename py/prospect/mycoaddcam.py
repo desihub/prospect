@@ -1,4 +1,12 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+# -*- coding: utf-8 -*-
+"""
+===================
+prospect.mycoaddcam
+===================
 
+Coadds things.
+"""
 # EA - Oct 2019 (Temporary / preliminary)
 # desispec.coaddition.coadd_cameras() unsatisfying at least since
 # 1) don't want to coadd over exposures / 2) cannot assume waves are aligned over arms (r/z mismatch seen in datachallenge)
@@ -6,33 +14,59 @@
 # In addition we need a python implementation of the same algorithm as used in js/coadd_brz_cameras.js
 
 import numpy as np
-import math
+from math import floor
 
 from desispec.interpolation import resample_flux
 
-def index_dichotomy(point, grid) :
+def index_dichotomy(point, grid):
+    """Find nearest index in `grid`, left from `point`; use dichotomy method.
+
+    Translated from js/interp_grid.js.
+
+    Parameters
+    ----------
+    point : :class:`float`
+        Value to find in `grid`.
+    grid : array-like
+        Values to search.
+
+    Returns
+    -------
+    :class:`int`
+        Nearest index.
     """
-    Translated from js/interp_grid.js
-    Find nearest index in grid, left from point; use dichotomy method
-    """
-    if ( point < grid[0] ) : return 0
-    if ( point > grid[-1] ) : return len(grid)-2
+    if point < grid[0]:
+        return 0
+    if point > grid[-1]:
+        return len(grid) - 2
     i_left = 0
     i_center = 0
-    i_right = len(grid)-1
-    while ( i_right - i_left != 1) :
-        i_center = i_left + math.floor((i_right-i_left)/2)
-        if ( point >= grid[i_center] ) :
+    i_right = len(grid) - 1
+    while i_right - i_left != 1:
+        i_center = i_left + floor((i_right - i_left)/2)
+        if point >= grid[i_center]:
             i_left = i_center
-        else :
+        else:
             i_right = i_center
     return i_left
 
 
-def interp_grid(xval, xarr, yarr) :
-    """
-    Translated from js/interp_grid.js
-    Basic linear interpolation of [xarr,yarr] on point xval
+def interp_grid(xval, xarr, yarr):
+    """Basic linear interpolation of [`xarr`, `yarr`] on point `xval`.
+
+    Translated from js/interp_grid.js.
+
+    Parameters
+    ----------
+    xval : :class:`xval`
+        Interpolate y-value at this point.
+    xarr, yarr : array-like
+        X, Y data.
+
+    Returns
+    -------
+    :class:`float`
+        The y-value corresponding to `xval`.
     """
     index = index_dichotomy(xval, xarr)
     a = (yarr[index+1] - yarr[index])/(xarr[index+1] - xarr[index])
@@ -42,11 +76,27 @@ def interp_grid(xval, xarr, yarr) :
 
 
 def coadd_brz_cameras(wave_in, flux_in, noise_in) :
-    """
-    Translated from js/coadd_brz_cameras.js
-    Camera-coadd brz spectra.
-        each "_in" must have 3 entries (brz)
-        TODO handle case of no noise
+    """Camera-coadd *brz* spectra.
+
+    Translated from js/coadd_brz_cameras.js.
+
+    Parameters
+    ----------
+    wave_in : array-like
+        Set of three wavelength arrays corresponding to *brz*.
+    flux_in : array-like
+        Set of three flux arrays corresponding to *brz*.
+    noise_in : array-like
+        Noise arrays for weighting.
+
+    Returns
+    -------
+    :func:`tuple`
+        The coadded wavelength solution, flux and noise.
+
+    Notes
+    -----
+    * Need to handle case of no noise.
     """
 
     # Find b,r,z ordering in input arrays
@@ -101,14 +151,14 @@ def coadd_brz_cameras(wave_in, flux_in, noise_in) :
     return (np.asarray(wave_out), np.asarray(flux_out), np.asarray(noise_out))
 
 
-def coaddcam_prospect(spectra) :
+def coaddcam_prospect(spectra):
+    """Wrapper to :func:`~prospect.mycoaddcam.coadd_brz_cameras`.
+
+    Same input/output as :func:`~prospect.mycoaddcam.mycoaddcam`.
     """
-    Wrapper to coadd_brz_cameras.
-    Same input/output as mycoaddcam()
-    """
-    
+
     if np.all([ band in spectra.bands for band in ['b','r','z'] ]) :
-    
+
         for i_spec in range(spectra.num_spectra()) :
             wave_in = [ spectra.wave[b] for b in spectra.bands ]
             flux_in = [ spectra.flux[b][i_spec] for b in spectra.bands ]
@@ -135,19 +185,19 @@ def coaddcam_prospect(spectra) :
         ivar_out = spectra.ivar['brz']
     else :
         raise RuntimeError("Set of bands for spectra not supported.")
- 
+
     return (wave_out, flux_out, ivar_out)
 
 
-def mycoaddcam(spectra) :
-    """"
-    Merges brz spectra into a single (wave,flux)
-      takes into account noise and mis-matched wavelengths over the 3 arms
-    Currently assumes b r z bands and two overlap regions
+def mycoaddcam(spectra):
+    """"Merges *brz* spectra into a single (wave,flux).
+
+    Takes into account noise and mis-matched wavelengths over the 3 arms;
+    currently assumes b r z bands and two overlap regions.
     """
-    
+
     if np.all([ band in spectra.bands for band in ['b','r','z'] ]) :
-    
+
         # Define (arbitrarily) wavelength grid
         margin = 20 # Angstrom. Avoids using edge-of-band at overlap regions
         wave = spectra.wave['b'].copy()
@@ -188,13 +238,13 @@ def mycoaddcam(spectra) :
                 w_ok = np.where( ivar[ispec,w_overlap] > 0)
                 flux[ispec,w_overlap] = (phi1+phi2)/2
                 flux[ispec,w_overlap][w_ok] = (ivar1[w_ok]*phi1[w_ok] + ivar2[w_ok]*phi2[w_ok])/ivar[ispec,w_overlap][w_ok]
-    
+
     elif spectra.bands == ['brz'] :
         wave = spectra.wave['brz']
         flux = spectra.flux['brz']
         ivar = spectra.ivar['brz']
     else :
         raise RuntimeError("mycoaddcam: set of bands for spectra not supported")
-    
-    
+
+
     return (wave, flux, ivar)

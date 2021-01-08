@@ -1,16 +1,21 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
 # -*- coding: utf-8 -*-
-
-
 """
-TODO
+===================
+prospect.plotframes
+===================
+
+To Do
+-----
 * add target details tab
 * add code details tab (version, SPECPROD)
 * redshift model fit
-* better smoothing kernel, e.g. Gaussian
+* better smoothing kernel, *e.g.* Gaussian
 """
 
 import os, sys
 import argparse
+from pkg_resources import resource_filename
 
 import numpy as np
 import scipy.ndimage.filters
@@ -34,6 +39,7 @@ try:
     from desitarget.targetmask import desi_mask
     from desitarget.cmx.cmx_targetmask import cmx_mask
     from desitarget.sv1.sv1_targetmask import desi_mask as sv1_desi_mask
+    from desitarget.sv1.sv1_targetmask import bgs_mask as sv1_bgs_mask
 except ImportError:
     _desitarget_imported = False
 
@@ -52,10 +58,9 @@ try:
 except ImportError:
     _redrock_imported = False
 
-#from . import utils_specviewer
-from prospect import utils_specviewer
-from prospect import mycoaddcam
-
+from .utilities import (get_resources, frames2spectra, create_zcat_from_redrock_cat, coadd_targets, match_vi_targets,
+                        vi_flags, vi_file_fields, vi_spectypes, vi_std_comments)
+from .mycoaddcam import coaddcam_prospect
 
 def load_redrock_templates(template_dir=None) :
     '''
@@ -212,8 +217,7 @@ def make_cds_coaddcam_spec(spectra, with_noise) :
         Except for the first spectrum, coaddition is done later in javascript
     """
 
-    #coadd_wave, coadd_flux, coadd_ivar = mycoaddcam.mycoaddcam(spectra)
-    coadd_wave, coadd_flux, coadd_ivar = mycoaddcam.coaddcam_prospect(spectra)
+    coadd_wave, coadd_flux, coadd_ivar = coaddcam_prospect(spectra)
     cds_coaddcam_data = dict(
         origwave = coadd_wave.copy(),
         plotwave = coadd_wave.copy(),
@@ -293,11 +297,13 @@ def make_template_dicts(redrock_cat, delta_lambd_templates=3, with_fit_templates
 def make_cds_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=" ") :
     """ Creates column data source for target-related metadata, from zcatalog, fibermap and VI files """
 
-    assert mask_type in ['SV1_DESI_TARGET', 'DESI_TARGET', 'CMX_TARGET']
+    assert mask_type in ['SV1_DESI_TARGET', 'SV1_BGS_TARGET', 'DESI_TARGET', 'CMX_TARGET']
     target_info = list()
     for i, row in enumerate(spectra.fibermap):
         if mask_type == 'SV1_DESI_TARGET' :
             target_bit_names = ' '.join(sv1_desi_mask.names(row['SV1_DESI_TARGET']))
+        elif mask_type == 'SV1_BGS_TARGET' :
+            target_bit_names = ' '.join(sv1_bgs_mask.names(row['SV1_BGS_TARGET']))
         elif mask_type == 'DESI_TARGET' :
             target_bit_names = ' '.join(desi_mask.names(row['DESI_TARGET']))
         elif mask_type == 'CMX_TARGET' :
@@ -382,8 +388,7 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
 
     if thumb_height is None : thumb_height = thumb_width//2
     if titles is not None : assert len(titles) == spectra.num_spectra()
-    #thumb_wave, thumb_flux, dummy = mycoaddcam.mycoaddcam(spectra)
-    thumb_wave, thumb_flux, dummy = mycoaddcam.coaddcam_prospect(spectra)
+    thumb_wave, thumb_flux, dummy = coaddcam_prospect(spectra)
     kernel = astropy.convolution.Gaussian1DKernel(stddev=resamp_factor)
 
     thumb_plots = []
@@ -416,15 +421,15 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
 
 
 def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=None, num_approx_fits=None, with_full_2ndfit=True, model_from_zcat=True, model=None, notebook=False, is_coadded=True, title=None, html_dir=None, with_imaging=True, with_noise=True, with_coaddcam=True, mask_type='DESI_TARGET', with_thumb_tab=True, with_vi_widgets=True, with_thumb_only_page=False, template_dir=None, archetype_fit=False, archetypes_dir=None, vi_countdown=-1):
-    '''
-    Main prospect routine. From a set of spectra, creates a bokeh document used for VI, to be displayed as an HTML page or within a jupyter notebook.
+    '''Main prospect routine. From a set of spectra, creates a bokeh document
+    used for VI, to be displayed as an HTML page or within a Jupyter notebook.
 
-    Main Parameter
-    ---------
+    Parameters
+    ----------
     spectra: input spectra. Supported formats: 1) a 3-band DESI spectra object, with bands 'b', 'r', 'z'. 2) a single-band
         DESI spectra object, bandname 'brz'. 2) a list of 3 frames, associated to the b, r and z bands.
     zcatalog (default None): astropy Table, containing the 'ZBEST' output redrock. Currently supports redrock-PCA or archetype files. The entries in zcatalog must be matched one-by-one (in order) to spectra.
-    redrock_cat (default None): astropy Table, containing Redrock output (as defined in utils_specviewer.match_redrock_zfit_to_spectra). Entries must be matched one-by-one (in order) to spectra.
+    redrock_cat (default None): astropy Table, containing Redrock output (as defined in utilities.match_redrock_zfit_to_spectra). Entries must be matched one-by-one (in order) to spectra.
     notebook (bool): if True, bokeh outputs the viewer to a notebook, else to a (static) HTML page
     html_dir (string): directory to store the HTML page if notebook is False
     title (string): title used to name the HTML page / the bokeh figure / the VI file
@@ -435,10 +440,6 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     with_thumb_tab (bool): include a tab with thumbnails of spectra in bokeh viewer
     with_thumb_only_page (bool): when creating a static HTML (notebook==False), a light HTML page including only the thumb
         gallery will also be produced.
-
-
-    Less-useful parameters
-    ---------
     nspec: select subsample of spectra, only for frame input
     startspec: if nspec is set, subsample selection will be [startspec:startspec+nspec]
     model_from_zcat: if True, model spectra will be computed from the input zcatalog
@@ -458,7 +459,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
 
     #- If inputs are frames, convert to a spectra object
     if isinstance(spectra, list) and isinstance(spectra[0], desispec.frame.Frame):
-        spectra = utils_specviewer.frames2spectra(spectra, nspec=nspec, startspec=startspec)
+        spectra = frames2spectra(spectra, nspec=nspec, startspec=startspec)
         frame_input = True
     else:
         frame_input = False
@@ -528,7 +529,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         if num_approx_fits is None : num_approx_fits = nfits_redrock_cat
         if (num_approx_fits > nfits_redrock_cat) : raise ValueError("num_approx_fits too large wrt redrock_cat")
         if with_full_2ndfit :
-            zcat_2ndfit = utils_specviewer.create_zcat_from_redrock_cat(redrock_cat, fit_num=1)
+            zcat_2ndfit = create_zcat_from_redrock_cat(redrock_cat, fit_num=1)
             model_2ndfit = create_model(spectra, zcat_2ndfit, archetype_fit=archetype_fit,
                                         archetypes_dir=archetypes_dir, template_dir=template_dir)
             cds_model_2ndfit = make_cds_model(model_2ndfit)
@@ -715,7 +716,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     #-- Widgets and callbacks --
     #-------------------------
 
-    js_dir = os.path.join(os.path.dirname(__file__),os.pardir,os.pardir,"js")
+    js_files = get_resources('js')
 
     #-----
     #- Ifiberslider and smoothing widgets
@@ -751,8 +752,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     #-----
     #- Axis reset button (superseeds the default bokeh "reset"
     reset_plotrange_button = Button(label="Reset X-Y range", button_type="default")
-    with open(os.path.join(js_dir,"adapt_plotrange.js"), 'r') as f : reset_plotrange_code = f.read()
-    with open(os.path.join(js_dir,"reset_plotrange.js"), 'r') as f : reset_plotrange_code += f.read()
+    reset_plotrange_code = js_files["adapt_plotrange.js"] + js_files["reset_plotrange.js"]
     reset_plotrange_callback = CustomJS(args = dict(fig=fig, xmin=xmin, xmax=xmax, spectra=cds_spectra),
                                         code = reset_plotrange_code)
     reset_plotrange_button.js_on_event('button_click', reset_plotrange_callback)
@@ -1120,9 +1120,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
             model_options.append('STD '+std_template)
         model_select = Select(value=model_options[0], title="Other model (dashed curve):", options=model_options)
         cds_median_spectra = make_cds_median_spectra(spectra)
-        with open(os.path.join(js_dir,"interp_grid.js"), 'r') as f : model_select_code = f.read()
-        with open(os.path.join(js_dir,"smooth_data.js"), 'r') as f : model_select_code += f.read()
-        with open(os.path.join(js_dir,"select_model.js"), 'r') as f : model_select_code += f.read()
+        model_select_code = js_files["interp_grid.js"] + js_files["smooth_data.js"] + js_files["select_model.js"]
         model_select_callback = CustomJS(
             args=dict(ifiberslider = ifiberslider,
                       model_select = model_select,
@@ -1145,10 +1143,9 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     #-----
     #- VI-related widgets
 
-    vi_file_fields = utils_specviewer._vi_file_fields
-    vi_class_labels = [ x["label"] for x in utils_specviewer._vi_flags if x["type"]=="class" ]
-    vi_issue_labels = [ x["label"] for x in utils_specviewer._vi_flags if x["type"]=="issue" ]
-    vi_issue_slabels = [ x["shortlabel"] for x in utils_specviewer._vi_flags if x["type"]=="issue" ]
+    vi_class_labels = [ x["label"] for x in vi_flags if x["type"]=="class" ]
+    vi_issue_labels = [ x["label"] for x in vi_flags if x["type"]=="issue" ]
+    vi_issue_slabels = [ x["shortlabel"] for x in vi_flags if x["type"]=="issue" ]
 
     #- VI file name
     default_vi_filename = "desi-vi_"+title
@@ -1161,8 +1158,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
 
     #- Optional VI flags (issues)
     vi_issue_input = CheckboxGroup(labels=vi_issue_labels, active=[])
-    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_issue_code = f.read()
-    with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_issue_code += f.read()
+    vi_issue_code = js_files["CSVtoArray.js"] + js_files["save_vi.js"]
     vi_issue_code += """
         var issues = []
         for (var i=0; i<vi_issue_labels.length; i++) {
@@ -1186,8 +1182,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
 
     #- Optional VI information on redshift
     vi_z_input = TextInput(value='', title="VI redshift:")
-    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_z_code = f.read()
-    with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_z_code += f.read()
+    vi_z_code = js_files["CSVtoArray.js"] + js_files["save_vi.js"]
     vi_z_code += """
         cds_targetinfo.data['VI_z'][ifiberslider.value]=vi_z_input.value
         autosave_vi_localStorage(vi_file_fields, cds_targetinfo.data, title)
@@ -1209,10 +1204,8 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     z_tovi_button.js_on_event('button_click', z_tovi_callback)
 
     #- Optional VI information on spectral type
-    vi_spectypes = [''] + utils_specviewer._vi_spectypes
-    vi_category_select = Select(value=" ", title="VI spectype:", options=vi_spectypes)
-    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_category_code = f.read()
-    with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_category_code += f.read()
+    vi_category_select = Select(value=" ", title="VI spectype:", options=([''] + vi_spectypes))
+    vi_category_code = js_files["CSVtoArray.js"] + js_files["save_vi.js"]
     vi_category_code += """
         cds_targetinfo.data['VI_spectype'][ifiberslider.value]=vi_category_select.value
         autosave_vi_localStorage(vi_file_fields, cds_targetinfo.data, title)
@@ -1227,8 +1220,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
 
     #- Optional VI comment
     vi_comment_input = TextInput(value='', title="VI comment (see guidelines):")
-    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_comment_code = f.read()
-    with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_comment_code += f.read()
+    vi_comment_code = js_files["CSVtoArray.js"] + js_files["save_vi.js"]
     vi_comment_code += """
         var stored_comment = (vi_comment_input.value).replace(/./g, function(char){
             if ( char==',' ) {
@@ -1255,8 +1247,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     vi_comment_input.js_on_change('value',vi_comment_callback)
 
     #- List of "standard" VI comment
-    vi_std_comments = [" "] + utils_specviewer._vi_std_comments
-    vi_std_comment_select = Select(value=" ", title="Standard comment:", options=vi_std_comments)
+    vi_std_comment_select = Select(value=" ", title="Standard comment:", options=([''] + vi_std_comments))
     vi_std_comment_code = """
         if (vi_std_comment_select.value != ' ') {
             if (vi_comment_input.value != '') {
@@ -1273,8 +1264,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
 
     #- Main VI classification
     vi_class_input = RadioButtonGroup(labels=vi_class_labels)
-    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_class_code = f.read()
-    with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_class_code += f.read()
+    vi_class_code = js_files["CSVtoArray.js"] + js_files["save_vi.js"]
     vi_class_code += """
         if ( vi_class_input.active >= 0 ) {
             cds_targetinfo.data['VI_class_flag'][ifiberslider.value] = vi_class_labels[vi_class_input.active]
@@ -1299,8 +1289,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
 
     #- VI scanner name
     vi_name_input = TextInput(value=(cds_targetinfo.data['VI_scanner'][0]).strip(), title="Your name (3-letter acronym):")
-    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : vi_name_code = f.read()
-    with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : vi_name_code += f.read()
+    vi_name_code = js_files["CSVtoArray.js"] + js_files["save_vi.js"]
     vi_name_code += """
         for (var i=0; i<nspec; i++) {
             cds_targetinfo.data['VI_scanner'][i]=vi_name_input.value
@@ -1320,10 +1309,10 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     #- Guidelines for VI flags
     vi_guideline_txt = "<B> VI guidelines </B>"
     vi_guideline_txt += "<BR /> <B> Classification flags: </B>"
-    for flag in utils_specviewer._vi_flags :
+    for flag in vi_flags :
         if flag['type'] == 'class' : vi_guideline_txt += ("<BR />&emsp;&emsp;[&emsp;"+flag['label']+"&emsp;] "+flag['description'])
     vi_guideline_txt += "<BR /> <B> Optional indications: </B>"
-    for flag in utils_specviewer._vi_flags :
+    for flag in vi_flags :
         if flag['type'] == 'issue' :
             vi_guideline_txt += ( "<BR />&emsp;&emsp;[&emsp;" + flag['label'] +
                                  "&emsp;(" + flag['shortlabel'] + ")&emsp;] " + flag['description'] )
@@ -1332,9 +1321,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
 
     #- Save VI info to CSV file
     save_vi_button = Button(label="Download VI", button_type="success")
-    with open(os.path.join(js_dir,"FileSaver.js"), 'r') as f : save_vi_code = f.read()
-    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : save_vi_code += f.read()
-    with open(os.path.join(js_dir,"save_vi.js"), 'r') as f : save_vi_code += f.read()
+    save_vi_code = js_files["FileSaver.js"] + js_files["CSVtoArray.js"] + js_files["save_vi.js"]
     save_vi_code += """
         download_vi_file(vi_file_fields, cds_targetinfo.data, vi_filename_input.value)
         """
@@ -1346,8 +1333,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
 
     #- Recover auto-saved VI data in browser
     recover_vi_button = Button(label="Recover auto-saved VI", button_type="default")
-    with open(os.path.join(js_dir,"CSVtoArray.js"), 'r') as f : recover_vi_code = f.read()
-    with open(os.path.join(js_dir,"recover_autosave_vi.js"), 'r') as f : recover_vi_code += f.read()
+    recover_vi_code = js_files["CSVtoArray.js"] + js_files["recover_autosave_vi.js"]
     recover_vi_callback = CustomJS(
         args = dict(title=title, vi_file_fields=vi_file_fields, cds_targetinfo=cds_targetinfo,
                    ifiber=ifiberslider.value, vi_comment_input=vi_comment_input,
@@ -1403,11 +1389,10 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     
     #-----
     #- Main js code to update plot
-    with open(os.path.join(js_dir,"adapt_plotrange.js"), 'r') as f : update_plot_code = f.read()
-    with open(os.path.join(js_dir,"interp_grid.js"), 'r') as f : update_plot_code += f.read()
-    with open(os.path.join(js_dir,"smooth_data.js"), 'r') as f : update_plot_code += f.read()
-    with open(os.path.join(js_dir,"coadd_brz_cameras.js"), 'r') as f : update_plot_code += f.read()
-    with open(os.path.join(js_dir,"update_plot.js"), 'r') as f : update_plot_code += f.read()
+    #
+    update_plot_code = (js_files["adapt_plotrange.js"] + js_files["interp_grid.js"] +
+                        js_files["smooth_data.js"] + js_files["coadd_brz_cameras.js"] +
+                        js_files["update_plot.js"])
     # ONGOING
     the_fit_results = None if template_dicts is None else template_dicts[1] # dirty
     update_plot = CustomJS(
@@ -1626,7 +1611,6 @@ def add_lines(fig, z=0 , emission=True, fig_height=None, label_offsets=[100, 5])
 
     if fig_height is None : fig_height = fig.plot_height
 
-    line_file_dir = os.path.join(os.path.dirname(__file__),"data")
     line_data = dict(
         restwave = [],
         plotwave = [],
@@ -1637,10 +1621,16 @@ def add_lines(fig, z=0 , emission=True, fig_height=None, label_offsets=[100, 5])
         major = [],
         y = []
     )
-    for line_category in ['emission', 'absorption'] :
-        line_array = np.genfromtxt(os.path.join(line_file_dir,line_category+"_lines.txt"), delimiter=",",
-                               dtype=[("name","|U20"),("longname","|U20"),("wavelength",float),("vacuum",bool),("major",bool)],
-                               encoding='utf-8')
+    for line_category in ('emission', 'absorption'):
+        # encoding=utf-8 is needed to read greek letters
+        line_array = np.genfromtxt(resource_filename('prospect', "data/{0}_lines.txt".format(line_category)),
+                                   delimiter=",",
+                                   dtype=[("name", "|U20"),
+                                          ("longname", "|U20"),
+                                          ("wavelength", float),
+                                          ("vacuum", bool),
+                                          ("major", bool)],
+                                    encoding='utf-8')
         vacuum_wavelengths = line_array['wavelength']
         w, = np.where(line_array['vacuum']==False)
         vacuum_wavelengths[w] = np.array([_airtovac(wave) for wave in line_array['wavelength'][w]])
@@ -1744,13 +1734,13 @@ if __name__ == '__main__':
 
     #- Coadd on the fly
     individual_spectra = desispec.io.read_spectra(specfile)
-    spectra = utils_specviewer.coadd_targets(individual_spectra)
+    spectra = coadd_targets(individual_spectra)
     zbest = Table.read(zbfile, 'ZBEST')
 
     mwave, mflux = create_model(spectra, zbest)
 
     ## VI "catalog" - location to define later
     vifile = os.environ['HOME']+"/prospect/vilist_prototype.fits"
-    vidata = utils_specviewer.match_vi_targets(vifile, spectra.fibermap['TARGETID'])
+    vidata = match_vi_targets(vifile, spectra.fibermap['TARGETID'])
 
     plotspectra(spectra, zcatalog=zbest, vidata=vidata, model=(mwave, mflux), title=os.path.basename(specfile))

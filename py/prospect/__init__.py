@@ -1,9 +1,10 @@
-#
-# See top-level LICENSE.rst file for Copyright information
-#
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
 # -*- coding: utf-8 -*-
+"""
+========
+prospect
+========
 
-# help with 2to3 support.
-from __future__ import absolute_import, division, print_function
-
+An interactive spectrum viewer.
+"""
 from ._version import __version__

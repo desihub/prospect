@@ -4,26 +4,26 @@
 
 // Create a string variable containing VI records in CSV format.
 function vi_to_csv(vi_file_fields, cds_data, for_localStorage, localStorage_key) {
-    // vi_file_fields: VI fields to be stored (defined in utils_specviewer)
+    // vi_file_fields: VI fields to be stored (defined in prospect.utilities)
     // cds_data: data from Bokeh CDS containing VI informations
     //    must contain at least "VI_class_flag", "VI_comment", "VI_issue_flag"
     // for_localStorage (bool): if true, the output format is slightly modified:
     //    no header, add a first column providing spectrum number.
     // localStorage_key: if not undefined, previous VI information from the
-    //    browser's localStorage (with corresponding key) is read 
+    //    browser's localStorage (with corresponding key) is read
     //    beforehand and included to the output.
-    
+
     var nb_fields = vi_file_fields.length
     var nspec = cds_data['VI_class_flag'].length
-    
+
     var array_to_store = []
-    
+
     if (for_localStorage == false) {
         var header = []
         for (var j=0; j<nb_fields; j++) header.push(vi_file_fields[j][0])
         array_to_store.push(header)
     }
-    
+
     if (localStorage_key != undefined) {
         var previously_stored_ispecs = []
         if (localStorage_key in localStorage) {
@@ -36,7 +36,7 @@ function vi_to_csv(vi_file_fields, cds_data, for_localStorage, localStorage_key)
             }
         }
     }
-    
+
     for (var i_spec=0; i_spec<nspec; i_spec++) {
         //  Record only information if a VI classification was assigned
         //    or some VI comment/issue/z was given:
@@ -60,7 +60,7 @@ function vi_to_csv(vi_file_fields, cds_data, for_localStorage, localStorage_key)
                 row.push(entry)
             }
             var i_rec = -1
-            if (localStorage_key != undefined) { 
+            if (localStorage_key != undefined) {
                 var i_rec = -1
                 i_rec = previously_stored_ispecs.indexOf(i_spec)
                 if (i_rec == -1) {
@@ -99,5 +99,5 @@ function download_vi_file(vi_file_fields, cds_data, output_file) {
     var for_localStorage = false
     var csv_to_store = vi_to_csv(vi_file_fields, cds_data, for_localStorage)
     var blob = new window.Blob([csv_to_store], {type: 'text/csv'})
-    saveAs(blob, output_file)    
+    saveAs(blob, output_file)
 }

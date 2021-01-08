@@ -35,7 +35,7 @@ try:
 except ImportError:
     _desispec_imported = False
 
-from .utils_specviewer import _coadd
+from .utilities import _coadd
 
 
 class Spectra(SpectrumList):
