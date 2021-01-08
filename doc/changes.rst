@@ -5,7 +5,7 @@ prospect's Change Log
 1.0.2 (unreleased)
 ------------------
 
-* No changes yet.
+* Optional countdown widget
 
 1.0.1 (2021-01-07)
 ------------------
