@@ -1365,12 +1365,12 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         vi_countdown_callback = CustomJS(args=dict(vi_countdown=vi_countdown), code="""
             if ( (cb_obj.label).includes('Start') ) { // Callback doesn't do anything after countdown started
                 var countDownDate = new Date().getTime() + (1000 * 60 * vi_countdown);
-                var looop = setInterval(function(){
+                var countDownLoop = setInterval(function(){
                     var now = new Date().getTime();
                     var distance = countDownDate - now;
                     if (distance<0) {
                         cb_obj.label = "Time's up !";
-                        clearInterval(looop);
+                        clearInterval(countDownLoop);
                     } else {
                         var days = Math.floor(distance / (1000 * 60 * 60 * 24));
                         var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
