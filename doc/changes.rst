@@ -5,7 +5,9 @@ prospect's Change Log
 1.0.2 (unreleased)
 ------------------
 
-* No changes yet.
+* Optional countdown widget (PR `#58`_).
+
+.. _`#58`: https://github.com/desihub/prospect/pull/58
 
 1.0.1 (2021-01-07)
 ------------------

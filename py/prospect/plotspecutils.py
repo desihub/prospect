@@ -37,7 +37,7 @@ except ImportError:
     _desitarget_imported = False
 
 from .utilities import get_resources, create_zcat_from_redrock_cat, vi_flags, vi_file_fields, vi_spectypes, vi_std_comments
-from .mycoaddcam import mycoaddcam, coaddcam_prospect
+from .mycoaddcam import coaddcam_prospect
 from .plotframes import add_lines, _airtovac
 
 def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, template_dir=None):
@@ -184,7 +184,7 @@ def make_cds_coaddcam_spec(spectra, with_noise) :
         Except for the first spectrum, coaddition is done later in javascript
     """
 
-    coadd_wave, coadd_flux, coadd_ivar = mycoaddcam(spectra)
+    coadd_wave, coadd_flux, coadd_ivar = coaddcam_prospect(spectra)
     cds_coaddcam_data = dict(
         origwave = coadd_wave.copy(),
         plotwave = coadd_wave.copy(),
