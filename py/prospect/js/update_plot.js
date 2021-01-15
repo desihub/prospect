@@ -8,6 +8,7 @@
 //
 var ifiber = ifiberslider.value;
 var nsmooth = smootherslider.value;
+
 //
 // Smoothing kernel.
 //
@@ -83,7 +84,12 @@ if (cb_obj == ifiberslider) {
     }
     vi_issue_input.active = issues_on;
     vi_z_input.value = (targetinfo.data['VI_z'][ifiber]).trim();
-    vi_category_select.value = targetinfo.data['VI_spectype'][ifiber];
+    if (targetinfo.data['VI_spectype'][ifiber] == '' ) {
+        vi_category_select.value = ' '; // setting value='' does not work well with Select
+    } else {
+        vi_category_select.value = targetinfo.data['VI_spectype'][ifiber];
+    }
+
     //
     // update target image
     //

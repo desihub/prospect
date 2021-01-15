@@ -1204,10 +1204,15 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     z_tovi_button.js_on_event('button_click', z_tovi_callback)
 
     #- Optional VI information on spectral type
-    vi_category_select = Select(value=" ", title="VI spectype:", options=([''] + vi_spectypes))
+    vi_category_select = Select(value=' ', title="VI spectype:", options=([' '] + vi_spectypes))
+    # The default value set to ' ' as setting value='' does not seem to work well with Select.
     vi_category_code = js_files["CSVtoArray.js"] + js_files["save_vi.js"]
     vi_category_code += """
-        cds_targetinfo.data['VI_spectype'][ifiberslider.value]=vi_category_select.value
+        if (vi_category_select.value == ' ') {
+            cds_targetinfo.data['VI_spectype'][ifiberslider.value]=''
+        } else {
+            cds_targetinfo.data['VI_spectype'][ifiberslider.value]=vi_category_select.value
+        }
         autosave_vi_localStorage(vi_file_fields, cds_targetinfo.data, title)
         cds_targetinfo.change.emit()
         """
@@ -1247,7 +1252,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
     vi_comment_input.js_on_change('value',vi_comment_callback)
 
     #- List of "standard" VI comment
-    vi_std_comment_select = Select(value=" ", title="Standard comment:", options=([''] + vi_std_comments))
+    vi_std_comment_select = Select(value=" ", title="Standard comment:", options=([' '] + vi_std_comments))
     vi_std_comment_code = """
         if (vi_std_comment_select.value != ' ') {
             if (vi_comment_input.value != '') {
