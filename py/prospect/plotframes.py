@@ -155,7 +155,7 @@ def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, templ
 def _viewer_urls(spectra, zoom=13, layer='ls-dr9'):
     """Return legacysurvey.org viewer URLs for all spectra.
     """
-    u = "https://www.legacysurvey.org/viewer/jpeg-cutout?ra={0:f}&dec={1:f}&zoom={2:d}&layer={3}"
+    u = "https://www.legacysurvey.org/viewer-dev/jpeg-cutout?ra={0:f}&dec={1:f}&zoom={2:d}&layer={3}"
     v = "https://www.legacysurvey.org/viewer/?ra={0:f}&dec={1:f}&zoom={2:d}&layer={3}&mark={0:f},{1:f}"
     try:
         ra = spectra.fibermap['RA_TARGET']
