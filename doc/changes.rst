@@ -6,10 +6,10 @@ prospect's Change Log
 ------------------
 
 * Optional countdown widget (PR `#58`_).
-* Updated requests to legacysurvey (PR `#59`_)
+* Updated requests to legacysurvey (PR `#65`_)
 
 .. _`#58`: https://github.com/desihub/prospect/pull/58
-.. _`#59`: https://github.com/desihub/prospect/pull/59
+.. _`#65`: https://github.com/desihub/prospect/pull/65
 
 
 1.0.1 (2021-01-07)
