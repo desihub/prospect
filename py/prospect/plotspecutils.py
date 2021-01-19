@@ -126,13 +126,13 @@ def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, templ
     return model_wave, mflux
 
 
-def _viewer_urls(spectra, zoom=13, layer='dr8'):
+def _viewer_urls(spectra, zoom=13, layer='ls-dr9'):
     """Return legacysurvey.org viewer URLs for all spectra.
 
     Note: `layer` does not apply to the JPEG cutout service.
     """
-    u = "http://legacysurvey.org/viewer/jpeg-cutout?ra={0:f}&dec={1:f}&zoom={2:d}"
-    v = "http://legacysurvey.org/viewer/?ra={0:f}&dec={1:f}&zoom={2:d}&layer={3}"
+    u = "https://www.legacysurvey.org/viewer/jpeg-cutout?ra={0:f}&dec={1:f}&zoom={2:d}"
+    v = "https://www.legacysurvey.org/viewer/?ra={0:f}&dec={1:f}&zoom={2:d}&layer={3}&mark={0:f},{1:f}"
     if hasattr(spectra, 'fibermap'):
         try:
             ra = spectra.fibermap['RA_TARGET']
@@ -1219,10 +1219,15 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     z_tovi_button.js_on_event('button_click', z_tovi_callback)
 
     #- Optional VI information on spectral type
-    vi_category_select = Select(value=" ", title="VI spectype:", options=([''] + vi_spectypes))
+    vi_category_select = Select(value=' ', title="VI spectype:", options=([' '] + vi_spectypes))
+    # The default value set to ' ' as setting value='' does not seem to work well with Select.
     vi_category_code = js_files["CSVtoArray.js"] + js_files["save_vi.js"]
     vi_category_code += """
-        cds_targetinfo.data['VI_spectype'][ifiberslider.value]=vi_category_select.value
+        if (vi_category_select.value == ' ') {
+            cds_targetinfo.data['VI_spectype'][ifiberslider.value]=''
+        } else {
+            cds_targetinfo.data['VI_spectype'][ifiberslider.value]=vi_category_select.value
+        }
         autosave_vi_localStorage(vi_file_fields, cds_targetinfo.data, title)
         cds_targetinfo.change.emit()
         """
@@ -1262,7 +1267,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     vi_comment_input.js_on_change('value',vi_comment_callback)
 
     #- List of "standard" VI comment
-    vi_std_comment_select = Select(value=" ", title="Standard comment:", options=([''] + vi_std_comments))
+    vi_std_comment_select = Select(value=" ", title="Standard comment:", options=([' '] + vi_std_comments))
     vi_std_comment_code = """
         if (vi_std_comment_select.value != ' ') {
             if (vi_comment_input.value != '') {
