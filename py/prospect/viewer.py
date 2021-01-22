@@ -1682,7 +1682,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     else : full_widget_set = plot_widget_set
 
     main_bokehsetup = bl.column(
-        bl.row(fig, bk.bl.column(imfig, zoomfig), bl.Spacer(width=20), sizing_mode='stretch_width'),
+        bl.row(fig, bl.column(imfig, zoomfig), bl.Spacer(width=20)),
         bl.row(
             bl.column(targ_display, width=600), # plot_width - 200
             bl.column(bl.Spacer(width=20)),
