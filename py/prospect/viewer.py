@@ -182,10 +182,10 @@ def make_cds_spectra(spectra, with_noise) :
 
     cds_spectra = list()
     is_desispec = False
-    if isinstance(spectra, Spectrum1D):
+    if isinstance(spectra, SpectrumList):
         s = spectra
         bands = spectra.bands
-    elif isinstance(spectra, SpectrumList):
+    elif isinstance(spectra, Spectrum1D):
         s = [spectra]
         bands = ['coadd']
     else : # Assume desispec Spectra obj
