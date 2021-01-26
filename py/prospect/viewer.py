@@ -10,11 +10,13 @@ Run a spectral viewer (plot spectra and show widgets).
 Spectra can be:
 
 - DESI Spectra or Frames,
-- specutils-compatible objects (see :mod:`prospect.specutils` for objects and IO routines).
+- `specutils`_-compatible objects (see :mod:`prospect.specutils` for objects and IO routines).
+
+.. _`specutils`: https://specutils.readthedocs.io
+
 """
 
 import os, sys
-import argparse
 from pkg_resources import resource_filename
 
 import numpy as np
@@ -464,6 +466,8 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
     - coadd arms
     - smooth+resample to reduce size of embedded CDS, according to resamp_factor
     - titles : optional list of titles for each thumb
+
+    TODO: Not tested on Spectrum1D objects.
     '''
 
     if thumb_height is None : thumb_height = thumb_width//2

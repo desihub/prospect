@@ -9,7 +9,6 @@ Plot spectra in the form of specutils-compatible objects.
 See :mod:`prospect.specutils` for objects and IO routines.
 """
 import os, sys
-import argparse
 
 import numpy as np
 import scipy.ndimage.filters
@@ -452,6 +451,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     archetypes_dir : :class:`str`, optional
         Directory path for archetypes if not :envvar:`RR_ARCHETYPE_DIR`.
     '''
+    warnings.warn("prospect.plotspecutils.plotspectra() is deprecated.  Use prospect.viewer.plotspectra() instead.", DeprecationWarning)
     # Set masked bins to NaN for compatibility with bokeh.
     if isinstance(spectra, Spectrum1D):
         # We will assume this is from an SDSS/BOSS/eBOSS spPlate file.
