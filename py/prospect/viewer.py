@@ -1,14 +1,16 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # -*- coding: utf-8 -*-
 """
-===================
+===============
 prospect.viewer
-===================
+===============
 
 Run a spectral viewer (plot spectra and show widgets).
-Spectra can be 
-    - DESI Spectra or Frames,
-    - specutils-compatible objects (see :mod:`prospect.specutils` for objects and IO routines).
+
+Spectra can be:
+
+- DESI Spectra or Frames,
+- specutils-compatible objects (see :mod:`prospect.specutils` for objects and IO routines).
 """
 
 import os, sys
@@ -177,10 +179,10 @@ def _viewer_urls(spectra, zoom=13, layer='ls-dr9'):
 
 def make_cds_spectra(spectra, with_noise) :
     """ Creates column data source for observed spectra """
-    
+
     cds_spectra = list()
     is_desispec = False
-    if isinstance(spectra, SpectrumList):
+    if isinstance(spectra, Spectrum1D):
         s = spectra
         bands = spectra.bands
     elif isinstance(spectra, SpectrumList):
@@ -190,7 +192,7 @@ def make_cds_spectra(spectra, with_noise) :
         is_desispec = True
         s = spectra
         bands = spectra.bands
-    
+
     for j, band in enumerate(bands):
         input_wave = s.wave[band] if is_desispec else s[j].spectral_axis.value
         input_nspec = spectra.num_spectra() if is_desispec else s[j].flux.shape[0]
@@ -210,17 +212,17 @@ def make_cds_spectra(spectra, with_noise) :
                 noise[w] = 1/np.sqrt(input_ivar[w])
                 cdsdata[key] = noise
         cdsdata['plotflux'] = cdsdata['origflux0']
-        if with_noise : 
+        if with_noise :
             cdsdata['plotnoise'] = cdsdata['orignoise0']
         cds_spectra.append( bk.ColumnDataSource(cdsdata, name=band) )
-    
+
     return cds_spectra
 
 
 def make_cds_median_spectra(spectra) :
     """ Small utility : create CDS containing the median value for each spectrum
     """
-    
+
     cdsdata = dict(median=[])
     for i in range(spectra.num_spectra()) :
         the_flux = np.concatenate( tuple([spectra.flux[band][i] for band in spectra.bands]) )
@@ -500,7 +502,7 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
 
 def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_dir=None, title=None,
                 with_imaging=True, with_noise=True, with_thumb_tab=True, with_vi_widgets=True,
-                vi_countdown=-1, with_thumb_only_page=False, 
+                vi_countdown=-1, with_thumb_only_page=False,
                 is_coadded=True, with_coaddcam=True, mask_type='DESI_TARGET',
                 model_from_zcat=True, model=None, num_approx_fits=None, with_full_2ndfit=True,
                 template_dir=None, archetype_fit=False, archetypes_dir=None):
@@ -533,7 +535,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
         Include widgets used to enter VI information. Set it to ``False`` if
         you do not intend to record VI files.
     vi_countdown : :class:`int`, optional
-        If ``>0``, add a countdown widget in the VI panel, with a value in minutes given 
+        If ``>0``, add a countdown widget in the VI panel, with a value in minutes given
         by `vi_countdown``.
     with_thumb_only_page : :class:`bool`, optional
         When creating a static HTML (`notebook` is ``False``), a light HTML
@@ -1546,8 +1548,8 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
         vi_countdown_toggle = Toggle(label='Start countdown ('+str(vi_countdown)+' min)', active=False, button_type="success")
         vi_countdown_toggle.js_on_change('active', vi_countdown_callback)
     else : vi_countdown_toggle = None
-    
-    
+
+
     #-----
     #- Main js code to update plot
     #
@@ -1854,4 +1856,3 @@ def add_lines(fig, z=0 , emission=True, fig_height=None, label_offsets=[100, 5])
 
     line_data = bk.ColumnDataSource(line_data)
     return line_data, lines, labels
-
