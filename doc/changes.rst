@@ -7,10 +7,11 @@ prospect's Change Log
 
 * Optional countdown widget (PR `#58`_).
 * Updated requests to legacysurvey (PR `#65`_)
+* Merge of DESI and specutils code in :mod:`prospect.viewer` (PR `#66`_).
 
 .. _`#58`: https://github.com/desihub/prospect/pull/58
 .. _`#65`: https://github.com/desihub/prospect/pull/65
-
+.. _`#66`: https://github.com/desihub/prospect/pull/66
 
 1.0.1 (2021-01-07)
 ------------------
