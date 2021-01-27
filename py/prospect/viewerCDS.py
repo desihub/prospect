@@ -10,10 +10,35 @@ Class containing all bokeh's ColumnDataSource objects needed in viewer.py
 """
 
 import numpy as np
+from pkg_resources import resource_filename
+
 import bokeh.plotting as bk
 from bokeh.models import ColumnDataSource
 from specutils import Spectrum1D, SpectrumList
 from .mycoaddcam import coaddcam_prospect
+
+
+def _airtovac(w):
+    """Convert air wavelengths to vacuum wavelengths. Don't convert less than 2000 Å.
+
+    Parameters
+    ----------
+    w : :class:`float`
+        Wavelength [Å] of the line in air.
+
+    Returns
+    -------
+    :class:`float`
+        Wavelength [Å] of the line in vacuum.
+    """
+    if w < 2000.0:
+        return w;
+    vac = w
+    for iter in range(2):
+        sigma2 = (1.0e4/vac)*(1.0e4/vac)
+        fact = 1.0 + 5.792105e-2/(238.0185 - sigma2) + 1.67917e-3/(57.362 - sigma2)
+        vac = w*fact
+    return vac
 
 
 class viewerCDS(object):
@@ -262,7 +287,42 @@ class viewerCDS(object):
         self.cds_targetinfo.add(["" for i in range(nspec)], name='VI_comment')
     
     
+    def load_spectral_lines(self, z=0):    
     
+        line_data = dict(
+            restwave = [],
+            plotwave = [],
+            name = [],
+            longname = [],
+            plotname = [],
+            emission = [],
+            major = [],
+            y = []
+        )
+        for line_category in ('emission', 'absorption'):
+            # encoding=utf-8 is needed to read greek letters
+            line_array = np.genfromtxt(resource_filename('prospect', "data/{0}_lines.txt".format(line_category)),
+                                       delimiter=",",
+                                       dtype=[("name", "|U20"),
+                                              ("longname", "|U20"),
+                                              ("wavelength", float),
+                                              ("vacuum", bool),
+                                              ("major", bool)],
+                                        encoding='utf-8')
+            vacuum_wavelengths = line_array['wavelength']
+            w, = np.where(line_array['vacuum']==False)
+            vacuum_wavelengths[w] = np.array([_airtovac(wave) for wave in line_array['wavelength'][w]])
+            line_data['restwave'].extend(vacuum_wavelengths)
+            line_data['plotwave'].extend(vacuum_wavelengths * (1+z))
+            line_data['name'].extend(line_array['name'])
+            line_data['longname'].extend(line_array['longname'])
+            line_data['plotname'].extend(line_array['name'])
+            emission_flag = True if line_category=='emission' else False
+            line_data['emission'].extend([emission_flag for row in line_array])
+            line_data['major'].extend(line_array['major'])
+
+        self.cds_spectral_lines = ColumnDataSource(line_data)
+
 
 # TO THINK: que faire du template_dicts ?
 # - la logique voudrait qu'on en fasse des CDS. Objection ??

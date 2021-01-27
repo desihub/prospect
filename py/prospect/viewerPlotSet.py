@@ -11,7 +11,7 @@ Class containing bokeh plots needed for the viewer
 
 import numpy as np
 import bokeh.plotting as bk
-from bokeh.models import ColumnDataSource, BoxAnnotation, Legend
+from bokeh.models import ColumnDataSource, BoxAnnotation, Legend, Span, Label
 import bokeh.layouts as bl
 import bokeh.events
 
@@ -202,6 +202,78 @@ class viewerPlotSet(object):
                          [[129,129],[129,129],[129-15,129-5],[129+5,129+15]], line_width=1, line_color='yellow')
 
     
-        ## TODO : Emission and absorption lines: mv add_lines to class ? to viewerCDS as there's some cds??
+    def add_spectral_lines(self, viewer_cds, figure='main', fig_height=None, label_offsets=[100, 5]):
+        """
+        label_offsets = [offset_absorption_lines, offset_emission_lines] : offsets in y-position
+                        for line labels wrt top (resp. bottom) of the figure
+        figure: 'main' or 'zoom' to flag if lines are added to self.fig or self.zoomfig
+        """
+
+        if figure=='main' : fig = self.fig
+        elif figure=='zoom' : fig = self.zoomfig
+        else :
+            raise ValueError("Unknown input figure type.")
+
+        if fig_height is None : fig_height = fig.plot_height
+
+        line_data = dict(viewer_cds.cds_spectral_lines.data)
+        y = list()
+        for i in range(len(line_data['restwave'])):
+            if i == 0:
+                if line_data['emission'][i]:
+                    y.append(fig_height - label_offsets[0])
+                else:
+                    y.append(label_offsets[1])
+            else:
+                if (line_data['restwave'][i] < line_data['restwave'][i-1]+label_offsets[0]) and \
+                   (line_data['emission'][i] == line_data['emission'][i-1]):
+                    if line_data['emission'][i]:
+                        y.append(y[-1] - 15)
+                    else:
+                        y.append(y[-1] + 15)
+                else:
+                    if line_data['emission'][i]:
+                        y.append(fig_height-label_offsets[0])
+                    else:
+                        y.append(label_offsets[1])
+
+        line_data['y'] = y
+
+        #- Add vertical spans to figure
+        if figure == 'main' :
+            self.speclines = list()
+            self.specline_labels = list()
+        else :
+            self.zoom_speclines = list()
+            self.zoom_specline_labels = list()
+        for w, y, name, emission in zip(
+                line_data['plotwave'],
+                line_data['y'],
+                line_data['plotname'],
+                line_data['emission']
+                ):
+            if emission:
+                color = 'blueviolet'
+            else:
+                color = 'green'
+
+            s = Span(location=w, dimension='height', line_color=color,
+                    line_alpha=1.0, line_dash='dashed', visible=False)
+
+            lb = Label(x=w, y=y, x_units='data', y_units='screen',
+                        text=name, text_color='gray', text_font_size="8pt",
+                        x_offset=2, y_offset=0, visible=False)
+                        
+            if figure == 'main' :
+                self.fig.add_layout(s)
+                self.speclines.append(s)
+                self.fig.add_layout(lb)
+                self.specline_labels.append(lb)
+            else :
+                self.zoomfig.add_layout(s)
+                self.zoom_speclines.append(s)
+                self.zoomfig.add_layout(lb)
+                self.zoom_specline_labels.append(lb)
+
 
         # TO THINK : name of class instation ? eg viewer_cds ? Au final c'est horrible viewer_cds.cds_spectra... 

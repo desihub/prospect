@@ -17,7 +17,7 @@ import numpy as np
 from bokeh.models import CustomJS, ColumnDataSource
 from bokeh.models.widgets import (
     Slider, Button, TextInput, RadioButtonGroup, TableColumn,
-    DataTable)
+    DataTable, CheckboxButtonGroup, CheckboxGroup)
 
 from .utilities import get_resources
 
@@ -163,9 +163,11 @@ class viewerWidgetSet(object):
                 dzslider = self.dzslider,
                 z_input = self.z_input,
                 waveframe_buttons = self.waveframe_buttons,
-                ## TODO Handle those (cf viewerPlotSet)
-                line_data=line_data, lines=lines, line_labels=line_labels,
-                zlines=zoom_lines, zline_labels=zoom_line_labels,
+                line_data = viewer_cds.cds_spectral_lines,
+                lines = viewer_plotset.speclines,
+                line_labels = viewer_plotset.specline_labels,
+                zlines = viewer_plotset.zoom_speclines,
+                zline_labels = viewer_plotset.zoom_specline_labels,
                 overlap_waves = viewer_plotset.overlap_waves,
                 overlap_bands = viewer_plotset.overlap_bands,
                 fig = viewer_plotset.fig
@@ -297,14 +299,14 @@ class viewerWidgetSet(object):
     def add_coaddcam(self, viewer_plotset):
     # TODO: make sure this is called only if cds_coaddcam_spec is not None 
     # ELSE coaddcam_buttons should be nada (currently = RadioButtonGroup(labels=[]) )
-    # TODO dont forget handling list_lines
         #-----
         #- Highlight individual-arm or camera-coadded spectra
         coaddcam_labels = ["Camera-coadded", "Single-arm"]
         self.coaddcam_buttons = RadioButtonGroup(labels=coaddcam_labels, active=0)
         self.coaddcam_callback = CustomJS(
             args = dict(coaddcam_buttons = self.coaddcam_buttons,
-                        list_lines=[data_lines, noise_lines, zoom_data_lines, zoom_noise_lines],
+                        list_lines=[viewer_plotset.data_lines, viewer_plotset.noise_lines,
+                                    viewer_plotset.zoom_data_lines, viewer_plotset.zoom_noise_lines],
                         alpha_discrete = viewer_plotset.alpha_discrete,
                         overlap_bands = viewer_plotset.overlap_bands,
                         alpha_overlapband = viewer_plotset.alpha_overlapband),
@@ -385,9 +387,58 @@ class viewerWidgetSet(object):
             self.zcat_disp_cds = None
 
 
+    def add_specline_toggles(self, viewer_cds, viewer_plotset):
+        #-----
+        #- Toggle lines
+        self.speclines_button_group = CheckboxButtonGroup(
+                labels=["Emission lines", "Absorption lines"], active=[])
+        self.majorline_checkbox = CheckboxGroup(
+                labels=['Show only major lines'], active=[])
+
+        self.speclines_callback = CustomJS(
+            args = dict(line_data = viewer_cds.cds_spectral_lines,
+                        lines = viewer_plotset.speclines,
+                        line_labels = viewer_plotset.specline_labels,
+                        zlines = viewer_plotset.zoom_speclines,
+                        zline_labels = viewer_plotset.zoom_specline_labels,
+                        lines_button_group = self.speclines_button_group,
+                        majorline_checkbox = self.majorline_checkbox),
+            code="""
+            var show_emission = false
+            var show_absorption = false
+            if (lines_button_group.active.indexOf(0) >= 0) {  // index 0=Emission in active list
+                show_emission = true
+            }
+            if (lines_button_group.active.indexOf(1) >= 0) {  // index 1=Absorption in active list
+                show_absorption = true
+            }
+
+            for(var i=0; i<lines.length; i++) {
+                if ( !(line_data.data['major'][i]) && (majorline_checkbox.active.indexOf(0)>=0) ) {
+                    lines[i].visible = false
+                    line_labels[i].visible = false
+                    zlines[i].visible = false
+                    zline_labels[i].visible = false
+                } else if (line_data.data['emission'][i]) {
+                    lines[i].visible = show_emission
+                    line_labels[i].visible = show_emission
+                    zlines[i].visible = show_emission
+                    zline_labels[i].visible = show_emission
+                } else {
+                    lines[i].visible = show_absorption
+                    line_labels[i].visible = show_absorption
+                    zlines[i].visible = show_absorption
+                    zline_labels[i].visible = show_absorption
+                }
+            }
+            """
+        )
+        self.lines_button_group.js_on_click(self.speclines_callback)
+        self.majorline_checkbox.js_on_click(self.speclines_callback)
 
 
-# ONGOING... toggle lines (needs to settle line data) + model_select
+
+# ONGOING... model_select
 
 #TOTHINK: imfig_callback: put it in WidgetSet or PlotSet? (plotset a priori)
 
