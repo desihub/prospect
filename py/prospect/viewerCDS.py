@@ -1,0 +1,274 @@
+# Licensed under a 3-clause BSD style license - see LICENSE.rst
+# -*- coding: utf-8 -*-
+"""
+===================
+prospect.viewerCDS
+===================
+
+Class containing all bokeh's ColumnDataSource objects needed in viewer.py
+
+"""
+
+import numpy as np
+import bokeh.plotting as bk
+from bokeh.models import ColumnDataSource
+from specutils import Spectrum1D, SpectrumList
+from .mycoaddcam import coaddcam_prospect
+
+
+class viewerCDS(object):
+    """
+    Encapsulates Bokeh ColumnDataSource objects to be passed to js callback functions.
+    """
+    
+    def __init__(self):
+        self.cds_spectra = None
+        self.cds_median_spectra = None
+        self.cds_coaddcam_spec = None
+        self.cds_model = None
+        self.cds_model_2ndfit = None # NOT implemented yet here
+        self.cds_othermodel = None # NOT implemented yet here
+        self.cds_targetinfo = None
+    
+    def load_spectra(self, spectra, with_noise=True):
+        """ Creates column data source for observed spectra """
+        # cp viewer.make_cds_spectra
+        
+        self.cds_spectra = list()
+        is_desispec = False
+        if isinstance(spectra, SpectrumList):
+            s = spectra
+            bands = spectra.bands
+        elif isinstance(spectra, Spectrum1D):
+            s = [spectra]
+            bands = ['coadd']
+        else : # Assume desispec Spectra obj
+            is_desispec = True
+            s = spectra
+            bands = spectra.bands
+        
+        for j, band in enumerate(bands):
+            input_wave = s.wave[band] if is_desispec else s[j].spectral_axis.value
+            input_nspec = spectra.num_spectra() if is_desispec else s[j].flux.shape[0]
+            cdsdata = dict(
+                origwave = input_wave.copy(),
+                plotwave = input_wave.copy(),
+                )
+            for i in range(input_nspec):
+                key = 'origflux'+str(i)
+                input_flux = spectra.flux[band][i] if is_desispec else s[j].flux.value[i, :]
+                cdsdata[key] = input_flux.copy()
+                if with_noise :
+                    key = 'orignoise'+str(i)
+                    input_ivar = spectra.ivar[band][i] if is_desispec else s[j].uncertainty.array[i, :]
+                    noise = np.zeros(len(input_ivar))
+                    w, = np.where( (input_ivar > 0) )
+                    noise[w] = 1/np.sqrt(input_ivar[w])
+                    cdsdata[key] = noise
+            cdsdata['plotflux'] = cdsdata['origflux0']
+            if with_noise : 
+                cdsdata['plotnoise'] = cdsdata['orignoise0']
+            self.cds_spectra.append( ColumnDataSource(cdsdata, name=band) )
+    
+    def compute_median_spectra(self, spectra):
+        """ Stores the median value for each spectrum into CDS.
+            Simple concatenation of all values from different bands.
+        """
+        # cp viewer.make_cds_median_spectra
+        
+        cdsdata = dict(median=[])
+        for i in range(spectra.num_spectra()):
+            flux_array = np.concatenate( tuple([spectra.flux[band][i] for band in spectra.bands]) )
+            w, = np.where( ~np.isnan(flux_array) )
+            if len(w)==0 :
+                cdsdata['median'].append(1)
+            else :
+                cdsdata['median'].append(np.median(flux_array[w]))
+
+        self.cds_median_spectra = ColumnDataSource(cdsdata)
+        
+    def init_coaddcam_spec(self, spectra, with_noise=True):
+        """ Creates column data source for camera-coadded observed spectra
+            Do NOT store all coadded spectra in CDS obj, to reduce size of html files
+            Except for the first spectrum, coaddition is done later in javascript
+        """
+        # cp viewer.make_cds_coaddcam_spec
+        
+        coadd_wave, coadd_flux, coadd_ivar = coaddcam_prospect(spectra)
+        cds_coaddcam_data = dict(
+            origwave = coadd_wave.copy(),
+            plotwave = coadd_wave.copy(),
+            plotflux = coadd_flux[0,:].copy(),
+            plotnoise = np.ones(len(coadd_wave))
+        )
+        if with_noise :
+            w, = np.where( (coadd_ivar[0,:] > 0) )
+            cds_coaddcam_data['plotnoise'][w] = 1/np.sqrt(coadd_ivar[0,:][w])
+        self.cds_coaddcam_spec = ColumnDataSource(cds_coaddcam_data)
+
+    def init_model(self, model):
+        """ Creates a CDS for model spectrum """
+        # cp viewer.make_cds_model
+        
+        mwave, mflux = model
+        cds_model_data = dict(
+            origwave = mwave.copy(),
+            plotwave = mwave.copy(),
+            plotflux = np.zeros(len(mwave)),
+        )
+        for i in range(len(mflux)):
+            key = 'origflux'+str(i)
+            cds_model_data[key] = mflux[i]
+
+        cds_model_data['plotflux'] = cds_model_data['origflux0']
+        self.cds_model = ColumnDataSource(cds_model_data)
+
+    def load_targetinfo(self, spectra, zcatalog, is_coadded, mask_type, username=" "):
+        """ Creates column data source for target-related metadata, 
+            from zcatalog, fibermap and VI files 
+        """
+        target_info = list()
+        if isinstance(spectra, Spectrum1D):
+            assert mask_type in ['PRIMTARGET', 'SECTARGET',
+                                 'BOSS_TARGET1', 'BOSS_TARGET2',
+                                 'ANCILLARY_TARGET1', 'ANCILLARY_TARGET2',
+                                 'EBOSS_TARGET0', 'EBOSS_TARGET1', 'EBOSS_TARGET2',]
+            nspec = spectra.flux.shape[0]
+            for i, row in enumerate(spectra.meta['plugmap']):
+                target_bit_names = mask_type + ' (DUMMY)'
+                target_info.append(target_bit_names)
+
+            self.cds_targetinfo = ColumnDataSource(
+                dict(target_info=target_info),
+                name='target_info')
+
+            bands = ['u', 'g', 'r', 'i', 'z']
+            for i, bandname in enumerate(bands):
+                # mag = np.zeros(len(spectra.meta['plugmap']))
+                mag = spectra.meta['plugmap']['MAG'][:, i]
+                # extinction = np.ones(len(flux))
+                # if ('MW_TRANSMISSION_'+bandname) in spectra.fibermap.keys() :
+                #     extinction = spectra.fibermap['MW_TRANSMISSION_'+bandname]
+                # w, = np.where( (flux>0) & (extinction>0) )
+                # mag[w] = -2.5*np.log10(flux[w]/extinction[w])+22.5
+                self.cds_targetinfo.add(mag, name='mag_'+bandname)
+
+            if zcatalog is not None :
+                self.cds_targetinfo.add(zcatalog['Z'], name='z')
+                self.cds_targetinfo.add(zcatalog['CLASS'].astype('U{0:d}'.format(zcatalog['CLASS'].dtype.itemsize)), name='spectype')
+                self.cds_targetinfo.add(zcatalog['SUBCLASS'].astype('U{0:d}'.format(zcatalog['SUBCLASS'].dtype.itemsize)), name='subtype')
+                self.cds_targetinfo.add(zcatalog['Z_ERR'], name='zerr')
+                self.cds_targetinfo.add(zcatalog['ZWARNING'], name='zwarn')
+                self.cds_targetinfo.add(zcatalog['RCHI2DIFF'], name='deltachi2')
+            else :
+                self.cds_targetinfo.add(np.zeros(nspec), name='z')
+                self.cds_targetinfo.add([" " for i in range(nspec)], name='spectype')
+                self.cds_targetinfo.add([" " for i in range(nspec)], name='subtype')
+                self.cds_targetinfo.add(np.zeros(nspec), name='zerr')
+                self.cds_targetinfo.add([0 for i in range(nspec)], name='zwarn')
+                self.cds_targetinfo.add(np.zeros(nspec), name='deltachi2')
+
+            # if not is_coadded and 'EXPID' in spectra.fibermap.keys() :
+             #    cds_targetinfo.add(spectra.fibermap['EXPID'], name='expid')
+            # else : # If coadd, fill VI accordingly
+            self.cds_targetinfo.add(['-1' for i in range(nspec)], name='expid')
+            self.cds_targetinfo.add([str(x.tolist()) for x in spectra.meta['plugmap']['OBJID']], name='targetid') # !! No int64 in js !!
+
+            #- Get desispec version
+            #- TODO : get redrock version (from zcatalog...)
+            desispec_specversion = "SDSS"
+            # for xx,yy in spectra.meta.items() :
+            #     if yy=="desispec" :
+            #         desispec_specversion = spectra.meta[xx.replace('NAM','VER')]
+            self.cds_targetinfo.add([desispec_specversion for i in range(nspec)], name='spec_version')
+            self.cds_targetinfo.add(np.zeros(nspec), name='redrock_version')
+
+        else:
+            assert mask_type in ['SV1_DESI_TARGET', 'SV1_BGS_TARGET', 'DESI_TARGET', 'CMX_TARGET']
+            for i, row in enumerate(spectra.fibermap):
+                if mask_type == 'SV1_DESI_TARGET' :
+                    target_bit_names = ' '.join(sv1_desi_mask.names(row['SV1_DESI_TARGET']))
+                elif mask_type == 'SV1_BGS_TARGET' :
+                    target_bit_names = ' '.join(sv1_bgs_mask.names(row['SV1_BGS_TARGET']))
+                elif mask_type == 'DESI_TARGET' :
+                    target_bit_names = ' '.join(desi_mask.names(row['DESI_TARGET']))
+                elif mask_type == 'CMX_TARGET' :
+                    target_bit_names = ' '.join(cmx_mask.names(row['CMX_TARGET']))
+                txt = target_bit_names
+                if not is_coadded :
+                    ## BYPASS DIV
+                    #           txt += '<BR />'
+                    if 'NIGHT' in spectra.fibermap.keys() : txt += "Night : {}".format(row['NIGHT'])
+                    if 'EXPID' in spectra.fibermap.keys() : txt += "Exposure : {}".format(row['EXPID'])
+                    if 'FIBER' in spectra.fibermap.keys() : txt += "Fiber : {}".format(row['FIBER'])
+                target_info.append(txt)
+
+            self.cds_targetinfo = ColumnDataSource(
+                dict(target_info=target_info),
+                name='target_info')
+
+            ## BYPASS DIV : Added photometry fields ; also add several bands
+            bands = ['G','R','Z', 'W1', 'W2']
+            for bandname in bands :
+                mag = np.zeros(spectra.num_spectra())
+                flux = spectra.fibermap['FLUX_'+bandname]
+                extinction = np.ones(len(flux))
+                if ('MW_TRANSMISSION_'+bandname) in spectra.fibermap.keys() :
+                    extinction = spectra.fibermap['MW_TRANSMISSION_'+bandname]
+                w, = np.where( (flux>0) & (extinction>0) )
+                mag[w] = -2.5*np.log10(flux[w]/extinction[w])+22.5
+                self.cds_targetinfo.add(mag, name='mag_'+bandname)
+
+            nspec = spectra.num_spectra()
+
+            if zcatalog is not None :
+                self.cds_targetinfo.add(zcatalog['Z'], name='z')
+                self.cds_targetinfo.add(zcatalog['SPECTYPE'].astype('U{0:d}'.format(zcatalog['SPECTYPE'].dtype.itemsize)), name='spectype')
+                self.cds_targetinfo.add(zcatalog['SUBTYPE'].astype('U{0:d}'.format(zcatalog['SUBTYPE'].dtype.itemsize)), name='subtype')
+                self.cds_targetinfo.add(zcatalog['ZERR'], name='zerr')
+                self.cds_targetinfo.add(zcatalog['ZWARN'], name='zwarn')
+                self.cds_targetinfo.add(zcatalog['DELTACHI2'], name='deltachi2')
+            else :
+                self.cds_targetinfo.add(np.zeros(nspec), name='z')
+                self.cds_targetinfo.add([" " for i in range(nspec)], name='spectype')
+                self.cds_targetinfo.add([" " for i in range(nspec)], name='subtype')
+                self.cds_targetinfo.add(np.zeros(nspec), name='zerr')
+                self.cds_targetinfo.add([0 for i in range(nspec)], name='zwarn')
+                self.cds_targetinfo.add(np.zeros(nspec), name='deltachi2')
+
+            for fm_key,cds_key in [ ('EXPID','expid'), ('NIGHT','night'), ('TILEID','tileid')] :
+                if fm_key in spectra.fibermap.keys() :
+                    self.cds_targetinfo.add(spectra.fibermap[fm_key], name=cds_key)
+                else :
+                    self.cds_targetinfo.add(['-1' for i in range(nspec)], name=cds_key)
+            self.cds_targetinfo.add([str(x) for x in spectra.fibermap['TARGETID']], name='targetid') # !! No int64 in js !!
+
+            #- Get desispec version
+            #- TODO : get redrock version (from zcatalog...)
+            desispec_specversion = "0"
+            for xx,yy in spectra.meta.items() :
+                if yy=="desispec" :
+                    desispec_specversion = spectra.meta[xx.replace('NAM','VER')]
+            self.cds_targetinfo.add([desispec_specversion for i in range(nspec)], name='spec_version')
+            self.cds_targetinfo.add(np.zeros(nspec)-1, name='redrock_version')
+            self.cds_targetinfo.add(np.zeros(nspec)-1, name='template_version')
+
+        # VI inputs
+        self.cds_targetinfo.add([username for i in range(nspec)], name='VI_scanner')
+        self.cds_targetinfo.add(["-1" for i in range(nspec)], name='VI_class_flag')
+        self.cds_targetinfo.add(["" for i in range(nspec)], name='VI_issue_flag')
+        self.cds_targetinfo.add(["" for i in range(nspec)], name='VI_z')
+        self.cds_targetinfo.add(["" for i in range(nspec)], name='VI_spectype')
+        self.cds_targetinfo.add(["" for i in range(nspec)], name='VI_comment')
+    
+    
+    
+
+# TO THINK: que faire du template_dicts ?
+# - la logique voudrait qu'on en fasse des CDS. Objection ??
+# - dans ce cas, ca change bcp le code (incl deux js callbacks au moins) => pour plus tard ?
+# - dans ce cas, que faire dans un 1er temps ? Le package (var template_dict, fcts rr) devrait 
+#   rester dans le main, a pas sa place dans viewerCDS (les fcts rr en particulier).
+# TO THINK: should rename to rm "cds" eg cds_spectra => viewerCDS.spectra
+
+
