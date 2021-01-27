@@ -15,6 +15,7 @@ To Do
 
 import os, sys
 import argparse
+import warnings
 from pkg_resources import resource_filename
 
 import numpy as np
@@ -154,7 +155,7 @@ def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, templ
 
 def _viewer_urls(spectra, zoom=13, layer='ls-dr9'):
     """Return legacysurvey.org viewer URLs for all spectra.
-    
+
     Note: `layer` does not apply to the JPEG cutout service.
     """
     u = "https://www.legacysurvey.org/viewer/jpeg-cutout?ra={0:f}&dec={1:f}&zoom={2:d}"
@@ -458,7 +459,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         num_approx_fits=(nb of best fits available in redrock_cat)
     vi_countdown: if >0, add a countdown widget in the VI panel, with vi_countdown = countdown value in minutes.
     '''
-
+    warnings.warn("prospect.plotframes.plotspectra() is deprecated.  Use prospect.viewer.plotspectra() instead.", DeprecationWarning)
     #- If inputs are frames, convert to a spectra object
     if isinstance(spectra, list) and isinstance(spectra[0], desispec.frame.Frame):
         spectra = frames2spectra(spectra, nspec=nspec, startspec=startspec)
@@ -1393,7 +1394,7 @@ def plotspectra(spectra, nspec=None, startspec=None, zcatalog=None, redrock_cat=
         vi_countdown_toggle = Toggle(label='Start countdown ('+str(vi_countdown)+' min)', active=False, button_type="success")
         vi_countdown_toggle.js_on_change('active', vi_countdown_callback)
     else : vi_countdown_toggle = None
-    
+
     #-----
     #- Main js code to update plot
     #
