@@ -1,9 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # -*- coding: utf-8 -*-
 """
-=======================
-prospect.viewerVIWidgetSet
-=======================
+========================
+prospect.viewerVIWidgets
+========================
 
 Class containing bokeh widgets related to visual inspection
 
@@ -17,12 +17,12 @@ from bokeh.models.widgets import (
 from .utilities import get_resources, vi_flags, vi_file_fields, vi_spectypes, vi_std_comments
 
 
-class viewerVIWidgetSet(object):
+class viewerVIWidgets(object):
     """ 
     Encapsulates Bokeh widgets, and related callbacks, used for VI
     """
     
-    def __init__(self, viewer_plotset, title):
+    def __init__(self, title):
         self.vi_class_labels = [ x["label"] for x in vi_flags if x["type"]=="class" ]
         self.vi_issue_labels = [ x["label"] for x in vi_flags if x["type"]=="issue" ]
         self.vi_issue_slabels = [ x["shortlabel"] for x in vi_flags if x["type"]=="issue" ]

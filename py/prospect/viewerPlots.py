@@ -1,9 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # -*- coding: utf-8 -*-
 """
-=======================
-prospect.viewerPlotSet
-=======================
+====================
+prospect.viewerPlots
+====================
 
 Class containing bokeh plots needed for the viewer
 
@@ -17,7 +17,7 @@ import bokeh.events
 
 # TODO import _viewer_urls
 
-class viewerPlotSet(object):
+class viewerPlots(object):
     """ 
     Encapsulates Bokeh plot-like objects that are part of prospect's GUI. 
     """

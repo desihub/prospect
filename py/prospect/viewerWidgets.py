@@ -1,9 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # -*- coding: utf-8 -*-
 """
-=======================
-prospect.viewerWidgetSet
-=======================
+======================
+prospect.viewerWidgets
+======================
 
 Class containing bokeh widgets needed for the viewer (except for VI widgets)
 
@@ -21,17 +21,17 @@ from bokeh.models.widgets import (
 
 from .utilities import get_resources
 
-class viewerWidgetSet(object):
+class viewerWidgets(object):
     """ 
     Encapsulates Bokeh widgets, and related callbacks, that are part of prospect's GUI.
         Except for VI widgets
     """
     
-    def __init__(self, viewer_plotset):
+    def __init__(self, viewer_plots):
         self.js_files = get_resources('js')
         self.navigation_button_width = 30
         self.z_button_width = 30
-        self.plot_widget_width = (viewer_plotset.plot_width+(viewer_plotset.plot_height//2))//2 - 40 # used for widgets scaling
+        self.plot_widget_width = (viewer_plots.plot_width+(viewer_plots.plot_height//2))//2 - 40 # used for widgets scaling
     
         #-----
         #- Ifiberslider and smoothing widgets
@@ -64,18 +64,18 @@ class viewerWidgetSet(object):
         self.prev_button.js_on_event('button_click', self.prev_callback)
         self.next_button.js_on_event('button_click', self.next_callback)
 
-    def add_resetrange(self, viewer_cds, viewer_plotset):
+    def add_resetrange(self, viewer_cds, viewer_plots):
         #-----
         #- Axis reset button (superseeds the default bokeh "reset"
         self.reset_plotrange_button = Button(label="Reset X-Y range", button_type="default")
         reset_plotrange_code = self.js_files["adapt_plotrange.js"] + self.js_files["reset_plotrange.js"]
-        self.reset_plotrange_callback = CustomJS(args = dict(fig=viewer_plotset.fig, xmin=viewer_plotset.xmin, xmax=viewer_plotset.xmax, spectra=viewer_cds.cds_spectra),
+        self.reset_plotrange_callback = CustomJS(args = dict(fig=viewer_plots.fig, xmin=viewer_plots.xmin, xmax=viewer_plots.xmax, spectra=viewer_cds.cds_spectra),
                                             code = reset_plotrange_code)
         self.reset_plotrange_button.js_on_event('button_click', self.reset_plotrange_callback)
 
 
-    def add_redshift_widgets(self, z, viewer_cds, viewer_plotset):
-        ## TODO handle "z" (same issue as viewerPlotSet TBD)
+    def add_redshift_widgets(self, z, viewer_cds, viewer_plots):
+        ## TODO handle "z" (same issue as viewerplots TBD)
 
         #-----
         #- Redshift / wavelength scale widgets
@@ -164,13 +164,13 @@ class viewerWidgetSet(object):
                 z_input = self.z_input,
                 waveframe_buttons = self.waveframe_buttons,
                 line_data = viewer_cds.cds_spectral_lines,
-                lines = viewer_plotset.speclines,
-                line_labels = viewer_plotset.specline_labels,
-                zlines = viewer_plotset.zoom_speclines,
-                zline_labels = viewer_plotset.zoom_specline_labels,
-                overlap_waves = viewer_plotset.overlap_waves,
-                overlap_bands = viewer_plotset.overlap_bands,
-                fig = viewer_plotset.fig
+                lines = viewer_plots.speclines,
+                line_labels = viewer_plots.specline_labels,
+                zlines = viewer_plots.zoom_speclines,
+                zline_labels = viewer_plots.zoom_specline_labels,
+                overlap_waves = viewer_plots.overlap_waves,
+                overlap_bands = viewer_plots.overlap_bands,
+                fig = viewer_plots.fig
                 ),
             code="""
                 var z = parseFloat(z_input.value)
@@ -243,7 +243,7 @@ class viewerWidgetSet(object):
             args = dict(
                 z_input=self.z_input,
                 waveframe_buttons=self.waveframe_buttons,
-                fig=viewer_plotset.fig,
+                fig=viewer_plots.fig,
             ),
             code="""
             var z =  parseFloat(z_input.value)
@@ -260,16 +260,16 @@ class viewerWidgetSet(object):
         self.waveframe_buttons.js_on_click(self.plotrange_callback) # TODO: for record: is this related to waveframe bug? : 2 callbakcs for same click...
 
 
-    def add_oii_widgets(self, viewer_plotset):
+    def add_oii_widgets(self, viewer_plots):
         #------
         #- Zoom on the OII doublet TODO mv js code to other file
         # TODO: is there another trick than using a cds to pass the "oii_saveinfo" ?
         # TODO: optimize smoothing for autozoom (current value: 0)
         cds_oii_saveinfo = ColumnDataSource(
-            {'xmin':[viewer_plotset.fig.x_range.start], 'xmax':[viewer_plotset.fig.x_range.end], 'nsmooth':[self.smootherslider.value]})
+            {'xmin':[viewer_plots.fig.x_range.start], 'xmax':[viewer_plots.fig.x_range.end], 'nsmooth':[self.smootherslider.value]})
         self.oii_zoom_button = Button(label="OII-zoom", button_type="default")
         self.oii_zoom_callback = CustomJS(
-            args = dict(z_input=self.z_input, fig=viewer_plotset.fig, smootherslider=self.smootherslider,
+            args = dict(z_input=self.z_input, fig=viewer_plots.fig, smootherslider=self.smootherslider,
                        cds_oii_saveinfo=cds_oii_saveinfo),
             code = """
             // Save previous setting (for the "Undo" button)
@@ -287,7 +287,7 @@ class viewerWidgetSet(object):
 
         self.oii_undo_button = Button(label="Undo", button_type="default")
         self.oii_undo_callback = CustomJS(
-            args = dict(fig=viewer_plotset.fig, smootherslider=self.smootherslider, cds_oii_saveinfo=cds_oii_saveinfo),
+            args = dict(fig=viewer_plots.fig, smootherslider=self.smootherslider, cds_oii_saveinfo=cds_oii_saveinfo),
             code = """
             fig.x_range.start = cds_oii_saveinfo.data['xmin'][0]
             fig.x_range.end = cds_oii_saveinfo.data['xmax'][0]
@@ -296,7 +296,7 @@ class viewerWidgetSet(object):
         self.oii_undo_button.js_on_event('button_click', self.oii_undo_callback)
 
 
-    def add_coaddcam(self, viewer_plotset):
+    def add_coaddcam(self, viewer_plots):
     # TODO: make sure this is called only if cds_coaddcam_spec is not None 
     # ELSE coaddcam_buttons should be nada (currently = RadioButtonGroup(labels=[]) )
         #-----
@@ -305,11 +305,11 @@ class viewerWidgetSet(object):
         self.coaddcam_buttons = RadioButtonGroup(labels=coaddcam_labels, active=0)
         self.coaddcam_callback = CustomJS(
             args = dict(coaddcam_buttons = self.coaddcam_buttons,
-                        list_lines=[viewer_plotset.data_lines, viewer_plotset.noise_lines,
-                                    viewer_plotset.zoom_data_lines, viewer_plotset.zoom_noise_lines],
-                        alpha_discrete = viewer_plotset.alpha_discrete,
-                        overlap_bands = viewer_plotset.overlap_bands,
-                        alpha_overlapband = viewer_plotset.alpha_overlapband),
+                        list_lines=[viewer_plots.data_lines, viewer_plots.noise_lines,
+                                    viewer_plots.zoom_data_lines, viewer_plots.zoom_noise_lines],
+                        alpha_discrete = viewer_plots.alpha_discrete,
+                        overlap_bands = viewer_plots.overlap_bands,
+                        alpha_overlapband = viewer_plots.alpha_overlapband),
             code="""
             var n_lines = list_lines[0].length
             for (var i=0; i<n_lines; i++) {
@@ -387,7 +387,7 @@ class viewerWidgetSet(object):
             self.zcat_disp_cds = None
 
 
-    def add_specline_toggles(self, viewer_cds, viewer_plotset):
+    def add_specline_toggles(self, viewer_cds, viewer_plots):
         #-----
         #- Toggle lines
         self.speclines_button_group = CheckboxButtonGroup(
@@ -397,10 +397,10 @@ class viewerWidgetSet(object):
 
         self.speclines_callback = CustomJS(
             args = dict(line_data = viewer_cds.cds_spectral_lines,
-                        lines = viewer_plotset.speclines,
-                        line_labels = viewer_plotset.specline_labels,
-                        zlines = viewer_plotset.zoom_speclines,
-                        zline_labels = viewer_plotset.zoom_specline_labels,
+                        lines = viewer_plots.speclines,
+                        line_labels = viewer_plots.specline_labels,
+                        zlines = viewer_plots.zoom_speclines,
+                        zline_labels = viewer_plots.zoom_specline_labels,
                         lines_button_group = self.speclines_button_group,
                         majorline_checkbox = self.majorline_checkbox),
             code="""
@@ -440,6 +440,6 @@ class viewerWidgetSet(object):
 
 # ONGOING... model_select
 
-#TOTHINK: imfig_callback: put it in WidgetSet or PlotSet? (plotset a priori)
+#TOTHINK: imfig_callback: put it in Widgets or plots? (plots a priori)
 
     
