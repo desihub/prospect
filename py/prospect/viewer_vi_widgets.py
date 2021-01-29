@@ -1,9 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # -*- coding: utf-8 -*-
 """
-========================
-prospect.viewerVIWidgets
-========================
+==========================
+prospect.viewer_vi_widgets
+==========================
 
 Class containing bokeh widgets related to visual inspection
 
@@ -17,7 +17,7 @@ from bokeh.models.widgets import (
 from .utilities import get_resources, vi_flags, vi_file_fields, vi_spectypes, vi_std_comments
 
 
-class viewerVIWidgets(object):
+class ViewerVIWidgets(object):
     """ 
     Encapsulates Bokeh widgets, and related callbacks, used for VI
     """
@@ -43,7 +43,7 @@ class viewerVIWidgets(object):
         self.vi_filename_input = TextInput(value=default_vi_filename, title="VI file name:")
 
 
-    def add_vi_issues(self, viewer_cds, viewer_widgets):
+    def add_vi_issues(self, viewer_cds, widgets):
         #- Optional VI flags (issues)
         self.vi_issue_input = CheckboxGroup(labels=self.vi_issue_labels, active=[])
         vi_issue_code = self.js_files["CSVtoArray.js"] + self.js_files["save_vi.js"]
@@ -62,7 +62,7 @@ class viewerVIWidgets(object):
             """
         self.vi_issue_callback = CustomJS(
             args=dict(cds_targetinfo = viewer_cds.cds_targetinfo,
-                      ifiberslider = viewer_widgets.ifiberslider,
+                      ifiberslider = widgets.ifiberslider,
                       vi_issue_input = self.vi_issue_input,
                       vi_issue_labels = self.vi_issue_labels,
                       vi_issue_slabels = self.vi_issue_slabels,
@@ -71,8 +71,8 @@ class viewerVIWidgets(object):
         self.vi_issue_input.js_on_click(self.vi_issue_callback)
 
 
-    def add_vi_z(self, viewer_cds, viewer_widgets):
-    ## TODO: z2vi behaviour if with_vi_widget=False ..?
+    def add_vi_z(self, viewer_cds, widgets):
+    ## TODO: z_tovi behaviour if with_vi_widget=False ..?
         #- Optional VI information on redshift
         self.vi_z_input = TextInput(value='', title="VI redshift:")
         vi_z_code = self.js_files["CSVtoArray.js"] + self.js_files["save_vi.js"]
@@ -83,7 +83,7 @@ class viewerVIWidgets(object):
             """
         self.vi_z_callback = CustomJS(
             args=dict(cds_targetinfo = viewer_cds.cds_targetinfo,
-                      ifiberslider = viewer_widgets.ifiberslider,
+                      ifiberslider = widgets.ifiberslider,
                       vi_z_input = self.vi_z_input,
                       title = self.title, vi_file_fields=vi_file_fields),
                       code = vi_z_code )
@@ -92,13 +92,13 @@ class viewerVIWidgets(object):
         # Copy z value from redshift slider to VI
         self.z_tovi_button = Button(label='Copy z to VI')
         self.z_tovi_callback = CustomJS(
-            args=dict(z_input=viewer_widgets.z_input, vi_z_input=self.vi_z_input),
+            args=dict(z_input=widgets.z_input, vi_z_input=self.vi_z_input),
             code="""
                 vi_z_input.value = z_input.value
             """)
         self.z_tovi_button.js_on_event('button_click', self.z_tovi_callback)
 
-    def add_vi_spectype(self, viewer_cds, viewer_widgets):
+    def add_vi_spectype(self, viewer_cds, widgets):
         #- Optional VI information on spectral type
         self.vi_category_select = Select(value=' ', title="VI spectype:", options=([' '] + vi_spectypes))
         # The default value set to ' ' as setting value='' does not seem to work well with Select.
@@ -114,14 +114,14 @@ class viewerVIWidgets(object):
             """
         self.vi_category_callback = CustomJS(
             args=dict(cds_targetinfo=viewer_cds.cds_targetinfo, 
-                      ifiberslider = viewer_widgets.ifiberslider,
+                      ifiberslider = widgets.ifiberslider,
                       vi_category_select=self.vi_category_select,
                       title=self.title, vi_file_fields=vi_file_fields),
             code=vi_category_code )
         self.vi_category_select.js_on_change('value', self.vi_category_callback)
 
 
-    def add_vi_comment(self, viewer_cds, viewer_widgets):
+    def add_vi_comment(self, viewer_cds, widgets):
         #- Optional VI comment
         self.vi_comment_input = TextInput(value='', title="VI comment (see guidelines):")
         vi_comment_code = self.js_files["CSVtoArray.js"] + self.js_files["save_vi.js"]
@@ -146,7 +146,7 @@ class viewerVIWidgets(object):
             """
         self.vi_comment_callback = CustomJS(
             args=dict(cds_targetinfo = viewer_cds.cds_targetinfo,
-                      ifiberslider = viewer_widgets.ifiberslider, 
+                      ifiberslider = widgets.ifiberslider, 
                       vi_comment_input = self.vi_comment_input,
                       title=self.title, vi_file_fields=vi_file_fields),
             code=vi_comment_code )
@@ -170,7 +170,7 @@ class viewerVIWidgets(object):
         self.vi_std_comment_select.js_on_change('value', self.vi_std_comment_callback)
 
 
-    def add_vi_classification(self, viewer_cds, viewer_widgets):
+    def add_vi_classification(self, viewer_cds, widgets):
         #- Main VI classification
         self.vi_class_input = RadioButtonGroup(labels=self.vi_class_labels)
         vi_class_code = self.js_files["CSVtoArray.js"] + self.js_files["save_vi.js"]
@@ -192,7 +192,7 @@ class viewerVIWidgets(object):
             args = dict(cds_targetinfo = viewer_cds.cds_targetinfo,
                         vi_class_input = self.vi_class_input,
                         vi_class_labels = vi_class_labels,
-                        ifiberslider = viewer_widgets.ifiberslider,
+                        ifiberslider = widgets.ifiberslider,
                         title=self.title, vi_file_fields = vi_file_fields,
                         targetinfo = viewer_cds.cds_targetinfo,
                         model = viewer_cds.cds_model, vi_z_input=self.vi_z_input,

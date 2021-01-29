@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 ===================
-prospect.viewerCDS
+prospect.viewer_cds
 ===================
 
 Class containing all bokeh's ColumnDataSource objects needed in viewer.py
@@ -41,7 +41,7 @@ def _airtovac(w):
     return vac
 
 
-class viewerCDS(object):
+class ViewerCDS(object):
     """
     Encapsulates Bokeh ColumnDataSource objects to be passed to js callback functions.
     """
@@ -57,7 +57,6 @@ class viewerCDS(object):
     
     def load_spectra(self, spectra, with_noise=True):
         """ Creates column data source for observed spectra """
-        # cp viewer.make_cds_spectra
         
         self.cds_spectra = list()
         is_desispec = False
@@ -99,8 +98,7 @@ class viewerCDS(object):
         """ Stores the median value for each spectrum into CDS.
             Simple concatenation of all values from different bands.
         """
-        # cp viewer.make_cds_median_spectra
-        
+                
         cdsdata = dict(median=[])
         for i in range(spectra.num_spectra()):
             flux_array = np.concatenate( tuple([spectra.flux[band][i] for band in spectra.bands]) )
@@ -117,7 +115,6 @@ class viewerCDS(object):
             Do NOT store all coadded spectra in CDS obj, to reduce size of html files
             Except for the first spectrum, coaddition is done later in javascript
         """
-        # cp viewer.make_cds_coaddcam_spec
         
         coadd_wave, coadd_flux, coadd_ivar = coaddcam_prospect(spectra)
         cds_coaddcam_data = dict(
@@ -133,7 +130,6 @@ class viewerCDS(object):
 
     def init_model(self, model):
         """ Creates a CDS for model spectrum """
-        # cp viewer.make_cds_model
         
         mwave, mflux = model
         cds_model_data = dict(
@@ -324,11 +320,12 @@ class viewerCDS(object):
         self.cds_spectral_lines = ColumnDataSource(line_data)
 
 
+
+
 # TO THINK: que faire du template_dicts ?
 # - la logique voudrait qu'on en fasse des CDS. Objection ??
 # - dans ce cas, ca change bcp le code (incl deux js callbacks au moins) => pour plus tard ?
 # - dans ce cas, que faire dans un 1er temps ? Le package (var template_dict, fcts rr) devrait 
 #   rester dans le main, a pas sa place dans viewerCDS (les fcts rr en particulier).
-# TO THINK: should rename to rm "cds" eg cds_spectra => viewerCDS.spectra
 
 

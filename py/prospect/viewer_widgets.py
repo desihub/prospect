@@ -1,9 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # -*- coding: utf-8 -*-
 """
-======================
-prospect.viewerWidgets
-======================
+=======================
+prospect.viewer_widgets
+=======================
 
 Class containing bokeh widgets needed for the viewer (except for VI widgets)
 
@@ -17,21 +17,21 @@ import numpy as np
 from bokeh.models import CustomJS, ColumnDataSource
 from bokeh.models.widgets import (
     Slider, Button, TextInput, RadioButtonGroup, TableColumn,
-    DataTable, CheckboxButtonGroup, CheckboxGroup)
+    DataTable, CheckboxButtonGroup, CheckboxGroup, Select)
 
 from .utilities import get_resources
 
-class viewerWidgets(object):
+class ViewerWidgets(object):
     """ 
     Encapsulates Bokeh widgets, and related callbacks, that are part of prospect's GUI.
         Except for VI widgets
     """
     
-    def __init__(self, viewer_plots):
+    def __init__(self, plots):
         self.js_files = get_resources('js')
         self.navigation_button_width = 30
         self.z_button_width = 30
-        self.plot_widget_width = (viewer_plots.plot_width+(viewer_plots.plot_height//2))//2 - 40 # used for widgets scaling
+        self.plot_widget_width = (plots.plot_width+(plots.plot_height//2))//2 - 40 # used for widgets scaling
     
         #-----
         #- Ifiberslider and smoothing widgets
@@ -40,6 +40,8 @@ class viewerWidgets(object):
         slider_end = nspec-1 if nspec > 1 else 0.5 # Slider cannot have start=end
         self.ifiberslider = Slider(start=0, end=slider_end, value=0, step=1, title='Spectrum (of '+str(nspec)+')')
         self.smootherslider = Slider(start=0, end=26, value=0, step=1.0, title='Gaussian Sigma Smooth')
+        self.coaddcam_buttons = None
+        self.model_select = None
 
 
     def add_navigation(self):
@@ -64,17 +66,17 @@ class viewerWidgets(object):
         self.prev_button.js_on_event('button_click', self.prev_callback)
         self.next_button.js_on_event('button_click', self.next_callback)
 
-    def add_resetrange(self, viewer_cds, viewer_plots):
+    def add_resetrange(self, viewer_cds, plots):
         #-----
         #- Axis reset button (superseeds the default bokeh "reset"
         self.reset_plotrange_button = Button(label="Reset X-Y range", button_type="default")
         reset_plotrange_code = self.js_files["adapt_plotrange.js"] + self.js_files["reset_plotrange.js"]
-        self.reset_plotrange_callback = CustomJS(args = dict(fig=viewer_plots.fig, xmin=viewer_plots.xmin, xmax=viewer_plots.xmax, spectra=viewer_cds.cds_spectra),
+        self.reset_plotrange_callback = CustomJS(args = dict(fig=plots.fig, xmin=plots.xmin, xmax=plots.xmax, spectra=viewer_cds.cds_spectra),
                                             code = reset_plotrange_code)
         self.reset_plotrange_button.js_on_event('button_click', self.reset_plotrange_callback)
 
 
-    def add_redshift_widgets(self, z, viewer_cds, viewer_plots):
+    def add_redshift_widgets(self, z, viewer_cds, plots):
         ## TODO handle "z" (same issue as viewerplots TBD)
 
         #-----
@@ -164,13 +166,13 @@ class viewerWidgets(object):
                 z_input = self.z_input,
                 waveframe_buttons = self.waveframe_buttons,
                 line_data = viewer_cds.cds_spectral_lines,
-                lines = viewer_plots.speclines,
-                line_labels = viewer_plots.specline_labels,
-                zlines = viewer_plots.zoom_speclines,
-                zline_labels = viewer_plots.zoom_specline_labels,
-                overlap_waves = viewer_plots.overlap_waves,
-                overlap_bands = viewer_plots.overlap_bands,
-                fig = viewer_plots.fig
+                lines = plots.speclines,
+                line_labels = plots.specline_labels,
+                zlines = plots.zoom_speclines,
+                zline_labels = plots.zoom_specline_labels,
+                overlap_waves = plots.overlap_waves,
+                overlap_bands = plots.overlap_bands,
+                fig = plots.fig
                 ),
             code="""
                 var z = parseFloat(z_input.value)
@@ -243,7 +245,7 @@ class viewerWidgets(object):
             args = dict(
                 z_input=self.z_input,
                 waveframe_buttons=self.waveframe_buttons,
-                fig=viewer_plots.fig,
+                fig=plots.fig,
             ),
             code="""
             var z =  parseFloat(z_input.value)
@@ -260,16 +262,16 @@ class viewerWidgets(object):
         self.waveframe_buttons.js_on_click(self.plotrange_callback) # TODO: for record: is this related to waveframe bug? : 2 callbakcs for same click...
 
 
-    def add_oii_widgets(self, viewer_plots):
+    def add_oii_widgets(self, plots):
         #------
         #- Zoom on the OII doublet TODO mv js code to other file
         # TODO: is there another trick than using a cds to pass the "oii_saveinfo" ?
         # TODO: optimize smoothing for autozoom (current value: 0)
         cds_oii_saveinfo = ColumnDataSource(
-            {'xmin':[viewer_plots.fig.x_range.start], 'xmax':[viewer_plots.fig.x_range.end], 'nsmooth':[self.smootherslider.value]})
+            {'xmin':[plots.fig.x_range.start], 'xmax':[plots.fig.x_range.end], 'nsmooth':[self.smootherslider.value]})
         self.oii_zoom_button = Button(label="OII-zoom", button_type="default")
         self.oii_zoom_callback = CustomJS(
-            args = dict(z_input=self.z_input, fig=viewer_plots.fig, smootherslider=self.smootherslider,
+            args = dict(z_input=self.z_input, fig=plots.fig, smootherslider=self.smootherslider,
                        cds_oii_saveinfo=cds_oii_saveinfo),
             code = """
             // Save previous setting (for the "Undo" button)
@@ -287,7 +289,7 @@ class viewerWidgets(object):
 
         self.oii_undo_button = Button(label="Undo", button_type="default")
         self.oii_undo_callback = CustomJS(
-            args = dict(fig=viewer_plots.fig, smootherslider=self.smootherslider, cds_oii_saveinfo=cds_oii_saveinfo),
+            args = dict(fig=plots.fig, smootherslider=self.smootherslider, cds_oii_saveinfo=cds_oii_saveinfo),
             code = """
             fig.x_range.start = cds_oii_saveinfo.data['xmin'][0]
             fig.x_range.end = cds_oii_saveinfo.data['xmax'][0]
@@ -296,20 +298,18 @@ class viewerWidgets(object):
         self.oii_undo_button.js_on_event('button_click', self.oii_undo_callback)
 
 
-    def add_coaddcam(self, viewer_plots):
-    # TODO: make sure this is called only if cds_coaddcam_spec is not None 
-    # ELSE coaddcam_buttons should be nada (currently = RadioButtonGroup(labels=[]) )
+    def add_coaddcam(self, plots):
         #-----
         #- Highlight individual-arm or camera-coadded spectra
         coaddcam_labels = ["Camera-coadded", "Single-arm"]
         self.coaddcam_buttons = RadioButtonGroup(labels=coaddcam_labels, active=0)
         self.coaddcam_callback = CustomJS(
             args = dict(coaddcam_buttons = self.coaddcam_buttons,
-                        list_lines=[viewer_plots.data_lines, viewer_plots.noise_lines,
-                                    viewer_plots.zoom_data_lines, viewer_plots.zoom_noise_lines],
-                        alpha_discrete = viewer_plots.alpha_discrete,
-                        overlap_bands = viewer_plots.overlap_bands,
-                        alpha_overlapband = viewer_plots.alpha_overlapband),
+                        list_lines=[plots.data_lines, plots.noise_lines,
+                                    plots.zoom_data_lines, plots.zoom_noise_lines],
+                        alpha_discrete = plots.alpha_discrete,
+                        overlap_bands = plots.overlap_bands,
+                        alpha_overlapband = plots.alpha_overlapband),
             code="""
             var n_lines = list_lines[0].length
             for (var i=0; i<n_lines; i++) {
@@ -331,7 +331,6 @@ class viewerWidgets(object):
     
     
     def add_targetinfos(self, viewer_cds, sdss, show_zcat=True, template_dicts=None):
-        # TODO/NB: wrt original code, "if zcatalog is not None" => "if show_zcat"
         #-----
         # Display object-related informations
         ## BYPASS DIV to be able to copy targetid...
@@ -387,7 +386,7 @@ class viewerWidgets(object):
             self.zcat_disp_cds = None
 
 
-    def add_specline_toggles(self, viewer_cds, viewer_plots):
+    def add_specline_toggles(self, viewer_cds, plots):
         #-----
         #- Toggle lines
         self.speclines_button_group = CheckboxButtonGroup(
@@ -397,10 +396,10 @@ class viewerWidgets(object):
 
         self.speclines_callback = CustomJS(
             args = dict(line_data = viewer_cds.cds_spectral_lines,
-                        lines = viewer_plots.speclines,
-                        line_labels = viewer_plots.specline_labels,
-                        zlines = viewer_plots.zoom_speclines,
-                        zline_labels = viewer_plots.zoom_specline_labels,
+                        lines = plots.speclines,
+                        line_labels = plots.specline_labels,
+                        zlines = plots.zoom_speclines,
+                        zline_labels = plots.zoom_specline_labels,
                         lines_button_group = self.speclines_button_group,
                         majorline_checkbox = self.majorline_checkbox),
             code="""
@@ -437,9 +436,78 @@ class viewerWidgets(object):
         self.majorline_checkbox.js_on_click(self.speclines_callback)
 
 
+    def add_model_select(self, viewer_cds, template_dicts, num_approx_fits, with_full_2ndfit=True):
+        #------
+        #- Select secondary model to display
+        model_options = ['Best fit', '2nd best fit']
+        for i in range(1,1+num_approx_fits) :
+            ith = 'th'
+            if i==1 : ith='st'
+            if i==2 : ith='nd'
+            if i==3 : ith='rd'
+            model_options.append(str(i)+ith+' fit (approx)')
+        if with_full_2ndfit is False :
+            model_options.remove('2nd best fit')
+        for std_template in ['QSO', 'GALAXY', 'STAR'] :
+            model_options.append('STD '+std_template)
+        self.model_select = Select(value=model_options[0], title="Other model (dashed curve):", options=model_options)
+        model_select_code = self.js_files["interp_grid.js"] + self.js_files["smooth_data.js"] + self.js_files["select_model.js"]
+        self.model_select_callback = CustomJS(
+            args = dict(ifiberslider = self.ifiberslider,
+                        model_select = self.model_select,
+                        fit_templates=template_dicts[0],
+                        cds_othermodel = viewer_cds.cds_othermodel,
+                        cds_model_2ndfit = viewer_cds.cds_model_2ndfit,
+                        cds_model = viewer_cds.cds_model,
+                        fit_results=template_dicts[1],
+                        std_templates=template_dicts[2],
+                        median_spectra = viewer_cds.cds_median_spectra,
+                        smootherslider = self.smootherslider,
+                        z_input = self.z_input,
+                        cds_targetinfo = viewer_cds.cds_targetinfo),
+                        code = model_select_code)
+        self.model_select.js_on_change('value', self.model_select_callback)
 
-# ONGOING... model_select
 
-#TOTHINK: imfig_callback: put it in Widgets or plots? (plots a priori)
+    def add_update_plot_callback(self, viewer_cds, plots, vi_widgets, template_dicts):
+        #-----
+        #- Main js code to update plots
+        update_plot_code = (self.js_files["adapt_plotrange.js"] + self.js_files["interp_grid.js"] +
+                            self.js_files["smooth_data.js"] + self.js_files["coadd_brz_cameras.js"] +
+                            self.js_files["update_plot.js"])
+        # TMP handling of template_dicts
+        the_fit_results = None if template_dicts is None else template_dicts[1] # dirty
+        self.update_plot_callback = CustomJS(
+            args = dict(
+                spectra = viewer_cds.cds_spectra,
+                coaddcam_spec = viewer_cds.cds_coaddcam_spec,
+                model = viewer_cds.cds_model,
+                othermodel = viewer_cds.cds_othermodel,
+                model_2ndfit = viewer_cds.cds_model_2ndfit,
+                targetinfo = viewer_cds.cds_targetinfo,
+                fit_results = the_fit_results,
+                zcat_disp_cds = self.zcat_disp_cds,
+                targ_disp_cds = self.targ_disp_cds,
+                ifiberslider = self.ifiberslider,
+                smootherslider = self.smootherslider,
+                z_input = self.z_input,
+                fig = plots.fig,
+                imfig_source = plots.imfig_source,
+                imfig_urls = plots.imfig_urls,
+                model_select = self.model_select,
+                vi_comment_input = vi_widgets.vi_comment_input,
+                vi_std_comment_select = vi_widgets.vi_std_comment_select,
+                vi_name_input = vi_widgets.vi_name_input,
+                vi_class_input = vi_widgets.vi_class_input,
+                vi_class_labels = vi_widgets.vi_class_labels,
+                vi_issue_input = vi_widgets.vi_issue_input,
+                vi_z_input = vi_widgets.vi_z_input,
+                vi_category_select = vi_widgets.vi_category_select,
+                vi_issue_slabels = vi_widgets.vi_issue_slabels
+                ),
+            code = update_plot_code
+        )
+        self.smootherslider.js_on_change('value', self.update_plot_callback)
+        self.ifiberslider.js_on_change('value', self.update_plot_callback)
 
-    
+

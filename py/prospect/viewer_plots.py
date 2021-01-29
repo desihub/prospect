@@ -1,9 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # -*- coding: utf-8 -*-
 """
-====================
-prospect.viewerPlots
-====================
+=====================
+prospect.viewer_plots
+=====================
 
 Class containing bokeh plots needed for the viewer
 
@@ -11,21 +11,41 @@ Class containing bokeh plots needed for the viewer
 
 import numpy as np
 import bokeh.plotting as bk
-from bokeh.models import ColumnDataSource, BoxAnnotation, Legend, Span, Label
+from bokeh.models import CustomJS, ColumnDataSource, BoxAnnotation, Legend, Span, Label
 import bokeh.layouts as bl
 import bokeh.events
 
-# TODO import _viewer_urls
 
-class viewerPlots(object):
+def _viewer_urls(spectra, zoom=13, layer='ls-dr9'):
+    """Return legacysurvey.org viewer URLs for all spectra.
+
+    Note: `layer` does not apply to the JPEG cutout service.
+    """
+    u = "https://www.legacysurvey.org/viewer/jpeg-cutout?ra={0:f}&dec={1:f}&zoom={2:d}"
+    v = "https://www.legacysurvey.org/viewer/?ra={0:f}&dec={1:f}&zoom={2:d}&layer={3}&mark={0:f},{1:f}"
+    if hasattr(spectra, 'fibermap'):
+        try:
+            ra = spectra.fibermap['RA_TARGET']
+            dec = spectra.fibermap['DEC_TARGET']
+        except KeyError:
+            ra = spectra.fibermap['TARGET_RA']
+            dec = spectra.fibermap['TARGET_DEC']
+    else:
+        ra = spectra.meta['plugmap']['RA']
+        dec = spectra.meta['plugmap']['DEC']
+    return [(u.format(ra[i], dec[i], zoom, layer),
+             v.format(ra[i], dec[i], zoom, layer),
+             'RA, Dec = {0:.4f}, {1:+.4f}'.format(ra[i], dec[i]))
+            for i in range(len(ra))]
+
+
+class ViewerPlots(object):
     """ 
     Encapsulates Bokeh plot-like objects that are part of prospect's GUI. 
     """
-    # Copied from parts of viewer.plotspectra    
 
     def __init__(self):
-        # Here I put, for convenience, all 'hardcoded' params...
-        # All class members are not initialized here !!
+        # "Hardcoded" plotting parameters here:
         self.xmargin = 300.
         self.plot_width=800
         self.plot_height=400
@@ -38,10 +58,6 @@ class viewerPlots(object):
         self.fig = None
         self.zoomfig = None
         self.zoom_callback = None
-        self.imfig = None
-
-        # An attempt... (this is in the "targeting imaging" block in viewer.py)
-        # (we could do similar for other "fig" members: Spacer by default)
         self.imfig = bl.Spacer(width=self.plot_height//2, height=self.plot_height//2)
         self.imfig_source = self.imfig_urls = None
 
@@ -201,7 +217,18 @@ class viewerPlots(object):
         self.imfig.multi_line([[129-15,129-5],[129+15,129+5],[129,129],[129,129]],
                          [[129,129],[129,129],[129-15,129-5],[129+5,129+15]], line_width=1, line_color='yellow')
 
+    def add_imfig_callback(self, viewer_widgets):
+        #-----
+        #- Targeting image callback
+        # This has to be called once the wisgets are done.. => fct separated from create_imfig()
+        self.imfig_callback = CustomJS(args = dict(
+                                    urls = self.imfig_urls,
+                                    ifiberslider = viewer_widgets.ifiberslider),
+                                       code='''window.open(urls[ifiberslider.value][1], "_blank");''')
+        self.imfig.js_on_event('tap', self.imfig_callback)
+
     
+
     def add_spectral_lines(self, viewer_cds, figure='main', fig_height=None, label_offsets=[100, 5]):
         """
         label_offsets = [offset_absorption_lines, offset_emission_lines] : offsets in y-position
@@ -209,12 +236,12 @@ class viewerPlots(object):
         figure: 'main' or 'zoom' to flag if lines are added to self.fig or self.zoomfig
         """
 
-        if figure=='main' : fig = self.fig
-        elif figure=='zoom' : fig = self.zoomfig
+        if figure=='main' : bk_figure = self.fig
+        elif figure=='zoom' : bk_figure = self.zoomfig
         else :
             raise ValueError("Unknown input figure type.")
 
-        if fig_height is None : fig_height = fig.plot_height
+        if fig_height is None : fig_height = bk_figure.plot_height
 
         line_data = dict(viewer_cds.cds_spectral_lines.data)
         y = list()
@@ -259,21 +286,19 @@ class viewerPlots(object):
 
             s = Span(location=w, dimension='height', line_color=color,
                     line_alpha=1.0, line_dash='dashed', visible=False)
+            bk_figure.add_layout(s)
 
             lb = Label(x=w, y=y, x_units='data', y_units='screen',
                         text=name, text_color='gray', text_font_size="8pt",
                         x_offset=2, y_offset=0, visible=False)
-                        
+            bk_figure.add_layout(lb)
+            
             if figure == 'main' :
-                self.fig.add_layout(s)
                 self.speclines.append(s)
-                self.fig.add_layout(lb)
                 self.specline_labels.append(lb)
             else :
-                self.zoomfig.add_layout(s)
                 self.zoom_speclines.append(s)
-                self.zoomfig.add_layout(lb)
                 self.zoom_specline_labels.append(lb)
 
+        
 
-        # TO THINK : name of class instation ? eg viewer_cds ? Au final c'est horrible viewer_cds.cds_spectra... 
