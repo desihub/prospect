@@ -27,7 +27,7 @@ class ViewerWidgets(object):
         Except for VI widgets
     """
     
-    def __init__(self, plots):
+    def __init__(self, plots, nspec):
         self.js_files = get_resources('js')
         self.navigation_button_width = 30
         self.z_button_width = 30
@@ -44,7 +44,7 @@ class ViewerWidgets(object):
         self.model_select = None
 
 
-    def add_navigation(self):
+    def add_navigation(self, nspec):
         #-----
         #- Navigation buttons
         self.prev_button = Button(label="<", width=self.navigation_button_width)
@@ -432,7 +432,7 @@ class ViewerWidgets(object):
             }
             """
         )
-        self.lines_button_group.js_on_click(self.speclines_callback)
+        self.speclines_button_group.js_on_click(self.speclines_callback)
         self.majorline_checkbox.js_on_click(self.speclines_callback)
 
 

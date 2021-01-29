@@ -9,10 +9,10 @@ Class containing bokeh widgets related to visual inspection
 
 """
 
-
+from bokeh.models import CustomJS
 from bokeh.models.widgets import (
     TextInput, CheckboxGroup, Select, RadioButtonGroup, Div, 
-    TableColumn, DataTable, Toggle)
+    TableColumn, DataTable, Toggle, Button)
 
 from .utilities import get_resources, vi_flags, vi_file_fields, vi_spectypes, vi_std_comments
 
@@ -34,7 +34,7 @@ class ViewerVIWidgets(object):
 
     def add_filename(self, username=''):
         #- VI file name
-        default_vi_filename = "desi-vi_"+title
+        default_vi_filename = "desi-vi_"+self.title
         if username.strip()!="" :
             default_vi_filename += ("_"+username)
         else :
@@ -191,7 +191,7 @@ class ViewerVIWidgets(object):
         self.vi_class_callback = CustomJS(
             args = dict(cds_targetinfo = viewer_cds.cds_targetinfo,
                         vi_class_input = self.vi_class_input,
-                        vi_class_labels = vi_class_labels,
+                        vi_class_labels = self.vi_class_labels,
                         ifiberslider = widgets.ifiberslider,
                         title=self.title, vi_file_fields = vi_file_fields,
                         targetinfo = viewer_cds.cds_targetinfo,
@@ -238,7 +238,7 @@ class ViewerVIWidgets(object):
         vi_guideline_txt += "<BR /> <B> Comments: </B> <BR /> 100 characters max, avoid commas (automatically replaced by semi-columns), ASCII only."
         self.vi_guideline_div = Div(text=vi_guideline_txt)
 
-    def add_vi_storage(self, viewer_cds):
+    def add_vi_storage(self, viewer_cds, widgets):
         #- Save VI info to CSV file
         self.save_vi_button = Button(label="Download VI", button_type="success")
         save_vi_code = self.js_files["FileSaver.js"] + self.js_files["CSVtoArray.js"] + self.js_files["save_vi.js"]
@@ -258,7 +258,7 @@ class ViewerVIWidgets(object):
         self.recover_vi_callback = CustomJS(
             args = dict(title=self.title, vi_file_fields=vi_file_fields,
                         cds_targetinfo = viewer_cds.cds_targetinfo,
-                        ifiber = ifiberslider.value, vi_comment_input = self.vi_comment_input,
+                        ifiber = widgets.ifiberslider.value, vi_comment_input = self.vi_comment_input,
                         vi_name_input=self.vi_name_input, vi_class_input=self.vi_class_input,
                         vi_issue_input=self.vi_issue_input,
                         vi_issue_slabels=self.vi_issue_slabels, vi_class_labels=self.vi_class_labels),

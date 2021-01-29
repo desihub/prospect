@@ -10,6 +10,8 @@ Class containing bokeh plots needed for the viewer
 """
 
 import numpy as np
+from specutils import SpectrumList
+
 import bokeh.plotting as bk
 from bokeh.models import CustomJS, ColumnDataSource, BoxAnnotation, Legend, Span, Label
 import bokeh.layouts as bl
@@ -211,7 +213,7 @@ class ViewerPlots(object):
                                                   txt=[self.imfig_urls[0][2]]))
 
         imfig_img = self.imfig.image_url('url', source=self.imfig_source, x=1, y=1, w=256, h=256, anchor='bottom_left')
-        imfig_txt = self.imfig.text(10, 256-30, text='txt', source=imfig_source,
+        imfig_txt = self.imfig.text(10, 256-30, text='txt', source=self.imfig_source,
                                text_color='yellow', text_font_size='8pt')
         # cross-hair
         self.imfig.multi_line([[129-15,129-5],[129+15,129+5],[129,129],[129,129]],

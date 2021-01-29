@@ -11,10 +11,20 @@ Class containing all bokeh's ColumnDataSource objects needed in viewer.py
 
 import numpy as np
 from pkg_resources import resource_filename
+from specutils import Spectrum1D, SpectrumList
 
 import bokeh.plotting as bk
 from bokeh.models import ColumnDataSource
-from specutils import Spectrum1D, SpectrumList
+
+_desitarget_imported = True
+try:
+    from desitarget.targetmask import desi_mask
+    from desitarget.cmx.cmx_targetmask import cmx_mask
+    from desitarget.sv1.sv1_targetmask import desi_mask as sv1_desi_mask
+    from desitarget.sv1.sv1_targetmask import bgs_mask as sv1_bgs_mask
+except ImportError:
+    _desitarget_imported = False
+
 from .mycoaddcam import coaddcam_prospect
 
 
@@ -206,6 +216,7 @@ class ViewerCDS(object):
 
         else:
             assert mask_type in ['SV1_DESI_TARGET', 'SV1_BGS_TARGET', 'DESI_TARGET', 'CMX_TARGET']
+            assert _desitarget_imported
             for i, row in enumerate(spectra.fibermap):
                 if mask_type == 'SV1_DESI_TARGET' :
                     target_bit_names = ' '.join(sv1_desi_mask.names(row['SV1_DESI_TARGET']))
@@ -293,7 +304,7 @@ class ViewerCDS(object):
             plotname = [],
             emission = [],
             major = [],
-            y = []
+            #y = []
         )
         for line_category in ('emission', 'absorption'):
             # encoding=utf-8 is needed to read greek letters

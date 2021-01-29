@@ -10,7 +10,8 @@ Full bokeh setup for prospect
 """
 
 import bokeh.layouts as bl
-from bokeh.models import CustomJS
+from bokeh.models import CustomJS, Tabs, Panel
+from bokeh.models.widgets import Div
 import bokeh.events
 
 from .grid_thumbs import grid_thumbs
@@ -92,16 +93,20 @@ class ViewerSetup(object):
             ),
             bl.column(widgets.smootherslider, width=widgets.plot_widget_width),
             bl.row(
-                bl.column(widgets.coaddcam_buttons, width=200),
-                bl.column(bl.Spacer(width=30)),
-                bl.column(widgets.waveframe_buttons, width=120)
-            ),
-            bl.row(
-                bl.column(widgets.lines_button_group, width=200),
+                bl.column(widgets.speclines_button_group, width=200),
                 bl.column(bl.Spacer(width=30)),
                 bl.column(widgets.majorline_checkbox, width=120)
             )
         )
+        if widgets.coaddcam_buttons is not None :
+            waveframe_block = bl.row(
+                                bl.column(widgets.coaddcam_buttons, width=200),
+                                bl.column(bl.Spacer(width=30)),
+                                bl.column(widgets.waveframe_buttons, width=120)
+                              )
+        else :
+            waveframe_block = bl.column(widgets.waveframe_buttons, width=120)
+        self.plot_widget_set.children.append(waveframe_block)
         if widgets.model_select is not None :
             self.plot_widget_set.children.insert(3, bl.column(widgets.model_select, width=200))
         

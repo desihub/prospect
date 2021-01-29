@@ -34,15 +34,6 @@ from bokeh.models.widgets import (
     TextInput, Select, DataTable, TableColumn, Toggle)
 import bokeh.layouts as bl
 
-_desitarget_imported = True
-try:
-    from desitarget.targetmask import desi_mask
-    from desitarget.cmx.cmx_targetmask import cmx_mask
-    from desitarget.sv1.sv1_targetmask import desi_mask as sv1_desi_mask
-    from desitarget.sv1.sv1_targetmask import bgs_mask as sv1_bgs_mask
-except ImportError:
-    _desitarget_imported = False
-
 _desispec_imported = True
 try:
     import desispec.io
@@ -414,8 +405,8 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     #-- Widgets and callbacks --
     #-------------------------
 
-    viewer_widgets = ViewerWidgets(viewer_plots)
-    viewer_widgets.add_navigation()
+    viewer_widgets = ViewerWidgets(viewer_plots, nspec)
+    viewer_widgets.add_navigation(nspec)
     viewer_widgets.add_resetrange(viewer_cds, viewer_plots)
 
     viewer_widgets.add_redshift_widgets(z, viewer_cds, viewer_plots)
@@ -443,7 +434,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     #- VI-related widgets
     ## TODO if with_vi_widgets (need to adapt update_plot.js..)
 
-    viewer_vi_widgets = ViewerVIWidgets()
+    viewer_vi_widgets = ViewerVIWidgets(title)
 
     viewer_vi_widgets.add_filename(username=username)
     viewer_vi_widgets.add_vi_issues(viewer_cds, viewer_widgets)
@@ -453,7 +444,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     viewer_vi_widgets.add_vi_classification(viewer_cds, viewer_widgets)
     viewer_vi_widgets.add_vi_scanner(viewer_cds, nspec)
     viewer_vi_widgets.add_guidelines()
-    viewer_vi_widgets.add_vi_storage(viewer_cds)
+    viewer_vi_widgets.add_vi_storage(viewer_cds, viewer_widgets)
     viewer_vi_widgets.add_vi_table(viewer_cds)
 
     if (vi_countdown > 0) :
