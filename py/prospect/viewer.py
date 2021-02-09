@@ -459,5 +459,5 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
         assert not notebook
         thumb_page = os.path.join(html_dir, "thumbs_specviewer_"+title+".html")
         bk.output_file(thumb_page, title='DESI spectral viewer - thumbnail gallery')
-        thumb_grid = ThumbGrid(spectra, viewer_plots, title)
+        thumb_grid = StandaloneThumbSetup(spectra, viewer_plots, title)
         bk.save(thumb_grid.thumb_viewer)
