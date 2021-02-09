@@ -162,7 +162,7 @@ class ViewerSetup(object):
 
 
 
-class ThumbGrid(object):
+class StandaloneThumbSetup(object):
     ## Standalone grid of simple thumbs (to make lightweight pages showing all spectra)
     
     def __init__(self, spectra, plots, title):
