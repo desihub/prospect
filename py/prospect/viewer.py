@@ -56,7 +56,7 @@ from .viewer_cds import ViewerCDS
 from .viewer_plots import ViewerPlots
 from .viewer_widgets import ViewerWidgets
 from .viewer_vi_widgets import ViewerVIWidgets
-from .viewer_setup import ViewerSetup, ThumbGrid
+from .viewer_setup import ViewerSetup, StandaloneThumbSetup
 
 def load_redrock_templates(template_dir=None) :
     '''
