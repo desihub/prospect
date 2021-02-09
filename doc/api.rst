@@ -5,6 +5,9 @@ prospect API
 .. automodule:: prospect
     :members:
 
+.. automodule:: prospect.grid_thumbs
+    :members:
+
 .. automodule:: prospect.mycoaddcam
     :members:
 
@@ -38,6 +41,9 @@ prospect API
 .. automodule:: prospect.scripts.specview_cmx_targets
     :members:
 
+.. automodule:: prospect.scripts.specview_per_expo
+    :members:
+
 .. automodule:: prospect.scripts.specview_per_night
     :members:
 
@@ -48,4 +54,22 @@ prospect API
     :members:
 
 .. automodule:: prospect.utilities
+    :members:
+
+.. automodule:: prospect.viewer
+    :members:
+
+.. automodule:: prospect.viewer_cds
+    :members:
+
+.. automodule:: prospect.viewer_plots
+    :members:
+
+.. automodule:: prospect.viewer_setup
+    :members:
+
+.. automodule:: prospect.viewer_widgets
+    :members:
+
+.. automodule:: prospect.viewer_vi_widgets
     :members:
