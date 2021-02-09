@@ -42,8 +42,8 @@ def _viewer_urls(spectra, zoom=13, layer='ls-dr9'):
 
 
 class ViewerPlots(object):
-    """ 
-    Encapsulates Bokeh plot-like objects that are part of prospect's GUI. 
+    """
+    Encapsulates Bokeh plot-like objects that are part of prospect's GUI.
     """
 
     def __init__(self):
@@ -63,7 +63,7 @@ class ViewerPlots(object):
         self.imfig = bl.Spacer(width=self.plot_height//2, height=self.plot_height//2)
         self.imfig_source = self.imfig_urls = None
 
-    
+
     def create_mainfig(self, spectra, title, viewer_cds, sdss, with_noise=True, with_coaddcam=True):
         #-----
         #- Main figure
@@ -121,7 +121,7 @@ class ViewerPlots(object):
                             line_color=self.colors[spec.name], line_alpha=self.alpha_discrete)
             self.data_lines.append(lx)
         if with_coaddcam :
-            lx = self.fig.line('plotwave', 'plotflux', source=viewer_cds.cds_coaddcam_spec,    
+            lx = self.fig.line('plotwave', 'plotflux', source=viewer_cds.cds_coaddcam_spec,
                             line_color=self.colors['coadd'], line_alpha=1)
             self.data_lines.append(lx)
 
@@ -229,13 +229,22 @@ class ViewerPlots(object):
                                        code='''window.open(urls[ifiberslider.value][1], "_blank");''')
         self.imfig.js_on_event('tap', self.imfig_callback)
 
-    
 
-    def add_spectral_lines(self, viewer_cds, figure='main', fig_height=None, label_offsets=[100, 5]):
-        """
-        label_offsets = [offset_absorption_lines, offset_emission_lines] : offsets in y-position
-                        for line labels wrt top (resp. bottom) of the figure
-        figure: 'main' or 'zoom' to flag if lines are added to self.fig or self.zoomfig
+
+    def add_spectral_lines(self, viewer_cds, figure='main', fig_height=None, label_offsets=(100, 5)):
+        """Add spectral line markers to plot.
+
+        Parameters
+        ----------
+        viewer_cds : array-like
+            Viewer data.
+        figure : {'main', 'zoom'}, optional
+            Figure to add spectral lines to.
+        fig_height : :class:`float`, optional,
+            Overall height of the plot.
+        label_offsets : :func:`tuple`, optional
+            Offsets in y-position for line labels with respect to top (bottom)
+            of the figure for absorption (emission) lines.
         """
 
         if figure=='main' : bk_figure = self.fig
@@ -294,13 +303,10 @@ class ViewerPlots(object):
                         text=name, text_color='gray', text_font_size="8pt",
                         x_offset=2, y_offset=0, visible=False)
             bk_figure.add_layout(lb)
-            
+
             if figure == 'main' :
                 self.speclines.append(s)
                 self.specline_labels.append(lb)
             else :
                 self.zoom_speclines.append(s)
                 self.zoom_specline_labels.append(lb)
-
-        
-
