@@ -22,7 +22,7 @@ import desispec.spectra
 import desispec.frame
 
 from ..myspecselect import myspecselect # special (to be edited)
-from ..plotframes import plotspectra
+from ..viewer import plotspectra
 from ..utilities import match_zcat_to_spectra  #, match_vi_targets, miniplot_spectrum
 
 def _parse():
@@ -70,7 +70,7 @@ def main():
                 the_indices = sort_indices[(i_page-1)*args.nspecperfile:i_page*args.nspecperfile]
                 thespec = myspecselect(spectra, indices=the_indices)
                 thezb, kk = match_zcat_to_spectra(zbest,thespec)
-                model = plotframes.create_model(thespec, thezb)
+                #model = plotframes.create_model(thespec, thezb)
                 ### No VI results to display by default
                 # vifile = os.environ['HOME']+"/prospect/vilist_prototype.fits"
                 # vidata = match_vi_targets(vifile, thespec.fibermap["TARGETID"])
@@ -80,7 +80,7 @@ def main():
                     os.makedirs(html_dir)
                     os.mkdir(html_dir+"/vignettes")
 
-                plotframes.plotspectra(thespec, zcatalog=thezb, vidata=None, model=model, title=titlepage, html_dir=html_dir, is_coadded=False)
+                plotspectra(thespec, zcatalog=thezb, title=titlepage, html_dir=html_dir, is_coadded=False)
 #                 for i_spec in range(thespec.num_spectra()) :
 #                     saveplot = html_dir+"/vignettes/night"+thenight+"_"+file_label+"_"+str(i_page)+"_"+str(i_spec)+".png"
 #                     miniplot_spectrum(thespec, i_spec, model=model, saveplot=saveplot, smoothing = args.vignette_smoothing)

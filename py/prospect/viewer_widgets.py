@@ -10,8 +10,6 @@ Class containing bokeh widgets needed for the viewer (except for VI widgets)
 """
 
 
-## TODO: when taking input class check isinstance() for all members needed in the function
-
 import numpy as np
 
 from bokeh.models import CustomJS, ColumnDataSource

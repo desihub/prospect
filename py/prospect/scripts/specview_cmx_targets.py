@@ -15,7 +15,7 @@ import numpy as np
 import desispec.io
 from desiutil.log import get_logger
 
-from ..plotframes import plotspectra
+from ..viewer import plotspectra
 from ..myspecselect import myspecselect
 from ..utilities import make_targetdict, load_spectra_zcat_from_targets  #, match_zcat_to_spectra
 

@@ -168,13 +168,13 @@ class ThumbGrid(object):
     def __init__(self, spectra, plots, title):
         self.ncols_grid = 5 # TODO un-hardcode
         titles = None # TODO define
-        self.miniplot_width = (plots.plot_width + (plots.plot_height//2) ) // ncols_grid
-        self.thumb_grid = grid_thumbs(spectra, miniplot_width, x_range=(plots.xmin,plots.xmax), ncols_grid=ncols_grid, titles=titles)
+        self.miniplot_width = (plots.plot_width + (plots.plot_height//2) ) // self.ncols_grid
+        self.thumb_grid = grid_thumbs(spectra, self.miniplot_width, x_range=(plots.xmin,plots.xmax), ncols_grid=self.ncols_grid, titles=titles)
         self.thumb_viewer = bl.column(
             bl.column( Div(text=
                            " <h3> Thumbnail gallery for DESI spectra in "+title+" </h3>" +
                            " <p> Click <a href='specviewer_"+title+".html'>here</a> to access the spectral viewer corresponding to these spectra. </p>"
                           ), width=plots.plot_width ),
-            bl.column( thumb_grid )
+            bl.column( self.thumb_grid )
         )
 

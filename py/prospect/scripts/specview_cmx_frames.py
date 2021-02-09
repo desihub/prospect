@@ -21,7 +21,7 @@ from desitarget.cmx.cmx_targetmask import cmx_mask
 import desispec.spectra
 import desispec.frame
 
-from ..plotframes import plotspectra
+from ..viewer import plotspectra
 from ..myspecselect import myspecselect
 from ..myspecupdate import myspecupdate
 from ..utilities import frames2spectra, specviewer_selection, coadd_targets

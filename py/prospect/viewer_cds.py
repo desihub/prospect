@@ -61,8 +61,8 @@ class ViewerCDS(object):
         self.cds_median_spectra = None
         self.cds_coaddcam_spec = None
         self.cds_model = None
-        self.cds_model_2ndfit = None # NOT implemented yet here
-        self.cds_othermodel = None # NOT implemented yet here
+        self.cds_model_2ndfit = None
+        self.cds_othermodel = None
         self.cds_targetinfo = None
     
     def load_spectra(self, spectra, with_noise=True):
@@ -138,22 +138,35 @@ class ViewerCDS(object):
             cds_coaddcam_data['plotnoise'][w] = 1/np.sqrt(coadd_ivar[0,:][w])
         self.cds_coaddcam_spec = ColumnDataSource(cds_coaddcam_data)
 
-    def init_model(self, model):
+    def init_model(self, model, second_fit=False):
         """ Creates a CDS for model spectrum """
         
         mwave, mflux = model
-        cds_model_data = dict(
+        cdsdata = dict(
             origwave = mwave.copy(),
             plotwave = mwave.copy(),
             plotflux = np.zeros(len(mwave)),
         )
         for i in range(len(mflux)):
             key = 'origflux'+str(i)
-            cds_model_data[key] = mflux[i]
+            cdsdata[key] = mflux[i]
+        cdsdata['plotflux'] = cdsdata['origflux0']
+        
+        if second_fit:
+            self.cds_model_2ndfit = ColumnDataSource(cdsdata)
+        else:
+            self.cds_model = ColumnDataSource(cdsdata)
 
-        cds_model_data['plotflux'] = cds_model_data['origflux0']
-        self.cds_model = ColumnDataSource(cds_model_data)
-
+    def init_othermodel(self, zcatalog):
+        """ Initialize CDS for the 'other model' curve, from the best fit """
+        self.cds_othermodel = ColumnDataSource({
+            'plotwave' : self.cds_model.data['plotwave'],
+            'origwave' : self.cds_model.data['origwave'],
+            'origflux' : self.cds_model.data['origflux0'],
+            'plotflux' : self.cds_model.data['origflux0'],
+            'zref' : zcatalog['Z'][0]+np.zeros(len(self.cds_model.data['origflux0'])) # Track z reference in model
+        })
+    
     def load_targetinfo(self, spectra, zcatalog, is_coadded, mask_type, username=" "):
         """ Creates column data source for target-related metadata, 
             from zcatalog, fibermap and VI files 
@@ -331,12 +344,5 @@ class ViewerCDS(object):
         self.cds_spectral_lines = ColumnDataSource(line_data)
 
 
-
-
-# TO THINK: que faire du template_dicts ?
-# - la logique voudrait qu'on en fasse des CDS. Objection ??
-# - dans ce cas, ca change bcp le code (incl deux js callbacks au moins) => pour plus tard ?
-# - dans ce cas, que faire dans un 1er temps ? Le package (var template_dict, fcts rr) devrait 
-#   rester dans le main, a pas sa place dans viewerCDS (les fcts rr en particulier).
 
 

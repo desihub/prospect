@@ -328,16 +328,6 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
                                  template_dir=template_dir)
 
     #-----
-    #- Initialize Bokeh output
-    if notebook:
-        assert not with_thumb_only_page
-        bk.output_notebook()
-    else :
-        if html_dir is None : raise RuntimeError("Need html_dir")
-        html_page = os.path.join(html_dir, "specviewer_"+title+".html")
-        bk.output_file(html_page, title='DESI spectral viewer')
-
-    #-----
     #- Gather information into ColumnDataSource objects for Bokeh
     viewer_cds = ViewerCDS()
     viewer_cds.load_spectra(spectra, with_noise)
@@ -363,15 +353,8 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
             zcat_2ndfit = create_zcat_from_redrock_cat(redrock_cat, fit_num=1)
             model_2ndfit = create_model(spectra, zcat_2ndfit, archetype_fit=archetype_fit,
                                         archetypes_dir=archetypes_dir, template_dir=template_dir)
-            viewer_cds.cds_model_2ndfit = make_cds_model(model_2ndfit)
-        # Now the "plot" CDS : initialize it to best fit
-        viewer_cds.cds_othermodel = bk.ColumnDataSource({
-            'plotwave' : viewer_cds.cds_model.data['plotwave'],
-            'origwave' : viewer_cds.cds_model.data['origwave'],
-            'origflux' : viewer_cds.cds_model.data['origflux0'],
-            'plotflux' : viewer_cds.cds_model.data['origflux0'],
-            'zref' : zcatalog['Z'][0]+np.zeros(len(viewer_cds.cds_model.data['origflux0'])) # trick to track the z reference in model
-        })
+            viewer_cds.init_model(model_2ndfit, second_fit=True)
+        viewer_cds.init_othermodel(zcatalog)
     else :
         template_dicts = None
 
@@ -454,21 +437,27 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
                 viewer_vi_widgets, template_dicts)
 
     #-----
-    #- Bokeh setup
-
+    #- Bokeh setup and output
+    
     bokeh_setup = ViewerSetup(viewer_plots, viewer_widgets, viewer_vi_widgets,
                               with_vi_widgets=with_vi_widgets)
     if with_thumb_tab:
         bokeh_setup.add_thumb_tab(spectra, viewer_plots, viewer_widgets, nspec)
 
     if notebook:
+        bk.output_notebook()
         bk.show(bokeh_setup.full_viewer)
     else:
+        if html_dir is None : raise RuntimeError("Need html_dir")
+        html_page = os.path.join(html_dir, "specviewer_"+title+".html")
+        bk.output_file(html_page, title='DESI spectral viewer')
         bk.save(bokeh_setup.full_viewer)
 
     #-----
     #- "Light" Bokeh setup including only the thumbnail gallery
     if with_thumb_only_page :
+        assert not notebook
+        thumb_page = os.path.join(html_dir, "thumbs_specviewer_"+title+".html")
+        bk.output_file(thumb_page, title='DESI spectral viewer - thumbnail gallery')
         thumb_grid = ThumbGrid(spectra, viewer_plots, title)
         bk.save(thumb_grid.thumb_viewer)
-
