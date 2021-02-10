@@ -23,7 +23,7 @@ import desispec.frame
 
 from ..myspecselect import myspecselect  # special (to be edited)
 from ..plotframes import create_model, plotspectra
-from ..utilities import match_zbest_to_spectra, match_vi_targets  #, miniplot_spectrum
+from ..utilities import match_zcat_to_spectra, match_vi_targets  #, miniplot_spectrum
 
 def _parse():
     parser = argparse.ArgumentParser(description='Create html pages for the spectral viewer')

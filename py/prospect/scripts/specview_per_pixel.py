@@ -24,8 +24,8 @@ import desispec.spectra
 import desispec.frame
 
 from ..myspecselect import myspecselect  # special (to be edited)
-from ..plotframes import coadd_targets, create_model, plotspectra
-from ..utilities import specviewer_selection, match_zcat_to_spectra, match_vi_targets  #, miniplot_spectrum
+from ..viewer import plotspectra
+from ..utilities import coadd_targets, specviewer_selection, match_zcat_to_spectra, match_vi_targets  #, miniplot_spectrum
 
 
 def _parse():
@@ -108,13 +108,13 @@ def main():
                 titlepage = "chi2cut-"+str(args.chi2cut[0])+"-"+str(args.chi2cut[1])+"_"+titlepage
             if args.mask is not None :
                 titlepage = args.mask+"_"+titlepage
-            model = create_model(thespec, thezb)
+            #model = create_model(thespec, thezb)
             html_dir = os.path.join(webdir,"pix"+pixel)
             if not os.path.exists(html_dir) :
                 os.makedirs(html_dir)
                 os.mkdir(html_dir+"/vignettes")
 
-            plotspectra(thespec, zcatalog=zbest, model_from_zcat=True, vidata=None, model=None, title=titlepage, html_dir=html_dir, is_coadded=True, mask_type=args.mask_type)
+            plotspectra(thespec, zcatalog=zbest, model_from_zcat=True, model=None, title=titlepage, html_dir=html_dir, is_coadded=True, mask_type=args.mask_type)
 #             for i_spec in range(thespec.num_spectra()) :
 #                 saveplot = html_dir+"/vignettes/pix"+pixel+"_"+str(i_page)+"_"+str(i_spec)+".png"
 #                 miniplot_spectrum(thespec, i_spec, model=model, saveplot=saveplot, smoothing = args.vignette_smoothing)

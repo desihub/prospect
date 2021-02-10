@@ -18,7 +18,7 @@ from desiutil.log import get_logger
 import desispec.spectra
 import desispec.frame
 
-from ..plotframes import plotspectra
+from ..viewer import plotspectra
 from ..myspecselect import myspecselect
 from ..myspecupdate import myspecupdate
 from ..utilities import specviewer_selection, match_redrock_zfit_to_spectra, match_zcat_to_spectra
