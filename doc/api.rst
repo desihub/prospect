@@ -59,17 +59,17 @@ prospect API
 .. automodule:: prospect.viewer
     :members:
 
-.. automodule:: prospect.viewer_cds
+.. automodule:: prospect.viewer.cds
     :members:
 
-.. automodule:: prospect.viewer_plots
+.. automodule:: prospect.viewer.plots
     :members:
 
-.. automodule:: prospect.viewer_setup
+.. automodule:: prospect.viewer.layouts
     :members:
 
-.. automodule:: prospect.viewer_widgets
+.. automodule:: prospect.viewer.widgets
     :members:
 
-.. automodule:: prospect.viewer_vi_widgets
+.. automodule:: prospect.viewer.vi_widgets
     :members:
