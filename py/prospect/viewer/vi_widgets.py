@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 ==========================
-prospect.viewer_vi_widgets
+prospect.viewer.vi_widgets
 ==========================
 
 Class containing bokeh widgets related to visual inspection
@@ -14,7 +14,7 @@ from bokeh.models.widgets import (
     TextInput, CheckboxGroup, Select, RadioButtonGroup, Div, 
     TableColumn, DataTable, Toggle, Button)
 
-from .utilities import get_resources, vi_flags, vi_file_fields, vi_spectypes, vi_std_comments
+from ..utilities import get_resources, vi_flags, vi_file_fields, vi_spectypes, vi_std_comments
 
 
 class ViewerVIWidgets(object):

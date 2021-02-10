@@ -1,11 +1,11 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # -*- coding: utf-8 -*-
 """
-=====================
-prospect.viewer_setup
-=====================
+=======================
+prospect.viewer.layouts
+=======================
 
-Full bokeh setup for prospect
+Full bokeh layouts for prospect
 
 """
 
@@ -14,9 +14,9 @@ from bokeh.models import CustomJS, Tabs, Panel
 from bokeh.models.widgets import Div
 import bokeh.events
 
-from .grid_thumbs import grid_thumbs
+from ..grid_thumbs import grid_thumbs
 
-class ViewerSetup(object):
+class ViewerLayout(object):
     '''
     Layout of plots and widgets for prospect's GUI
     '''
@@ -120,7 +120,7 @@ class ViewerSetup(object):
             )
         else : self.full_widget_set = self.plot_widget_set
 
-        self.main_bokehsetup = bl.column(
+        self.main_bokehlayout = bl.column(
             bl.row(plots.fig, bl.column(plots.imfig, plots.zoomfig), bl.Spacer(width=20)),
             bl.row(
                 bl.column(widgets.targ_display, width=600), # plot_width - 200
@@ -135,7 +135,7 @@ class ViewerSetup(object):
             sizing_mode='stretch_width'
         )
 
-        self.full_viewer = self.main_bokehsetup
+        self.full_viewer = self.main_bokehlayout
 
 
     def add_thumb_tab(self, spectra, plots, widgets, nspec):
@@ -147,7 +147,7 @@ class ViewerSetup(object):
         self.thumb_grid = grid_thumbs(spectra, self.miniplot_width,
                 x_range=(plots.xmin,plots.xmax),
                 ncols_grid=self.ncols_grid, titles=titles)
-        tab1 = Panel(child = self.main_bokehsetup, title='Main viewer')
+        tab1 = Panel(child = self.main_bokehlayout, title='Main viewer')
         tab2 = Panel(child = self.thumb_grid, title='Gallery')
         self.full_viewer.tabs=[ tab1, tab2 ]
 
@@ -162,7 +162,7 @@ class ViewerSetup(object):
 
 
 
-class StandaloneThumbSetup(object):
+class StandaloneThumbLayout(object):
     ## Standalone grid of simple thumbs (to make lightweight pages showing all spectra)
     
     def __init__(self, spectra, plots, title):

@@ -50,13 +50,13 @@ try:
 except ImportError:
     _redrock_imported = False
 
-from .utilities import (get_resources, frames2spectra, create_zcat_from_redrock_cat,
+from ..utilities import (get_resources, frames2spectra, create_zcat_from_redrock_cat,
                         vi_flags, vi_file_fields, vi_spectypes, vi_std_comments)
-from .viewer_cds import ViewerCDS
-from .viewer_plots import ViewerPlots
-from .viewer_widgets import ViewerWidgets
-from .viewer_vi_widgets import ViewerVIWidgets
-from .viewer_setup import ViewerSetup, StandaloneThumbSetup
+from .cds import ViewerCDS
+from .plots import ViewerPlots
+from .widgets import ViewerWidgets
+from .vi_widgets import ViewerVIWidgets
+from .layouts import ViewerLayout, StandaloneThumbLayout
 
 def load_redrock_templates(template_dir=None) :
     '''
@@ -437,27 +437,27 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
                 viewer_vi_widgets, template_dicts)
 
     #-----
-    #- Bokeh setup and output
+    #- Bokeh layout and output
     
-    bokeh_setup = ViewerSetup(viewer_plots, viewer_widgets, viewer_vi_widgets,
+    bokeh_layout = ViewerLayout(viewer_plots, viewer_widgets, viewer_vi_widgets,
                               with_vi_widgets=with_vi_widgets)
     if with_thumb_tab:
-        bokeh_setup.add_thumb_tab(spectra, viewer_plots, viewer_widgets, nspec)
+        bokeh_layout.add_thumb_tab(spectra, viewer_plots, viewer_widgets, nspec)
 
     if notebook:
         bk.output_notebook()
-        bk.show(bokeh_setup.full_viewer)
+        bk.show(bokeh_layout.full_viewer)
     else:
         if html_dir is None : raise RuntimeError("Need html_dir")
         html_page = os.path.join(html_dir, "specviewer_"+title+".html")
         bk.output_file(html_page, title='DESI spectral viewer')
-        bk.save(bokeh_setup.full_viewer)
+        bk.save(bokeh_layout.full_viewer)
 
     #-----
-    #- "Light" Bokeh setup including only the thumbnail gallery
+    #- "Light" Bokeh layout including only the thumbnail gallery
     if with_thumb_only_page :
         assert not notebook
         thumb_page = os.path.join(html_dir, "thumbs_specviewer_"+title+".html")
         bk.output_file(thumb_page, title='DESI spectral viewer - thumbnail gallery')
-        thumb_grid = StandaloneThumbSetup(spectra, viewer_plots, title)
+        thumb_grid = StandaloneThumbLayout(spectra, viewer_plots, title)
         bk.save(thumb_grid.thumb_viewer)

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 =======================
-prospect.viewer_widgets
+prospect.viewer.widgets
 =======================
 
 Class containing bokeh widgets needed for the viewer (except for VI widgets)
@@ -17,7 +17,7 @@ from bokeh.models.widgets import (
     Slider, Button, TextInput, RadioButtonGroup, TableColumn,
     DataTable, CheckboxButtonGroup, CheckboxGroup, Select)
 
-from .utilities import get_resources
+from ..utilities import get_resources
 
 class ViewerWidgets(object):
     """ 

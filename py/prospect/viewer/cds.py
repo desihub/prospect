@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 ===================
-prospect.viewer_cds
+prospect.viewer.cds
 ===================
 
 Class containing all bokeh's ColumnDataSource objects needed in viewer.py
@@ -25,7 +25,7 @@ try:
 except ImportError:
     _desitarget_imported = False
 
-from .mycoaddcam import coaddcam_prospect
+from ..mycoaddcam import coaddcam_prospect
 
 
 def _airtovac(w):

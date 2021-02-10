@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 =====================
-prospect.viewer_plots
+prospect.viewer.plots
 =====================
 
 Class containing bokeh plots needed for the viewer
