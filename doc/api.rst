@@ -62,10 +62,10 @@ prospect API
 .. automodule:: prospect.viewer.cds
     :members:
 
-.. automodule:: prospect.viewer.plots
+.. automodule:: prospect.viewer.layouts
     :members:
 
-.. automodule:: prospect.viewer.layouts
+.. automodule:: prospect.viewer.plots
     :members:
 
 .. automodule:: prospect.viewer.widgets
