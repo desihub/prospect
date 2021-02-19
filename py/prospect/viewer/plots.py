@@ -111,7 +111,7 @@ class ViewerPlots(object):
         self.overlap_bands = []
         if bands == ['brz'] or set(bands) == set(['b','r','z']) :
             for i in range(len(self.overlap_waves)) :
-                fill_alpha = self.alpha_overlapband if with_coaddcam else 0
+                fill_alpha = self.alpha_overlapband # if with_coaddcam else 0
                 self.overlap_bands.append( BoxAnnotation(left=self.overlap_waves[i][0], right=self.overlap_waves[i][1], fill_color='blue', fill_alpha=fill_alpha, line_alpha=0) )
                 self.fig.add_layout(self.overlap_bands[-1])
 
