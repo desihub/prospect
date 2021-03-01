@@ -108,7 +108,7 @@ def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, templ
               wave                = spectra.wave[band]
               wavehash            = hash((len(wave), wave[0], wave[1], wave[-2], wave[-1], spectra.R[band].data.shape[0]))
               dwave               = {wavehash: wave}
-              mx                  = archetype.eval(zb['SUBTYPE'], dwave, coeff, wave, zb['Z'])
+              mx                  = archetype.eval(zb['SUBTYPE'], dwave, coeff, wave, zb['Z']) * (1+zb['Z'])
               model_flux[band][i] = spectra.R[band][i].dot(mx)
 
         else:
