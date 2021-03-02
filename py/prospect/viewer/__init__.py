@@ -24,7 +24,6 @@ import scipy.ndimage.filters
 
 from astropy.table import Table
 import astropy.io.fits
-from specutils import Spectrum1D, SpectrumList
 
 import bokeh.plotting as bk
 from bokeh.models import ColumnDataSource, CDSView, IndexFilter
@@ -33,6 +32,12 @@ from bokeh.models.widgets import (
     Slider, Button, Div, CheckboxGroup, CheckboxButtonGroup, RadioButtonGroup,
     TextInput, Select, DataTable, TableColumn, Toggle)
 import bokeh.layouts as bl
+
+_specutils_imported = True
+try:
+    from specutils import Spectrum1D, SpectrumList
+except ImportError:
+    _specutils_imported = False
 
 _desispec_imported = True
 try:
@@ -267,14 +272,14 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
 
     #- Check input spectra.
     #- Set masked bins to NaN for compatibility with bokeh.
-    if isinstance(spectra, Spectrum1D):
+    if _specutils_imported and isinstance(spectra, Spectrum1D):
         # We will assume this is from an SDSS/BOSS/eBOSS spPlate file.
         sdss = True
         is_coadded = True
         nspec = spectra.flux.shape[0]
         bad = (spectra.uncertainty.array == 0.0) | spectra.mask
         spectra.flux[bad] = np.nan
-    elif isinstance(spectra, SpectrumList):
+    elif _specutils_imported and isinstance(spectra, SpectrumList):
         # We will assume this is from a DESI spectra-64 file.
         sdss = False
         nspec = spectra[0].flux.shape[0]
@@ -284,10 +289,9 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     else:
         # DESI object (Spectra or list of Frame)
         sdss = False
-        assert _desispec_imported == True
-        if isinstance(spectra, desispec.spectra.Spectra):
+        if _desispec_imported and isinstance(spectra, desispec.spectra.Spectra):
             nspec = spectra.num_spectra()
-        elif isinstance(spectra, list) and isinstance(spectra[0], desispec.frame.Frame):
+        elif _desispec_imported and isinstance(spectra, list) and isinstance(spectra[0], desispec.frame.Frame):
         # If inputs are frames, convert to a spectra object
             spectra = frames2spectra(spectra)
             nspec = spectra.num_spectra()
@@ -296,7 +300,9 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
                     spectra.meta['NIGHT'], spectra.meta['EXPID'], spectra.meta['CAMERA'][1],
                 )
         else:
-            raise ValueError('Unsupported type for input spectra!')
+            raise ValueError("Unsupported type for input spectra. \n"+
+                    "    _specutils_imported = "+str(_specutils_imported)+"\n"+ 
+                    "    _desispec_imported = "+str(_desispec_imported))
         for band in spectra.bands:
             bad = (spectra.ivar[band] == 0.0) | (spectra.mask[band] != 0)
             spectra.flux[band][bad] = np.nan

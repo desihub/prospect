@@ -10,7 +10,11 @@ Class containing bokeh plots needed for the viewer
 """
 
 import numpy as np
-from specutils import SpectrumList
+_specutils_imported = True
+try:
+    from specutils import Spectrum1D, SpectrumList
+except ImportError:
+    _specutils_imported = False
 
 import bokeh.plotting as bk
 from bokeh.models import CustomJS, ColumnDataSource, BoxAnnotation, Legend, Span, Label
@@ -79,7 +83,7 @@ class ViewerPlots(object):
         else:
             bands = spectra.bands
             for i, band in enumerate(bands):
-                if isinstance(spectra, SpectrumList):
+                if _specutils_imported and isinstance(spectra, SpectrumList):
                     sp_flux = spectra[i].flux.value[0]
                     sp_wave = spectra[i].spectral_axis.value
                 else:

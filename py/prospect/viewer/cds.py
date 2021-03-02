@@ -11,10 +11,15 @@ Class containing all bokeh's ColumnDataSource objects needed in viewer.py
 
 import numpy as np
 from pkg_resources import resource_filename
-from specutils import Spectrum1D, SpectrumList
 
 import bokeh.plotting as bk
 from bokeh.models import ColumnDataSource
+
+_specutils_imported = True
+try:
+    from specutils import Spectrum1D, SpectrumList
+except ImportError:
+    _specutils_imported = False
 
 _desitarget_imported = True
 try:
@@ -70,10 +75,10 @@ class ViewerCDS(object):
         
         self.cds_spectra = list()
         is_desispec = False
-        if isinstance(spectra, SpectrumList):
+        if _specutils_imported and isinstance(spectra, SpectrumList):
             s = spectra
             bands = spectra.bands
-        elif isinstance(spectra, Spectrum1D):
+        elif _specutils_imported and isinstance(spectra, Spectrum1D):
             s = [spectra]
             bands = ['coadd']
         else : # Assume desispec Spectra obj
@@ -172,7 +177,7 @@ class ViewerCDS(object):
             from zcatalog, fibermap and VI files 
         """
         target_info = list()
-        if isinstance(spectra, Spectrum1D):
+        if _specutils_imported and isinstance(spectra, Spectrum1D):
             assert mask_type in ['PRIMTARGET', 'SECTARGET',
                                  'BOSS_TARGET1', 'BOSS_TARGET2',
                                  'ANCILLARY_TARGET1', 'ANCILLARY_TARGET2',
