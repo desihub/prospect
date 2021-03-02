@@ -107,7 +107,7 @@ if (targetinfo.data['z'] != undefined && cb_obj == ifiberslider && model_select 
     z_input.value = targetinfo.data['z'][ifiber].toFixed(4);
 }
 //
-// Smooth plot and recalculate ymin/ymax TODO: ymin/max only if cb_obj==ifiberslider ?
+// Smooth plot and recalculate ymin/ymax.
 //
 var ymin = 0.0;
 var ymax = 0.0;
@@ -133,9 +133,17 @@ for (var i=0; i<spectra.length; i++) {
         } else {
             data["plotflux"] = smooth_data(origflux, kernel, {"ivar_weight": false});
         }
-        var tmp = adapt_plotrange(0.01, 0.99, data['plotflux']);
-        ymin = Math.min(ymin, tmp[0]);
-        ymax = Math.max(ymax, tmp[1]);
+        var y_vect = []; // ymin/ymax calculation is based on pixels in fig.x_range
+        for (var i_pix=0; i_pix<data['plotflux'].length; i_pix++) {
+            if ( (data['plotwave'][i_pix] > fig.x_range.start ) && (data['plotwave'][i_pix] < fig.x_range.end) ) {
+                y_vect.push(data['plotflux'][i_pix])
+            }
+        }
+        if (y_vect.length > 0) {
+            var tmp = adapt_plotrange(0.01, 0.99, y_vect);
+            ymin = Math.min(ymin, tmp[0]);
+            ymax = Math.max(ymax, tmp[1]);
+        }
         valid_y_range = isFinite(ymin) && isFinite(ymax);
     }
     spectra[i].change.emit();
@@ -147,7 +155,6 @@ for (var i=0; i<spectra.length; i++) {
 if (valid_y_range) {
     fig.y_range.start = ymin < 0 ? ymin * 1.4 : ymin * 0.6;
     fig.y_range.end = ymax * 1.4;
-    // console.log("fig.y_range.start = " + fig.y_range.start + "; fig.y_range.end = " + fig.y_range.end);
 }
 //
 // update camera-coadd

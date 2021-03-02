@@ -130,7 +130,8 @@ def get_resources(filetype):
     if _resource_cache[filetype] is None:
         _resource_cache[filetype] = dict()
         for f in resource_listdir('prospect', filetype):
-            _resource_cache[filetype][f] = resource_string('prospect', filetype + '/' + f).decode('utf-8')
+            if not f.startswith("."):
+                _resource_cache[filetype][f] = resource_string('prospect', filetype + '/' + f).decode('utf-8')
     return _resource_cache[filetype]
 
 

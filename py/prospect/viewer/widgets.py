@@ -278,14 +278,14 @@ class ViewerWidgets(object):
             cds_oii_saveinfo.data['nsmooth'] = [smootherslider.value]
             // Center on the middle of the redshifted OII doublet (vaccum)
             var z = parseFloat(z_input.value)
-            fig.x_range.start = 3728.48 * (1+z) - 30
-            fig.x_range.end = 3728.48 * (1+z) + 30
+            fig.x_range.start = 3728.48 * (1+z) - 100
+            fig.x_range.end = 3728.48 * (1+z) + 100
             // No smoothing (this implies a call to update_plot)
             smootherslider.value = 0
             """)
         self.oii_zoom_button.js_on_event('button_click', self.oii_zoom_callback)
 
-        self.oii_undo_button = Button(label="Undo", button_type="default")
+        self.oii_undo_button = Button(label="Undo OII-zoom", button_type="default")
         self.oii_undo_callback = CustomJS(
             args = dict(fig=plots.fig, smootherslider=self.smootherslider, cds_oii_saveinfo=cds_oii_saveinfo),
             code = """
