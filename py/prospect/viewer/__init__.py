@@ -89,7 +89,10 @@ def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, templ
     if np.any(zbest['TARGETID'] != spectra.fibermap['TARGETID']) :
         raise ValueError('zcatalog and spectra do not match (different targetids)')
 
-    templates = load_redrock_templates(template_dir=template_dir)
+    if archetype_fit:
+        archetypes = All_archetypes(archetypes_dir=archetypes_dir).archetypes
+    else:
+        templates = load_redrock_templates(template_dir=template_dir)
 
     #- Empty model flux arrays per band to fill
     model_flux = dict()
@@ -100,25 +103,24 @@ def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, templ
         zb = zbest[i]
 
         if archetype_fit:
-          archetypes = All_archetypes(archetypes_dir=archetypes_dir).archetypes
-          archetype  = archetypes[zb['SPECTYPE']]
-          coeff      = zb['COEFF']
-
-          for band in spectra.bands:
-              wave                = spectra.wave[band]
-              wavehash            = hash((len(wave), wave[0], wave[1], wave[-2], wave[-1], spectra.R[band].data.shape[0]))
-              dwave               = {wavehash: wave}
-              mx                  = archetype.eval(zb['SUBTYPE'], dwave, coeff, wave, zb['Z']) * (1+zb['Z'])
-              model_flux[band][i] = spectra.R[band][i].dot(mx)
+            archetype  = archetypes[zb['SPECTYPE']]
+            coeff      = zb['COEFF']
+            
+            for band in spectra.bands:
+                wave                = spectra.wave[band]
+                wavehash            = hash((len(wave), wave[0], wave[1], wave[-2], wave[-1], spectra.R[band].data.shape[0]))
+                dwave               = {wavehash: wave}
+                mx                  = archetype.eval(zb['SUBTYPE'], dwave, coeff, wave, zb['Z']) * (1+zb['Z'])
+                model_flux[band][i] = spectra.R[band][i].dot(mx)
 
         else:
-          tx    = templates[(zb['SPECTYPE'], zb['SUBTYPE'])]
-          coeff = zb['COEFF'][0:tx.nbasis]
-          model = tx.flux.T.dot(coeff).T
+            tx    = templates[(zb['SPECTYPE'], zb['SUBTYPE'])]
+            coeff = zb['COEFF'][0:tx.nbasis]
+            model = tx.flux.T.dot(coeff).T
 
-          for band in spectra.bands:
-              mx                  = resample_flux(spectra.wave[band], tx.wave*(1+zb['Z']), model)
-              model_flux[band][i] = spectra.R[band][i].dot(mx)
+            for band in spectra.bands:
+                mx                  = resample_flux(spectra.wave[band], tx.wave*(1+zb['Z']), model)
+                model_flux[band][i] = spectra.R[band][i].dot(mx)
 
     #- Now combine, if needed, to a single wavelength grid across all cameras
     if spectra.bands == ['brz'] :
