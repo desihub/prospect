@@ -2,7 +2,7 @@
 //  - Requires to include function in: interp_grid.js, smooth_data.js
 //  - args = ifiberslider, model_select, fit_templates, cds_model_2ndfit, cds_model, z_input
 //             cds_othermodel, fit_results, std_templates, median_spectra, smootherslider,
-//             cds_targetinfo
+//             cds_metadata
 // IN DEVLPT
 // values for model_select (model_options) are hardcoded
 // TODO : add smootherslider info (nsmooth, see code in update_plot )
@@ -29,7 +29,7 @@ if (model_select.value == 'Best fit') {
     cds_othermodel.data['plotflux'] = origflux.slice()
     cds_othermodel.data['plotwave'] = cds_model.data['plotwave'].slice()
     cds_othermodel.data['origwave'] = cds_model.data['origwave'].slice()
-    spec_z = cds_targetinfo.data['z'][ifiberslider.value]
+    spec_z = cds_metadata.data['Z'][ifiberslider.value]
 
 } else if (model_select.value == '2nd best fit') {
     var origflux = cds_model_2ndfit.data['origflux'+ifiberslider.value]

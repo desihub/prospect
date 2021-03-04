@@ -21,73 +21,72 @@ if (nsmooth > 0)
 //
 if (cb_obj == ifiberslider) {
     //
-    // Update target information.
+    // Update metadata.
     //
-    // target_info_div.text = targetinfo.data['target_info'][ifiber]
-    targ_disp_cds.data['TARGETID'] = [ targetinfo.data['targetid'][ifiber] ];
-    targ_disp_cds.data['Target class'] = [ targetinfo.data['target_info'][ifiber] ];
-    if (targetinfo.data.hasOwnProperty('mag_W1')) {
-        targ_disp_cds.data['mag_G'] = [ targetinfo.data['mag_G'][ifiber].toFixed(2) ];
-        targ_disp_cds.data['mag_R'] = [ targetinfo.data['mag_R'][ifiber].toFixed(2) ];
-        targ_disp_cds.data['mag_Z'] = [ targetinfo.data['mag_Z'][ifiber].toFixed(2) ];
-        targ_disp_cds.data['mag_W1'] = [ targetinfo.data['mag_W1'][ifiber].toFixed(2) ];
-        targ_disp_cds.data['mag_W2'] = [ targetinfo.data['mag_W2'][ifiber].toFixed(2) ];
+    shortcds_table_a.data['TARGETID'] = [ metadata.data['TARGETID'][ifiber] ];
+    shortcds_table_a.data['Target class'] = [ metadata.data['target_info'][ifiber] ];
+    if (metadata.data.hasOwnProperty('mag_W1')) {
+        shortcds_table_a.data['mag_G'] = [ metadata.data['mag_G'][ifiber].toFixed(2) ];
+        shortcds_table_a.data['mag_R'] = [ metadata.data['mag_R'][ifiber].toFixed(2) ];
+        shortcds_table_a.data['mag_Z'] = [ metadata.data['mag_Z'][ifiber].toFixed(2) ];
+        shortcds_table_a.data['mag_W1'] = [ metadata.data['mag_W1'][ifiber].toFixed(2) ];
+        shortcds_table_a.data['mag_W2'] = [ metadata.data['mag_W2'][ifiber].toFixed(2) ];
     } else {
-        targ_disp_cds.data['mag_u'] = [ targetinfo.data['mag_u'][ifiber].toFixed(2) ];
-        targ_disp_cds.data['mag_g'] = [ targetinfo.data['mag_g'][ifiber].toFixed(2) ];
-        targ_disp_cds.data['mag_r'] = [ targetinfo.data['mag_r'][ifiber].toFixed(2) ];
-        targ_disp_cds.data['mag_i'] = [ targetinfo.data['mag_i'][ifiber].toFixed(2) ];
-        targ_disp_cds.data['mag_z'] = [ targetinfo.data['mag_z'][ifiber].toFixed(2) ];
+        shortcds_table_a.data['mag_u'] = [ metadata.data['mag_u'][ifiber].toFixed(2) ];
+        shortcds_table_a.data['mag_g'] = [ metadata.data['mag_g'][ifiber].toFixed(2) ];
+        shortcds_table_a.data['mag_r'] = [ metadata.data['mag_r'][ifiber].toFixed(2) ];
+        shortcds_table_a.data['mag_i'] = [ metadata.data['mag_i'][ifiber].toFixed(2) ];
+        shortcds_table_a.data['mag_z'] = [ metadata.data['mag_z'][ifiber].toFixed(2) ];
     }
-    targ_disp_cds.change.emit()
-    if (targetinfo.data['z'] != undefined && zcat_disp_cds != null) {
+    shortcds_table_a.change.emit()
+    if (metadata.data['Z'] != undefined && shortcds_table_z != null) {
         if (fit_results != undefined) {
-            zcat_disp_cds.data['SPECTYPE'] = fit_results['SPECTYPE'][ifiberslider.value].slice(); // (0,num_best_fits)
-            zcat_disp_cds.data['SUBTYPE'] = fit_results['SUBTYPE'][ifiberslider.value].slice();
-            zcat_disp_cds.data['Z'] = fit_results['Z'][ifiberslider.value].slice();
-            zcat_disp_cds.data['ZERR'] = fit_results['ZERR'][ifiberslider.value].slice();
-            zcat_disp_cds.data['ZWARN'] = fit_results['ZWARN'][ifiberslider.value].slice();
+            shortcds_table_z.data['SPECTYPE'] = fit_results['SPECTYPE'][ifiberslider.value].slice(); // (0,num_best_fits)
+            shortcds_table_z.data['SUBTYPE'] = fit_results['SUBTYPE'][ifiberslider.value].slice();
+            shortcds_table_z.data['Z'] = fit_results['Z'][ifiberslider.value].slice();
+            shortcds_table_z.data['ZERR'] = fit_results['ZERR'][ifiberslider.value].slice();
+            shortcds_table_z.data['ZWARN'] = fit_results['ZWARN'][ifiberslider.value].slice();
             var chi2s = fit_results['CHI2'][ifiberslider.value].slice(); // Custom DeltaChi2 calculation
             var full_deltachi2s = [];
             for (var i=0; i<fit_results['Nfit']-1; i++) {
                 full_deltachi2s.push(chi2s[i+1]-chi2s[i]);
             }
             full_deltachi2s.push(-1);
-            zcat_disp_cds.data['DeltaChi2'] = full_deltachi2s;
+            shortcds_table_z.data['DELTACHI2'] = full_deltachi2s;
             for (var i=0; i<fit_results['Nfit']; i++) {
-                zcat_disp_cds.data['Z'][i] = zcat_disp_cds.data['Z'][i].toFixed(4);
-                zcat_disp_cds.data['ZERR'][i] = zcat_disp_cds.data['ZERR'][i].toFixed(4);
-                zcat_disp_cds.data['DeltaChi2'][i] = zcat_disp_cds.data['DeltaChi2'][i].toFixed(1);
+                shortcds_table_z.data['Z'][i] = shortcds_table_z.data['Z'][i].toFixed(4);
+                shortcds_table_z.data['ZERR'][i] = shortcds_table_z.data['ZERR'][i].toFixed(4);
+                shortcds_table_z.data['DELTACHI2'][i] = shortcds_table_z.data['DELTACHI2'][i].toFixed(1);
             }
         } else {
-            zcat_disp_cds.data['SPECTYPE'] = [ targetinfo.data['spectype'][ifiber] ];
-            zcat_disp_cds.data['SUBTYPE'] = [ targetinfo.data['subtype'][ifiber] ];
-            zcat_disp_cds.data['Z'] = [ targetinfo.data['z'][ifiber].toFixed(4) ];
-            zcat_disp_cds.data['ZERR'] = [ targetinfo.data['zerr'][ifiber].toFixed(4) ];
-            zcat_disp_cds.data['ZWARN'] = [ targetinfo.data['zwarn'][ifiber] ];
-            zcat_disp_cds.data['DeltaChi2'] = [ targetinfo.data['deltachi2'][ifiber].toFixed(1) ];
+            shortcds_table_z.data['SPECTYPE'] = [ metadata.data['SPECTYPE'][ifiber] ];
+            shortcds_table_z.data['SUBTYPE'] = [ metadata.data['SUBTYPE'][ifiber] ];
+            shortcds_table_z.data['Z'] = [ metadata.data['Z'][ifiber].toFixed(4) ];
+            shortcds_table_z.data['ZERR'] = [ metadata.data['ZERR'][ifiber].toFixed(4) ];
+            shortcds_table_z.data['ZWARN'] = [ metadata.data['ZWARN'][ifiber] ];
+            shortcds_table_z.data['DELTACHI2'] = [ metadata.data['DELTACHI2'][ifiber].toFixed(1) ];
         }
-        zcat_disp_cds.change.emit();
+        shortcds_table_z.change.emit();
     }
     //
     // Update VI
     //
     vi_std_comment_select.value = ' ';
-    vi_comment_input.value = targetinfo.data['VI_comment'][ifiber];
-    vi_name_input.value = (targetinfo.data['VI_scanner'][ifiber]).trim();
-    vi_class_input.active = vi_class_labels.indexOf(targetinfo.data['VI_class_flag'][ifiber]); // -1 if nothing
+    vi_comment_input.value = metadata.data['VI_comment'][ifiber];
+    vi_name_input.value = (metadata.data['VI_scanner'][ifiber]).trim();
+    vi_class_input.active = vi_class_labels.indexOf(metadata.data['VI_class_flag'][ifiber]); // -1 if nothing
     var issues_on = [];
     for (var i=0; i<vi_issue_slabels.length; i++) {
-        if ( (targetinfo.data['VI_issue_flag'][ifiber]).indexOf(vi_issue_slabels[i]) >= 0 ) {
+        if ( (metadata.data['VI_issue_flag'][ifiber]).indexOf(vi_issue_slabels[i]) >= 0 ) {
             issues_on.push(i);
         }
     }
     vi_issue_input.active = issues_on;
-    vi_z_input.value = (targetinfo.data['VI_z'][ifiber]).trim();
-    if (targetinfo.data['VI_spectype'][ifiber] == '' ) {
+    vi_z_input.value = (metadata.data['VI_z'][ifiber]).trim();
+    if (metadata.data['VI_spectype'][ifiber] == '' ) {
         vi_category_select.value = ' '; // setting value='' does not work well with Select
     } else {
-        vi_category_select.value = targetinfo.data['VI_spectype'][ifiber];
+        vi_category_select.value = metadata.data['VI_spectype'][ifiber];
     }
 
     //
@@ -102,9 +101,9 @@ if (cb_obj == ifiberslider) {
 //
 // Update redshift.
 //
-if (targetinfo.data['z'] != undefined && cb_obj == ifiberslider && model_select == undefined) {
+if (metadata.data['Z'] != undefined && cb_obj == ifiberslider && model_select == undefined) {
     // if model_select is defined : this will be done in select_model.
-    z_input.value = targetinfo.data['z'][ifiber].toFixed(4);
+    z_input.value = metadata.data['Z'][ifiber].toFixed(4);
 }
 //
 // Smooth plot and recalculate ymin/ymax.

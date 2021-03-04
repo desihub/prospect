@@ -70,7 +70,7 @@ class ViewerLayout(object):
             
         self.plot_widget_set = bl.column(
             bl.column( Div(text="Pipeline fit: ") ),
-            bl.column(widgets.zcat_display, width=widgets.plot_widget_width),
+            bl.column(widgets.table_z, width=widgets.plot_widget_width),
             bl.row(
                 bl.column(
                     bl.row(
@@ -123,7 +123,7 @@ class ViewerLayout(object):
         self.main_bokehlayout = bl.column(
             bl.row(plots.fig, bl.column(plots.imfig, plots.zoomfig), bl.Spacer(width=20)),
             bl.row(
-                bl.column(widgets.targ_display, width=600), # plot_width - 200
+                bl.column(widgets.table_a, width=600), # plot_width - 200
                 bl.column(bl.Spacer(width=20)),
                 bl.column(widgets.reset_plotrange_button, width = 120),
                 bl.column(bl.Spacer(width=80)),

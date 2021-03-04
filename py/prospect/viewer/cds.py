@@ -68,7 +68,7 @@ class ViewerCDS(object):
         self.cds_model = None
         self.cds_model_2ndfit = None
         self.cds_othermodel = None
-        self.cds_targetinfo = None
+        self.cds_metadata = None
     
     def load_spectra(self, spectra, with_noise=True):
         """ Creates column data source for observed spectra """
@@ -172,145 +172,114 @@ class ViewerCDS(object):
             'zref' : zcatalog['Z'][0]+np.zeros(len(self.cds_model.data['origflux0'])) # Track z reference in model
         })
     
-    def load_targetinfo(self, spectra, zcatalog, is_coadded, mask_type, username=" "):
-        """ Creates column data source for target-related metadata, 
-            from zcatalog, fibermap and VI files 
+    
+    def load_metadata(self, spectra, mask_type=None, zcatalog=None, username=" ", survey='DESI'):
+        """ Creates column data source for target-related metadata,
+            from fibermap, zcatalog and VI files 
         """
-        target_info = list()
-        if _specutils_imported and isinstance(spectra, Spectrum1D):
-            assert mask_type in ['PRIMTARGET', 'SECTARGET',
-                                 'BOSS_TARGET1', 'BOSS_TARGET2',
-                                 'ANCILLARY_TARGET1', 'ANCILLARY_TARGET2',
-                                 'EBOSS_TARGET0', 'EBOSS_TARGET1', 'EBOSS_TARGET2',]
+    
+        if survey == 'DESI':
+            nspec = spectra.num_spectra()
+            self.zcat_keys = ['Z', 'SPECTYPE', 'SUBTYPE', 'ZERR', 'ZWARN', 'DELTACHI2']
+            self.phot_bands = ['G','R','Z', 'W1', 'W2']
+            assert _desitarget_imported
+            supported_masks = {
+                'SV1_DESI_TARGET': sv1_desi_mask,
+                'SV1_BGS_TARGET': sv1_bgs_mask,
+                'DESI_TARGET': desi_mask,
+                'CMX_TARGET': cmx_mask
+                }
+
+        elif survey == 'SDSS':
             nspec = spectra.flux.shape[0]
-            for i, row in enumerate(spectra.meta['plugmap']):
-                target_bit_names = mask_type + ' (DUMMY)'
-                target_info.append(target_bit_names)
-
-            self.cds_targetinfo = ColumnDataSource(
-                dict(target_info=target_info),
-                name='target_info')
-
-            bands = ['u', 'g', 'r', 'i', 'z']
-            for i, bandname in enumerate(bands):
-                # mag = np.zeros(len(spectra.meta['plugmap']))
-                mag = spectra.meta['plugmap']['MAG'][:, i]
-                # extinction = np.ones(len(flux))
-                # if ('MW_TRANSMISSION_'+bandname) in spectra.fibermap.keys() :
-                #     extinction = spectra.fibermap['MW_TRANSMISSION_'+bandname]
-                # w, = np.where( (flux>0) & (extinction>0) )
-                # mag[w] = -2.5*np.log10(flux[w]/extinction[w])+22.5
-                self.cds_targetinfo.add(mag, name='mag_'+bandname)
-
-            if zcatalog is not None :
-                self.cds_targetinfo.add(zcatalog['Z'], name='z')
-                self.cds_targetinfo.add(zcatalog['CLASS'].astype('U{0:d}'.format(zcatalog['CLASS'].dtype.itemsize)), name='spectype')
-                self.cds_targetinfo.add(zcatalog['SUBCLASS'].astype('U{0:d}'.format(zcatalog['SUBCLASS'].dtype.itemsize)), name='subtype')
-                self.cds_targetinfo.add(zcatalog['Z_ERR'], name='zerr')
-                self.cds_targetinfo.add(zcatalog['ZWARNING'], name='zwarn')
-                self.cds_targetinfo.add(zcatalog['RCHI2DIFF'], name='deltachi2')
-            else :
-                self.cds_targetinfo.add(np.zeros(nspec), name='z')
-                self.cds_targetinfo.add([" " for i in range(nspec)], name='spectype')
-                self.cds_targetinfo.add([" " for i in range(nspec)], name='subtype')
-                self.cds_targetinfo.add(np.zeros(nspec), name='zerr')
-                self.cds_targetinfo.add([0 for i in range(nspec)], name='zwarn')
-                self.cds_targetinfo.add(np.zeros(nspec), name='deltachi2')
-
-            # if not is_coadded and 'EXPID' in spectra.fibermap.keys() :
-             #    cds_targetinfo.add(spectra.fibermap['EXPID'], name='expid')
-            # else : # If coadd, fill VI accordingly
-            self.cds_targetinfo.add(['-1' for i in range(nspec)], name='expid')
-            self.cds_targetinfo.add([str(x.tolist()) for x in spectra.meta['plugmap']['OBJID']], name='targetid') # !! No int64 in js !!
-
-            #- Get desispec version
-            #- TODO : get redrock version (from zcatalog...)
-            desispec_specversion = "SDSS"
-            # for xx,yy in spectra.meta.items() :
-            #     if yy=="desispec" :
-            #         desispec_specversion = spectra.meta[xx.replace('NAM','VER')]
-            self.cds_targetinfo.add([desispec_specversion for i in range(nspec)], name='spec_version')
-            self.cds_targetinfo.add(np.zeros(nspec), name='redrock_version')
+            self.zcat_keys = ['Z', 'CLASS', 'SUBCLASS', 'Z_ERR', 'ZWARNING', 'RCHI2DIFF']
+            self.phot_bands = ['u', 'g', 'r', 'i', 'z']
+            supported_masks = ['PRIMTARGET', 'SECTARGET',
+                                'BOSS_TARGET1', 'BOSS_TARGET2',
+                                'ANCILLARY_TARGET1', 'ANCILLARY_TARGET2',
+                                'EBOSS_TARGET0', 'EBOSS_TARGET1', 'EBOSS_TARGET2']
 
         else:
-            assert mask_type in ['SV1_DESI_TARGET', 'SV1_BGS_TARGET', 'DESI_TARGET', 'CMX_TARGET']
-            assert _desitarget_imported
-            for i, row in enumerate(spectra.fibermap):
-                if mask_type == 'SV1_DESI_TARGET' :
-                    target_bit_names = ' '.join(sv1_desi_mask.names(row['SV1_DESI_TARGET']))
-                elif mask_type == 'SV1_BGS_TARGET' :
-                    target_bit_names = ' '.join(sv1_bgs_mask.names(row['SV1_BGS_TARGET']))
-                elif mask_type == 'DESI_TARGET' :
-                    target_bit_names = ' '.join(desi_mask.names(row['DESI_TARGET']))
-                elif mask_type == 'CMX_TARGET' :
-                    target_bit_names = ' '.join(cmx_mask.names(row['CMX_TARGET']))
-                txt = target_bit_names
-                if not is_coadded :
-                    ## BYPASS DIV
-                    #           txt += '<BR />'
-                    if 'NIGHT' in spectra.fibermap.keys() : txt += "Night : {}".format(row['NIGHT'])
-                    if 'EXPID' in spectra.fibermap.keys() : txt += "Exposure : {}".format(row['EXPID'])
-                    if 'FIBER' in spectra.fibermap.keys() : txt += "Fiber : {}".format(row['FIBER'])
-                target_info.append(txt)
-
-            self.cds_targetinfo = ColumnDataSource(
-                dict(target_info=target_info),
-                name='target_info')
-
-            ## BYPASS DIV : Added photometry fields ; also add several bands
-            bands = ['G','R','Z', 'W1', 'W2']
-            for bandname in bands :
-                mag = np.zeros(spectra.num_spectra())
+            raise ValueError('wrong survey')
+        
+        self.cds_metadata = ColumnDataSource()
+        # TODO: everywhere: handle case of no metadata: 
+        #     Do something or not ?? it's better if we can avoid, need to check
+        
+        #- Generic metadata
+        if survey == 'DESI':
+            fibermap_keys = ['EXPID', 'NIGHT', 'TILEID'] #, 'MORPHTYPE']
+            for fm_key in fibermap_keys:
+                if fm_key in spectra.fibermap.keys():
+                    self.cds_metadata.add(spectra.fibermap[fm_key], name=fm_key) 
+                else:
+                    # ? self.cds_targetinfo.add(['-1' for i in range(nspec)], name=cds_key)
+            #- Special case for targetids: No int64 in js !!
+            self.cds_metadata.add([str(x) for x in spectra.fibermap['TARGETID']], name='TARGETID')
+        elif survey == 'SDSS':
+            self.cds_metadata.add([str(x.tolist()) for x in spectra.meta['plugmap']['OBJID']], name='TARGETID')
+        
+        #- Photometry
+        for i, bandname in enumerate(self.phot_bands) :
+            # TODO: define what todo if FLX_BAND not in fibermap
+            if survey == 'SDSS':
+                mag = spectra.meta['plugmap']['MAG'][:, i]
+            else :
+                mag = np.zeros(nspec)
                 flux = spectra.fibermap['FLUX_'+bandname]
                 extinction = np.ones(len(flux))
                 if ('MW_TRANSMISSION_'+bandname) in spectra.fibermap.keys() :
                     extinction = spectra.fibermap['MW_TRANSMISSION_'+bandname]
                 w, = np.where( (flux>0) & (extinction>0) )
                 mag[w] = -2.5*np.log10(flux[w]/extinction[w])+22.5
-                self.cds_targetinfo.add(mag, name='mag_'+bandname)
+            self.cds_metadata.add(mag, name='mag_'+bandname)
 
-            nspec = spectra.num_spectra()
+        #- Targeting masks
+        if mask_type is not None:
+            if survey == 'DESI':
+                if mask_type not in spectra.fibermap.keys():
+                    raise ValueError("mask_type is not in spectra.fibermap: "+mask_type)
+                mask_used = supported_masks[mask_type]
+                target_bits = spectra.fibermap[mask_type]
+                target_info = [ ' '.join(mask_used.names(x)) for x in target_bits ]
+            elif survey == 'SDSS':
+                assert mask_type in supported_masks
+                target_info = [ mask_type + ' (DUMMY)' for x in spectra.meta['plugmap'] ] # placeholder
+            self.cds_metadata.add(target_info, name='target_info')
 
-            if zcatalog is not None :
-                self.cds_targetinfo.add(zcatalog['Z'], name='z')
-                self.cds_targetinfo.add(zcatalog['SPECTYPE'].astype('U{0:d}'.format(zcatalog['SPECTYPE'].dtype.itemsize)), name='spectype')
-                self.cds_targetinfo.add(zcatalog['SUBTYPE'].astype('U{0:d}'.format(zcatalog['SUBTYPE'].dtype.itemsize)), name='subtype')
-                self.cds_targetinfo.add(zcatalog['ZERR'], name='zerr')
-                self.cds_targetinfo.add(zcatalog['ZWARN'], name='zwarn')
-                self.cds_targetinfo.add(zcatalog['DELTACHI2'], name='deltachi2')
-            else :
-                self.cds_targetinfo.add(np.zeros(nspec), name='z')
-                self.cds_targetinfo.add([" " for i in range(nspec)], name='spectype')
-                self.cds_targetinfo.add([" " for i in range(nspec)], name='subtype')
-                self.cds_targetinfo.add(np.zeros(nspec), name='zerr')
-                self.cds_targetinfo.add([0 for i in range(nspec)], name='zwarn')
-                self.cds_targetinfo.add(np.zeros(nspec), name='deltachi2')
-
-            for fm_key,cds_key in [ ('EXPID','expid'), ('NIGHT','night'), ('TILEID','tileid')] :
-                if fm_key in spectra.fibermap.keys() :
-                    self.cds_targetinfo.add(spectra.fibermap[fm_key], name=cds_key)
-                else :
-                    self.cds_targetinfo.add(['-1' for i in range(nspec)], name=cds_key)
-            self.cds_targetinfo.add([str(x) for x in spectra.fibermap['TARGETID']], name='targetid') # !! No int64 in js !!
-
-            #- Get desispec version
-            #- TODO : get redrock version (from zcatalog...)
+        #- Software versions
+        #- TODO : get redrock version (from zcatalog...)
+        if survey == 'SDSS':
+            desispec_version = 'SDSS'
+        else :
             desispec_specversion = "0"
             for xx,yy in spectra.meta.items() :
-                if yy=="desispec" :
-                    desispec_specversion = spectra.meta[xx.replace('NAM','VER')]
-            self.cds_targetinfo.add([desispec_specversion for i in range(nspec)], name='spec_version')
-            self.cds_targetinfo.add(np.zeros(nspec)-1, name='redrock_version')
-            self.cds_targetinfo.add(np.zeros(nspec)-1, name='template_version')
+                if yy=="desispec" : desispec_specversion = spectra.meta[xx.replace('NAM','VER')]
+        self.cds_metadata.add([desispec_specversion for i in range(nspec)], name='spec_version')
+        self.cds_metadata.add(np.zeros(nspec)-1, name='redrock_version')
+        self.cds_metadata.add(np.zeros(nspec)-1, name='template_version')
 
-        # VI inputs
-        self.cds_targetinfo.add([username for i in range(nspec)], name='VI_scanner')
-        self.cds_targetinfo.add(["-1" for i in range(nspec)], name='VI_class_flag')
-        self.cds_targetinfo.add(["" for i in range(nspec)], name='VI_issue_flag')
-        self.cds_targetinfo.add(["" for i in range(nspec)], name='VI_z')
-        self.cds_targetinfo.add(["" for i in range(nspec)], name='VI_spectype')
-        self.cds_targetinfo.add(["" for i in range(nspec)], name='VI_comment')
-    
+        #- Redshift fit
+        if zcatalog is not None:
+            for zcat_key in self.zcat_keys:
+                if 'TYPE' in zcat_key or 'CLASS' in zcat_key:
+                    data = zcatalog[zcat_key].astype('U{0:d}'.format(zcatalog[zcat_key].dtype.itemsize))
+                else :
+                    data = zcatalog[zcat_key]
+                self.cds_metadata.add(data, name=zcat_key)
+        
+        #- VI informations
+        vi_values = {
+            'VI_scanner': username,
+            'VI_class_flag': "-1",
+            'VI_issue_flag': "",
+            'VI_z': "",
+            'VI_spectype': "",
+            'VI_comment': ""
+            }
+        for vi_key, vi_val in vi_values.items():
+            self.cds_metadata.add([vi_val for i in range(nspec)], name=vi_key)
+            
     
     def load_spectral_lines(self, z=0):    
     

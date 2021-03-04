@@ -65,18 +65,18 @@ vi_flags = [
 vi_file_fields = [
     # Contents of VI files: [
     #      field name (in VI file header),
-    #      associated variable in cds_targetinfo,
+    #      associated variable in viewer_cds.cds_metadata,
     #      dtype in VI file ]
     # Ordered list
-    ["TARGETID", "targetid", "i8"],
-    ["EXPID", "expid", "i4"],
-    ["NIGHT", "night", "i4"],
-    ["TILEID", "tileid", "i4"],
+    ["TARGETID", "TARGETID", "i8"],
+    ["EXPID", "EXPID", "i4"],
+    ["NIGHT", "NIGHT", "i4"],
+    ["TILEID", "TILEID", "i4"],
     ["Spec_version", "spec_version", "i4"],
     ["Redrock_version", "redrock_version", "i4"], # TODO define
     ["Template_version", "template_version", "i4"], # TODO define
-    ["Redrock_spectype", "spectype", "S10"],
-    ["Redrock_z", "z", "f4"],
+    ["Redrock_spectype", "SPECTYPE", "S10"],
+    ["Redrock_z", "Z", "f4"],
     ["VI_scanner", "VI_scanner", "S10"],
     ["VI_quality", "VI_class_flag", "i2"],
     ["VI_issue", "VI_issue_flag", "S6"],

@@ -68,13 +68,13 @@ class ViewerPlots(object):
         self.imfig_source = self.imfig_urls = None
 
 
-    def create_mainfig(self, spectra, title, viewer_cds, sdss, with_noise=True, with_coaddcam=True):
+    def create_mainfig(self, spectra, title, viewer_cds, survey, with_noise=True, with_coaddcam=True):
         #-----
         #- Main figure
         #- Determine initial ymin, ymax, xmin, xmax
         self.ymin = self.ymax = self.xmax = 0
         self.xmin = 100000.
-        if sdss:
+        if survey == 'SDSS':
             bands = ['coadd']
             self.ymin = np.nanmin(spectra.flux.value[0])
             self.ymax = np.nanmax(spectra.flux.value[0])

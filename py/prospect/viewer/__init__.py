@@ -274,21 +274,21 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     #- Set masked bins to NaN for compatibility with bokeh.
     if _specutils_imported and isinstance(spectra, Spectrum1D):
         # We will assume this is from an SDSS/BOSS/eBOSS spPlate file.
-        sdss = True
+        survey = 'SDSS'
         is_coadded = True
         nspec = spectra.flux.shape[0]
         bad = (spectra.uncertainty.array == 0.0) | spectra.mask
         spectra.flux[bad] = np.nan
     elif _specutils_imported and isinstance(spectra, SpectrumList):
         # We will assume this is from a DESI spectra-64 file.
-        sdss = False
+        survey = 'DESI'
         nspec = spectra[0].flux.shape[0]
         for s in spectra:
             bad = (s.uncertainty.array == 0.0) | s.mask
             s.flux[bad] = np.nan
     else:
         # DESI object (Spectra or list of Frame)
-        sdss = False
+        survey = 'DESI'
         if _desispec_imported and isinstance(spectra, desispec.spectra.Spectra):
             nspec = spectra.num_spectra()
         elif _desispec_imported and isinstance(spectra, list) and isinstance(spectra[0], desispec.frame.Frame):
@@ -308,13 +308,13 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
             spectra.flux[band][bad] = np.nan
         #- No coaddition if spectra is already single-band
         if len(spectra.bands)==1 : with_coaddcam = False
-
+    
     if title is None:
         title = "specviewer"
 
     #- Input zcatalog / model
     if zcatalog is not None:
-        if sdss:
+        if survey == 'SDSS':
             if len(zcatalog) != spectra.flux.shape[0]:
                 raise ValueError('zcatalog and spectra do not match (different lengths)')
         else:
@@ -370,14 +370,14 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
         username = os.environ['USER'][0:3] # 3-letter acronym
     else :
         username = " "
-    viewer_cds.load_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=username)
-
+    viewer_cds.load_metadata(spectra, mask_type=mask_type, zcatalog=zcatalog, username=username, survey=survey)
+    
     #-------------------------
     #-- Graphical objects --
     #-------------------------
 
     viewer_plots = ViewerPlots()
-    viewer_plots.create_mainfig(spectra, title, viewer_cds, sdss,
+    viewer_plots.create_mainfig(spectra, title, viewer_cds, survey,
                                 with_noise=with_noise, with_coaddcam=with_coaddcam)
     viewer_plots.create_zoomfig(viewer_cds, 
                                 with_noise=with_noise, with_coaddcam=with_coaddcam)
@@ -411,9 +411,8 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     if zcatalog is not None :
         show_zcat = True
     else : show_zcat = False
-    viewer_widgets.add_targetinfos(viewer_cds, sdss, show_zcat=show_zcat,
+    viewer_widgets.add_metadata_tables(viewer_cds, show_zcat=show_zcat,
                                    template_dicts=template_dicts)
-
     viewer_widgets.add_specline_toggles(viewer_cds, viewer_plots)
 
     if template_dicts is not None :
