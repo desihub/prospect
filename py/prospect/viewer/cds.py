@@ -207,7 +207,7 @@ class ViewerCDS(object):
         
         #- Generic metadata
         if survey == 'DESI':
-            fibermap_keys = ['EXPID', 'NIGHT', 'TILEID'] #, 'MORPHTYPE']
+            fibermap_keys = ['EXPID', 'NIGHT', 'TILEID', 'MORPHTYPE']
             for fm_key in fibermap_keys:
                 if fm_key in spectra.fibermap.keys():
                     self.cds_metadata.add(spectra.fibermap[fm_key], name=fm_key) 
