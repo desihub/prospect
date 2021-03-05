@@ -55,8 +55,7 @@ try:
 except ImportError:
     _redrock_imported = False
 
-from ..utilities import (get_resources, frames2spectra, create_zcat_from_redrock_cat,
-                        vi_flags, vi_file_fields, vi_spectypes, vi_std_comments)
+from ..utilities import frames2spectra, create_zcat_from_redrock_cat
 from .cds import ViewerCDS
 from .plots import ViewerPlots
 from .widgets import ViewerWidgets
@@ -424,7 +423,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     #- VI-related widgets
     ## TODO if with_vi_widgets (need to adapt update_plot.js..)
 
-    viewer_vi_widgets = ViewerVIWidgets(title)
+    viewer_vi_widgets = ViewerVIWidgets(title, viewer_cds)
 
     viewer_vi_widgets.add_filename(username=username)
     viewer_vi_widgets.add_vi_issues(viewer_cds, viewer_widgets)

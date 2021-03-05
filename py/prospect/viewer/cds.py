@@ -189,7 +189,6 @@ class ViewerCDS(object):
                 'DESI_TARGET': desi_mask,
                 'CMX_TARGET': cmx_mask
                 }
-
         elif survey == 'SDSS':
             nspec = spectra.flux.shape[0]
             self.zcat_keys = ['Z', 'CLASS', 'SUBCLASS', 'Z_ERR', 'ZWARNING', 'RCHI2DIFF']
@@ -198,9 +197,8 @@ class ViewerCDS(object):
                                 'BOSS_TARGET1', 'BOSS_TARGET2',
                                 'ANCILLARY_TARGET1', 'ANCILLARY_TARGET2',
                                 'EBOSS_TARGET0', 'EBOSS_TARGET1', 'EBOSS_TARGET2']
-
         else:
-            raise ValueError('wrong survey')
+            raise ValueError('Wrong survey')
         
         self.cds_metadata = ColumnDataSource()
         # TODO: everywhere: handle case of no metadata: 
@@ -212,7 +210,7 @@ class ViewerCDS(object):
             for fm_key in fibermap_keys:
                 if fm_key in spectra.fibermap.keys():
                     self.cds_metadata.add(spectra.fibermap[fm_key], name=fm_key) 
-                else:
+               # else:
                     # ? self.cds_targetinfo.add(['-1' for i in range(nspec)], name=cds_key)
             #- Special case for targetids: No int64 in js !!
             self.cds_metadata.add([str(x) for x in spectra.fibermap['TARGETID']], name='TARGETID')
@@ -276,7 +274,7 @@ class ViewerCDS(object):
             'VI_z': "",
             'VI_spectype': "",
             'VI_comment': ""
-            }
+            } # this could go to utilities
         for vi_key, vi_val in vi_values.items():
             self.cds_metadata.add([vi_val for i in range(nspec)], name=vi_key)
             

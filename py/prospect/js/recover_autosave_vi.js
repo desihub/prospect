@@ -2,7 +2,7 @@
 // Requires to include functions in: CSVtoArray.js
 
 // Recover auto-saved VI infos from browser's localStorage
-// args = title, cds_metadata, vi_file_fields, ifiber, 
+// args = title, cds_metadata, output_file_fields, ifiber, 
 //   vi_comment_input, vi_name_input, vi_class_input, vi_issue_input, vi_issue_slabels, vi_class_labels
 
 if (title in localStorage) {
@@ -12,8 +12,8 @@ if (title in localStorage) {
         var row = CSVtoArray(recovered_entries[j])
         var i_spec = Number(row[0])
         for (var k=1; k<row.length; k++) {
-            if (vi_file_fields[k-1][1].includes('VI')) {
-                cds_metadata.data[vi_file_fields[k-1][1]][i_spec] = row[k]
+            if (output_file_fields[k-1][1].includes('VI')) {
+                cds_metadata.data[output_file_fields[k-1][1]][i_spec] = row[k]
             }
         }
         if (i_spec == ifiber) { // update VI buttons for current spectrum

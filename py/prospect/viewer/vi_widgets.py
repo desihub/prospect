@@ -22,15 +22,19 @@ class ViewerVIWidgets(object):
     Encapsulates Bokeh widgets, and related callbacks, used for VI
     """
     
-    def __init__(self, title):
+    def __init__(self, title, viewer_cds):
         self.vi_class_labels = [ x["label"] for x in vi_flags if x["type"]=="class" ]
         self.vi_issue_labels = [ x["label"] for x in vi_flags if x["type"]=="issue" ]
         self.vi_issue_slabels = [ x["shortlabel"] for x in vi_flags if x["type"]=="issue" ]
         self.js_files = get_resources('js')
         self.title = title
-        
         self.vi_countdown_toggle = None
-        
+
+        #- Define list of fields to be recorded in output csv file:
+        self.output_file_fields = []
+        for file_field in vi_file_fields:
+            if file_field[1] in viewer_cds.cds_metadata.data.keys() :
+                self.output_file_fields.append(file_field)
 
     def add_filename(self, username=''):
         #- VI file name
@@ -57,7 +61,7 @@ class ViewerVIWidgets(object):
             } else {
                 cds_metadata.data['VI_issue_flag'][ifiberslider.value] = " "
             }
-            autosave_vi_localStorage(vi_file_fields, cds_metadata.data, title)
+            autosave_vi_localStorage(output_file_fields, cds_metadata.data, title)
             cds_metadata.change.emit()
             """
         self.vi_issue_callback = CustomJS(
@@ -66,7 +70,7 @@ class ViewerVIWidgets(object):
                       vi_issue_input = self.vi_issue_input,
                       vi_issue_labels = self.vi_issue_labels,
                       vi_issue_slabels = self.vi_issue_slabels,
-                      title = self.title, vi_file_fields = vi_file_fields),
+                      title = self.title, output_file_fields = self.output_file_fields),
                       code = vi_issue_code )
         self.vi_issue_input.js_on_click(self.vi_issue_callback)
 
@@ -78,14 +82,14 @@ class ViewerVIWidgets(object):
         vi_z_code = self.js_files["CSVtoArray.js"] + self.js_files["save_vi.js"]
         vi_z_code += """
             cds_metadata.data['VI_z'][ifiberslider.value]=vi_z_input.value
-            autosave_vi_localStorage(vi_file_fields, cds_metadata.data, title)
+            autosave_vi_localStorage(output_file_fields, cds_metadata.data, title)
             cds_metadata.change.emit()
             """
         self.vi_z_callback = CustomJS(
             args=dict(cds_metadata = viewer_cds.cds_metadata,
                       ifiberslider = widgets.ifiberslider,
                       vi_z_input = self.vi_z_input,
-                      title = self.title, vi_file_fields=vi_file_fields),
+                      title = self.title, output_file_fields=self.output_file_fields),
                       code = vi_z_code )
         self.vi_z_input.js_on_change('value', self.vi_z_callback)
 
@@ -109,14 +113,14 @@ class ViewerVIWidgets(object):
             } else {
                 cds_metadata.data['VI_spectype'][ifiberslider.value]=vi_category_select.value
             }
-            autosave_vi_localStorage(vi_file_fields, cds_metadata.data, title)
+            autosave_vi_localStorage(output_file_fields, cds_metadata.data, title)
             cds_metadata.change.emit()
             """
         self.vi_category_callback = CustomJS(
             args=dict(cds_metadata=viewer_cds.cds_metadata, 
                       ifiberslider = widgets.ifiberslider,
                       vi_category_select=self.vi_category_select,
-                      title=self.title, vi_file_fields=vi_file_fields),
+                      title=self.title, output_file_fields=self.output_file_fields),
             code=vi_category_code )
         self.vi_category_select.js_on_change('value', self.vi_category_callback)
 
@@ -141,14 +145,14 @@ class ViewerVIWidgets(object):
                 }
             })
             cds_metadata.data['VI_comment'][ifiberslider.value] = stored_comment
-            autosave_vi_localStorage(vi_file_fields, cds_metadata.data, title)
+            autosave_vi_localStorage(output_file_fields, cds_metadata.data, title)
             cds_metadata.change.emit()
             """
         self.vi_comment_callback = CustomJS(
             args=dict(cds_metadata = viewer_cds.cds_metadata,
                       ifiberslider = widgets.ifiberslider, 
                       vi_comment_input = self.vi_comment_input,
-                      title=self.title, vi_file_fields=vi_file_fields),
+                      title=self.title, output_file_fields=self.output_file_fields),
             code=vi_comment_code )
         self.vi_comment_input.js_on_change('value',self.vi_comment_callback)
 
@@ -180,7 +184,7 @@ class ViewerVIWidgets(object):
             } else {
                 cds_metadata.data['VI_class_flag'][ifiberslider.value] = "-1"
             }
-            autosave_vi_localStorage(vi_file_fields, cds_metadata.data, title)
+            autosave_vi_localStorage(output_file_fields, cds_metadata.data, title)
             cds_metadata.change.emit()
         """
         self.vi_class_callback = CustomJS(
@@ -188,8 +192,8 @@ class ViewerVIWidgets(object):
                         vi_class_input = self.vi_class_input,
                         vi_class_labels = self.vi_class_labels,
                         ifiberslider = widgets.ifiberslider,
-                        title=self.title, vi_file_fields = vi_file_fields,
-                        code=vi_class_code )
+                        title=self.title, output_file_fields = self.output_file_fields),
+            code=vi_class_code )
         self.vi_class_input.js_on_click(self.vi_class_callback)
 
     def add_vi_scanner(self, viewer_cds, nspec):
@@ -205,15 +209,15 @@ class ViewerVIWidgets(object):
             var pepe = newname.split("_")
             newname = ( pepe.slice(0,pepe.length-1).join("_") ) + ("_"+vi_name_input.value+".csv")
             vi_filename_input.value = newname
-            autosave_vi_localStorage(vi_file_fields, cds_metadata.data, title)
+            autosave_vi_localStorage(output_file_fields, cds_metadata.data, title)
             """
         self.vi_name_callback = CustomJS(
             args = dict(cds_metadata = viewer_cds.cds_metadata,
                         nspec = nspec, 
                         vi_name_input = self.vi_name_input,
                         vi_filename_input = self.vi_filename_input, title=self.title,
-                        vi_file_fields = vi_file_fields),
-                        code=vi_name_code )
+                        output_file_fields = self.output_file_fields),
+            code=vi_name_code )
         self.vi_name_input.js_on_change('value', self.vi_name_callback)
 
     def add_guidelines(self):
@@ -235,11 +239,11 @@ class ViewerVIWidgets(object):
         self.save_vi_button = Button(label="Download VI", button_type="success")
         save_vi_code = self.js_files["FileSaver.js"] + self.js_files["CSVtoArray.js"] + self.js_files["save_vi.js"]
         save_vi_code += """
-            download_vi_file(vi_file_fields, cds_metadata.data, vi_filename_input.value)
+            download_vi_file(output_file_fields, cds_metadata.data, vi_filename_input.value)
             """
         self.save_vi_callback = CustomJS(
             args = dict(cds_metadata = viewer_cds.cds_metadata,
-                        vi_file_fields = vi_file_fields,
+                        output_file_fields = self.output_file_fields,
                         vi_filename_input = self.vi_filename_input),
                         code=save_vi_code )
         self.save_vi_button.js_on_event('button_click', self.save_vi_callback)
@@ -248,7 +252,7 @@ class ViewerVIWidgets(object):
         self.recover_vi_button = Button(label="Recover auto-saved VI", button_type="default")
         recover_vi_code = self.js_files["CSVtoArray.js"] + self.js_files["recover_autosave_vi.js"]
         self.recover_vi_callback = CustomJS(
-            args = dict(title=self.title, vi_file_fields=vi_file_fields,
+            args = dict(title=self.title, output_file_fields=self.output_file_fields,
                         cds_metadata = viewer_cds.cds_metadata,
                         ifiber = widgets.ifiberslider.value, vi_comment_input = self.vi_comment_input,
                         vi_name_input=self.vi_name_input, vi_class_input=self.vi_class_input,
