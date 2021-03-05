@@ -84,7 +84,7 @@ def main():
             if not os.path.exists(savedir) :
                 os.mkdir(savedir)
                 os.mkdir(savedir+"/vignettes")
-            plotspectra(thespec, zcatalog=thezb, vidata=vidata, model=model, title=titlepage, savedir=savedir, is_coadded=False)
+            plotspectra(thespec, zcatalog=thezb, vidata=vidata, model=model, title=titlepage, savedir=savedir)
             # for i_spec in range(thespec.num_spectra()) :
             #     saveplot = savedir+"/vignettes/expo"+str(exposure)+"_fiberset"+str(i_page)+"_"+str(i_spec)+".png"
             #     miniplot_spectrum(thespec,i_spec,model=model,saveplot=saveplot, smoothing = args.vignette_smoothing)

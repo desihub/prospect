@@ -31,6 +31,7 @@ except ImportError:
     _desitarget_imported = False
 
 from ..mycoaddcam import coaddcam_prospect
+from ..utilities import vi_file_fields
 
 
 def _airtovac(w):
@@ -173,7 +174,7 @@ class ViewerCDS(object):
         })
     
     
-    def load_metadata(self, spectra, mask_type=None, zcatalog=None, username=" ", survey='DESI'):
+    def load_metadata(self, spectra, mask_type=None, zcatalog=None, survey='DESI'):
         """ Creates column data source for target-related metadata,
             from fibermap, zcatalog and VI files 
         """
@@ -267,16 +268,9 @@ class ViewerCDS(object):
                 self.cds_metadata.add(data, name=zcat_key)
         
         #- VI informations
-        vi_values = {
-            'VI_scanner': username,
-            'VI_class_flag': "-1",
-            'VI_issue_flag': "",
-            'VI_z': "",
-            'VI_spectype': "",
-            'VI_comment': ""
-            } # this could go to utilities
-        for vi_key, vi_val in vi_values.items():
-            self.cds_metadata.add([vi_val for i in range(nspec)], name=vi_key)
+        default_vi_info = [ (x[0],x[3]) for x in vi_file_fields if x[0][0:3]=="VI_" ]
+        for vi_key, vi_value in default_vi_info:
+            self.cds_metadata.add([vi_value for i in range(nspec)], name=vi_key)
             
     
     def load_spectral_lines(self, z=0):    

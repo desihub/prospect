@@ -144,7 +144,7 @@ def page_subset_expo(fdir, exposure, frametype, petals, html_dir, titlepage_pref
             the_indices = sort_indices[(i_page-1)*nspecperfile:i_page*nspecperfile]
             thespec = myspecselect(spectra, indices=the_indices)
             titlepage = titlepage_prefix+"_petal"+petal_num+"_"+str(i_page)
-            plotspectra(thespec, with_noise=True, with_coaddcam=True, is_coadded=False,
+            plotspectra(thespec, with_noise=True, with_coaddcam=True,
                         title=titlepage, html_dir=html_dir, mask_type='CMX_TARGET', with_thumb_only_page=True)
         nspec_done += nspec_expo
 
@@ -205,7 +205,7 @@ def page_subset_tile(fdir, tile_db_subset, frametype, html_dir, titlepage_prefix
         the_indices = sort_indices[(i_page-1)*nspecperfile:i_page*nspecperfile]
         thespec = myspecselect(all_spectra, indices=the_indices, remove_scores=True)
         titlepage = titlepage_prefix+"_"+str(i_page)
-        plotspectra(thespec, with_noise=True, with_coaddcam=True, is_coadded=True, zcatalog=zcat,
+        plotspectra(thespec, with_noise=True, with_coaddcam=True, zcatalog=zcat,
                     title=titlepage, html_dir=html_dir, mask_type='CMX_TARGET', with_thumb_only_page=True)
     nspec_done += nspec_tile
 

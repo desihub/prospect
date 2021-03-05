@@ -82,7 +82,7 @@ def main():
             with_full_2ndfit = False
 
         titlepage = args.titlepage_prefix+"_"+str(i_page)
-        plotspectra(thespec, with_noise=True, is_coadded=True, zcatalog=the_zcat,
+        plotspectra(thespec, with_noise=True, zcatalog=the_zcat,
                     title=titlepage, html_dir=args.webdir, mask_type='CMX_TARGET', with_thumb_only_page=True,
                     template_dir=args.template_dir, redrock_cat=the_rrtable, num_approx_fits=num_approx_fits,
                     with_full_2ndfit=with_full_2ndfit, vi_countdown=args.countdown)

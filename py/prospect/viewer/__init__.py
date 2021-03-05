@@ -361,11 +361,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     else :
         template_dicts = None
 
-    if notebook and ("USER" in os.environ) :
-        username = os.environ['USER'][0:3] # 3-letter acronym
-    else :
-        username = " "
-    viewer_cds.load_metadata(spectra, mask_type=mask_type, zcatalog=zcatalog, username=username, survey=survey)
+    viewer_cds.load_metadata(spectra, mask_type=mask_type, zcatalog=zcatalog, survey=survey)
     
     #-------------------------
     #-- Graphical objects --
@@ -421,7 +417,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
 
     viewer_vi_widgets = ViewerVIWidgets(title, viewer_cds)
 
-    viewer_vi_widgets.add_filename(username=username)
+    viewer_vi_widgets.add_filename()
     viewer_vi_widgets.add_vi_issues(viewer_cds, viewer_widgets)
     viewer_vi_widgets.add_vi_z(viewer_cds, viewer_widgets)
     viewer_vi_widgets.add_vi_spectype(viewer_cds, viewer_widgets)

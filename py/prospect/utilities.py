@@ -66,23 +66,24 @@ vi_file_fields = [
     # Contents of VI files: [
     #      field name (in VI file header),
     #      associated variable in viewer_cds.cds_metadata,
-    #      dtype in VI file ]
+    #      dtype in VI file
+    #      default value ]
     # Ordered list
-    ["TARGETID", "TARGETID", "i8"],
-    ["EXPID", "EXPID", "i4"],
-    ["NIGHT", "NIGHT", "i4"],
-    ["TILEID", "TILEID", "i4"],
-    ["Spec_version", "spec_version", "i4"],
-    ["Redrock_version", "redrock_version", "i4"], # TODO define
-    ["Template_version", "template_version", "i4"], # TODO define
-    ["Redrock_spectype", "SPECTYPE", "S10"],
-    ["Redrock_z", "Z", "f4"],
-    ["VI_scanner", "VI_scanner", "S10"],
-    ["VI_quality", "VI_class_flag", "i2"],
-    ["VI_issue", "VI_issue_flag", "S6"],
-    ["VI_z", "VI_z", "f4"],
-    ["VI_spectype", "VI_spectype", "S10"],
-    ["VI_comment", "VI_comment", "S100"]
+    ["TARGETID", "TARGETID", "i8", -1],
+    ["EXPID", "EXPID", "i4", -1],
+    ["NIGHT", "NIGHT", "i4", -1],
+    ["TILEID", "TILEID", "i4", -1],
+    ["Spec_version", "spec_version", "U16", "-1"],
+    ["Redrock_version", "redrock_version", "U16", "-1"],
+    ["Template_version", "template_version", "U16", "-1"],
+    ["Redrock_spectype", "SPECTYPE", "U10", ""],
+    ["Redrock_z", "Z", "U6", "-1"],
+    ["VI_scanner", "VI_scanner", "U10", " "],
+    ["VI_quality", "VI_class_flag", "U2", "-1"],
+    ["VI_issue", "VI_issue_flag", "U3", ""],
+    ["VI_z", "VI_z", "U6", ""],
+    ["VI_spectype", "VI_spectype", "U10", ""],
+    ["VI_comment", "VI_comment", "U100", ""]
 ]
 
 vi_spectypes =[

@@ -169,7 +169,7 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
             the_rrtable = None
 
         titlepage = titlepage_prefix+"_"+str(i_page)
-        plotspectra(thespec, with_noise=True, is_coadded=True, zcatalog=the_zcat,
+        plotspectra(thespec, with_noise=True, zcatalog=the_zcat,
                     title=titlepage, html_dir=html_dir, mask_type=mask_type, with_thumb_only_page=True,
                     template_dir=template_dir, redrock_cat=the_rrtable, num_approx_fits=num_approx_fits,
                     with_full_2ndfit=with_full_2ndfit)

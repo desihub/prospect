@@ -30,19 +30,17 @@ class ViewerVIWidgets(object):
         self.title = title
         self.vi_countdown_toggle = None
 
-        #- Define list of fields to be recorded in output csv file:
+        #- List of fields to be recorded in output csv file, contains for each field: 
+        # [ field name (in VI file header), associated variable in viewer_cds.cds_metadata ]
         self.output_file_fields = []
         for file_field in vi_file_fields:
             if file_field[1] in viewer_cds.cds_metadata.data.keys() :
-                self.output_file_fields.append(file_field)
+                self.output_file_fields.append([file_field[0], file_field[1]])
 
-    def add_filename(self, username=''):
+    def add_filename(self, username='unknown_user'):
         #- VI file name
         default_vi_filename = "desi-vi_"+self.title
-        if username.strip()!="" :
-            default_vi_filename += ("_"+username)
-        else :
-            default_vi_filename += "_unknown-user"
+        default_vi_filename += ("_"+username)
         default_vi_filename += ".csv"
         self.vi_filename_input = TextInput(value=default_vi_filename, title="VI file name:")
 
