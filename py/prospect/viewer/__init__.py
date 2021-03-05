@@ -204,7 +204,7 @@ def make_template_dicts(redrock_cat, delta_lambd_templates=3, with_fit_templates
 def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_dir=None, title=None,
                 with_imaging=True, with_noise=True, with_thumb_tab=True, with_vi_widgets=True,
                 vi_countdown=-1, with_thumb_only_page=False,
-                is_coadded=True, with_coaddcam=True, mask_type='DESI_TARGET',
+                with_coaddcam=True, mask_type='DESI_TARGET',
                 model_from_zcat=True, model=None, num_approx_fits=None, with_full_2ndfit=True,
                 template_dir=None, archetype_fit=False, archetypes_dir=None):
     '''Main prospect routine. From a set of spectra, creates a bokeh document
@@ -241,9 +241,6 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     with_thumb_only_page : :class:`bool`, optional
         When creating a static HTML (`notebook` is ``False``), a light HTML
         page including only the thumb gallery will also be produced.
-    is_coadded : :class:`bool`, optional
-        Set to ``True`` if `spectra` are coadds.  This will always be assumed
-        for SDSS-style inputs, but not for DESI inputs.
     with_coaddcam : :class:`bool`, optional
         Include camera-coaddition, only relevant for DESI.
     mask_type : :class:`str`, optional (default: DESI_TARGET)
@@ -274,7 +271,6 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     if _specutils_imported and isinstance(spectra, Spectrum1D):
         # We will assume this is from an SDSS/BOSS/eBOSS spPlate file.
         survey = 'SDSS'
-        is_coadded = True
         nspec = spectra.flux.shape[0]
         bad = (spectra.uncertainty.array == 0.0) | spectra.mask
         spectra.flux[bad] = np.nan
