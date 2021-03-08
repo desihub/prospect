@@ -49,6 +49,7 @@ def _parse():
     parser.add_argument('--petals', help='Select only a set of petals (labelled 0 to 9)', nargs='+', type=str, default=None)
     parser.add_argument('--clean_bad_fibers_cmx', help='Remove list of known bad fibers (CMX conditions)', action='store_true')
     parser.add_argument('--template_dir', help='Redrock template directory', type=str, default=None)
+    parser.add_argument('--top_metadata', help='List of highlighted metadata', nargs='+', type=str, default=None)
 
     args = parser.parse_args()
     return args
@@ -86,7 +87,7 @@ def tile_db(specprod_dir, tile_subset=None, night_subset=None, petals=None, with
     return tiles_db
 
 
-def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log, nspecperfile, snr_cut, with_zcatalog=False, template_dir=None, clean_bad_fibers_cmx=False, with_multiple_models=False, mask_type='CMX_TARGET') :
+def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log, nspecperfile, snr_cut, with_zcatalog=False, template_dir=None, clean_bad_fibers_cmx=False, with_multiple_models=False, mask_type='CMX_TARGET', top_metadata=None) :
     '''
     Running prospect from coadds.
     '''
@@ -172,7 +173,7 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
         plotspectra(thespec, with_noise=True, zcatalog=the_zcat,
                     title=titlepage, html_dir=html_dir, mask_type=mask_type, with_thumb_only_page=True,
                     template_dir=template_dir, redrock_cat=the_rrtable, num_approx_fits=num_approx_fits,
-                    with_full_2ndfit=with_full_2ndfit)
+                    with_full_2ndfit=with_full_2ndfit, top_metadata=top_metadata)
     nspec_done += nspec_tile
 
     return nspec_done
@@ -221,7 +222,7 @@ def main():
         if not os.path.exists(html_dir) :
             os.makedirs(html_dir)
 
-        nspec_added = page_subset_tile(fdir, the_subset, html_dir, titlepage_prefix, args.mask, log, args.nspecperfile, args.snrcut, with_zcatalog=args.with_zcatalog, template_dir=args.template_dir, clean_bad_fibers_cmx=args.clean_bad_fibers_cmx, with_multiple_models=args.with_multiple_models, mask_type=args.mask_type)
+        nspec_added = page_subset_tile(fdir, the_subset, html_dir, titlepage_prefix, args.mask, log, args.nspecperfile, args.snrcut, with_zcatalog=args.with_zcatalog, template_dir=args.template_dir, clean_bad_fibers_cmx=args.clean_bad_fibers_cmx, with_multiple_models=args.with_multiple_models, mask_type=args.mask_type, top_metadata=args.top_metadata)
 
         # Stop running if needed, only once a full exposure is completed
         nspec_done += nspec_added

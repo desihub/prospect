@@ -203,7 +203,7 @@ def make_template_dicts(redrock_cat, delta_lambd_templates=3, with_fit_templates
 
 def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_dir=None, title=None,
                 with_imaging=True, with_noise=True, with_thumb_tab=True, with_vi_widgets=True,
-                vi_countdown=-1, with_thumb_only_page=False,
+                top_metadata=None, vi_countdown=-1, with_thumb_only_page=False,
                 with_coaddcam=True, mask_type='DESI_TARGET',
                 model_from_zcat=True, model=None, num_approx_fits=None, with_full_2ndfit=True,
                 template_dir=None, archetype_fit=False, archetypes_dir=None):
@@ -235,6 +235,9 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     with_vi_widgets : :class:`bool`, optional
         Include widgets used to enter VI information. Set it to ``False`` if
         you do not intend to record VI files.
+    top_metadata : :class:`list`, optional
+        List of metadata to be highlighted in the top (most visible) table.
+        Default values ['TARGETID', 'EXPID']
     vi_countdown : :class:`int`, optional
         If ``>0``, add a countdown widget in the VI panel, with a value in minutes given
         by `vi_countdown``.
@@ -402,8 +405,9 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     if zcatalog is not None :
         show_zcat = True
     else : show_zcat = False
-    viewer_widgets.add_metadata_tables(viewer_cds, show_zcat=show_zcat,
-                                   template_dicts=template_dicts)
+    if top_metadata is None: top_metadata = ['TARGETID', 'EXPID']
+    viewer_widgets.add_metadata_tables(viewer_cds, top_metadata=top_metadata,
+                                       show_zcat=show_zcat, template_dicts=template_dicts)
     viewer_widgets.add_specline_toggles(viewer_cds, viewer_plots)
 
     if template_dicts is not None :

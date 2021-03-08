@@ -21,24 +21,23 @@ if (nsmooth > 0)
 //
 if (cb_obj == ifiberslider) {
     //
-    // Update metadata.
+    // Update metadata using "shortcds" objects.
     //
-    shortcds_table_a.data['TARGETID'] = [ metadata.data['TARGETID'][ifiber] ];
-    shortcds_table_a.data['Target class'] = [ metadata.data['target_info'][ifiber] ];
-    if (metadata.data.hasOwnProperty('mag_W1')) {
-        shortcds_table_a.data['mag_G'] = [ metadata.data['mag_G'][ifiber].toFixed(2) ];
-        shortcds_table_a.data['mag_R'] = [ metadata.data['mag_R'][ifiber].toFixed(2) ];
-        shortcds_table_a.data['mag_Z'] = [ metadata.data['mag_Z'][ifiber].toFixed(2) ];
-        shortcds_table_a.data['mag_W1'] = [ metadata.data['mag_W1'][ifiber].toFixed(2) ];
-        shortcds_table_a.data['mag_W2'] = [ metadata.data['mag_W2'][ifiber].toFixed(2) ];
-    } else {
-        shortcds_table_a.data['mag_u'] = [ metadata.data['mag_u'][ifiber].toFixed(2) ];
-        shortcds_table_a.data['mag_g'] = [ metadata.data['mag_g'][ifiber].toFixed(2) ];
-        shortcds_table_a.data['mag_r'] = [ metadata.data['mag_r'][ifiber].toFixed(2) ];
-        shortcds_table_a.data['mag_i'] = [ metadata.data['mag_i'][ifiber].toFixed(2) ];
-        shortcds_table_a.data['mag_z'] = [ metadata.data['mag_z'][ifiber].toFixed(2) ];
+    var shortcds_list = [shortcds_table_a, shortcds_table_b, shortcds_table_c]
+    if (shortcds_table_d != undefined) {
+        shortcds_list.push(shortcds_table_d)
     }
-    shortcds_table_a.change.emit()
+    for (var i_cds=0; i_cds<shortcds_list.length; i_cds++) {
+        var table_keys = Object.getOwnPropertyNames(shortcds_list[i_cds].data);
+        for (var i=0; i<table_keys.length; i++) {
+            if ( table_keys[i].includes('mag_') ) {
+                shortcds_list[i_cds].data[table_keys[i]] = [ metadata.data[table_keys[i]][ifiber].toFixed(2) ];
+            } else {
+                shortcds_list[i_cds].data[table_keys[i]] = [ metadata.data[table_keys[i]][ifiber] ];
+            }
+        }
+        shortcds_list[i_cds].change.emit();
+    }
     if (metadata.data['Z'] != undefined && shortcds_table_z != null) {
         if (fit_results != undefined) {
             shortcds_table_z.data['SPECTYPE'] = fit_results['SPECTYPE'][ifiberslider.value].slice(); // (0,num_best_fits)

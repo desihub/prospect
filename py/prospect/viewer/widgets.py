@@ -19,6 +19,35 @@ from bokeh.models.widgets import (
 
 from ..utilities import get_resources
 
+
+def _metadata_table(table_keys, viewer_cds, table_width=500, shortcds_name='shortcds', selectable=False):
+    """ Returns bokeh's (ColumnDataSource, DataTable) needed to display a set of metadata given by table_keys.
+    
+    """
+    special_cell_width = {'TARGETID': 150, 'MORPHTYPE':70}
+    
+    table_columns = []
+    cdsdata = dict()
+    for key in table_keys:
+        if key in special_cell_width.keys():
+            cell_width = special_cell_width[key]
+        else:
+            cell_width = table_width//len(table_keys)
+        if 'mag_' in key:
+            cdsdata[key] = [ "{:.2f}".format(viewer_cds.cds_metadata.data[key][0]) ]
+        else:
+            cdsdata[key] = [ viewer_cds.cds_metadata.data[key][0] ]
+        table_columns.append( TableColumn(field=key, title=key, width=cell_width) )
+    shortcds = ColumnDataSource(cdsdata, name=shortcds_name)
+    # In order to be able to copy-paste the metadata in browser,
+    #   the combination selectable=True, editable=True is needed:
+    editable = True if selectable else False
+    output_table = DataTable(source = shortcds, columns=table_columns,
+                             index_position=None, selectable=selectable, editable=editable, width=table_width)
+    output_table.height = 2 * output_table.row_height
+    return (shortcds, output_table)
+    
+    
 class ViewerWidgets(object):
     """ 
     Encapsulates Bokeh widgets, and related callbacks, that are part of prospect's GUI.
@@ -328,28 +357,53 @@ class ViewerWidgets(object):
         self.coaddcam_buttons.js_on_click(self.coaddcam_callback)
     
     
-    def add_metadata_tables(self, viewer_cds, show_zcat=True, template_dicts=None):
-        #-----
-        # Display object-related informations
-        # Trick: "short" CDS, with a single row, are used to fill these bokeh tables
-        #        When changing object, js code modifies these short CDS so that tables are updated.       
+    def add_metadata_tables(self, viewer_cds, show_zcat=True, template_dicts=None,
+                           top_metadata=['TARGETID', 'EXPID']):
+        """ Display object-related informations
+                top_metadata: metadata to be highlighted in table_a
+            
+            Note: "short" CDS, with a single row, are used to fill these bokeh tables.
+            When changing object, js code modifies these short CDS so that tables are updated.  
+        """
 
-        #- table_a: table with generic metadata (placeholder for future table_b)
-        columns_table_a = [ TableColumn(field='TARGETID', title='TARGETID', width=150),
-                    TableColumn(field='Target class', title='Target class', width=250) ] # TODO tune width
-        cdsdata = {
-            'TARGETID': [ viewer_cds.cds_metadata.data['TARGETID'][0] ],
-            'Target class': [ viewer_cds.cds_metadata.data['target_info'][0] ]
-            }
-        for band in viewer_cds.phot_bands:
-            cdsdata['mag_'+band] = [ "{:.2f}".format(viewer_cds.cds_metadata.data['mag_'+band][0]) ]
-            columns_table_a.append( TableColumn(field='mag_'+band, title='mag_'+band, width=40) )
-        self.shortcds_table_a = ColumnDataSource(cdsdata, name='shortcds_table_a')
-        self.table_a = DataTable(source = self.shortcds_table_a, columns=columns_table_a,
-                                 index_position=None, selectable=True, editable=True) # width=...
-        self.table_a.height = 2 * self.table_a.row_height
+        #- Sorted list of potential metadata:
+        metadata_to_check = ['TARGETID', 'HPXPIXEL', 'TILEID', 'COADD_NUMEXP', 'COADD_EXPTIME', 
+                             'NIGHT', 'EXPID', 'FIBER', 'CAMERA', 'MORPHTYPE']
+        metadata_to_check += [ ('mag_'+x) for x in viewer_cds.phot_bands ]
+        table_keys = []
+        for key in metadata_to_check:
+            if key in viewer_cds.cds_metadata.data.keys():
+                table_keys.append(key)
+            if 'NUM_'+key in viewer_cds.cds_metadata.data.keys():
+                for prefix in ['FIRST','LAST','NUM']:
+                    table_keys.append(prefix+'_'+key)
+                    if key in top_metadata:
+                        top_metadata.append(prefix+'_'+key)
+        
+        #- Table a: "top metadata"
+        table_a_keys = [ x for x in table_keys if x in top_metadata ]
+        self.shortcds_table_a, self.table_a = _metadata_table(table_a_keys, viewer_cds, table_width=600, 
+                                                              shortcds_name='shortcds_table_a', selectable=True)
+        #- Table b: Targeting information
+        self.shortcds_table_b, self.table_b = _metadata_table(['Targeting masks'], viewer_cds, table_width=self.plot_widget_width,
+                                                              shortcds_name='shortcds_table_b', selectable=True)
+        #- Table(s) c/d : Other information (imaging, etc.)
+        remaining_keys = [ x for x in table_keys if x not in top_metadata ]
+        if len(remaining_keys) > 7:
+            table_c_keys = remaining_keys[0:len(remaining_keys)//2]
+            table_d_keys = remaining_keys[len(remaining_keys)//2:]
+        else:
+            table_c_keys = remaining_keys
+            table_d_keys = None
+        self.shortcds_table_c, self.table_c = _metadata_table(table_c_keys, viewer_cds, table_width=self.plot_widget_width,
+                                                             shortcds_name='shortcds_table_c', selectable=False)
+        if table_d_keys is None:
+            self.shortcds_table_d, self.table_d = None, None
+        else:
+            self.shortcds_table_d, self.table_d = _metadata_table(table_d_keys, viewer_cds, table_width=self.plot_widget_width,
+                                                                 shortcds_name='shortcds_table_d', selectable=False)
 
-        #- table_z: table with redshift fitting data
+        #- Table z: redshift fitting information
         if show_zcat is not None :
             if template_dicts is not None : # Add other best fits
                 fit_results = template_dicts[1]
@@ -492,6 +546,9 @@ class ViewerWidgets(object):
                 fit_results = the_fit_results,
                 shortcds_table_z = self.shortcds_table_z,
                 shortcds_table_a = self.shortcds_table_a,
+                shortcds_table_b = self.shortcds_table_b,
+                shortcds_table_c = self.shortcds_table_c,
+                shortcds_table_d = self.shortcds_table_d,
                 ifiberslider = self.ifiberslider,
                 smootherslider = self.smootherslider,
                 z_input = self.z_input,

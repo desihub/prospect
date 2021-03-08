@@ -181,7 +181,13 @@ class ViewerCDS(object):
     
         if survey == 'DESI':
             nspec = spectra.num_spectra()
+            # Optional metadata:
+            fibermap_keys = ['HPXPIXEL', 'MORPHTYPE', 'CAMERA', 'COADD_NUMEXP', 'COADD_EXPTIME']
+            # Optional metadata, will check matching FIRST/LAST/NUM keys in fibermap:
+            special_fm_keys = ['FIBER', 'NIGHT', 'EXPID', 'TILEID']
+            # Mandatory keys if zcatalog is set:
             self.zcat_keys = ['Z', 'SPECTYPE', 'SUBTYPE', 'ZERR', 'ZWARN', 'DELTACHI2']
+            # Mandatory metadata:
             self.phot_bands = ['G','R','Z', 'W1', 'W2']
             assert _desitarget_imported
             supported_masks = {
@@ -192,7 +198,9 @@ class ViewerCDS(object):
                 }
         elif survey == 'SDSS':
             nspec = spectra.flux.shape[0]
+            # Mandatory keys if zcatalog is set:
             self.zcat_keys = ['Z', 'CLASS', 'SUBCLASS', 'Z_ERR', 'ZWARNING', 'RCHI2DIFF']
+            # Mandatory metadata:
             self.phot_bands = ['u', 'g', 'r', 'i', 'z']
             supported_masks = ['PRIMTARGET', 'SECTARGET',
                                 'BOSS_TARGET1', 'BOSS_TARGET2',
@@ -202,25 +210,38 @@ class ViewerCDS(object):
             raise ValueError('Wrong survey')
         
         self.cds_metadata = ColumnDataSource()
-        # TODO: everywhere: handle case of no metadata: 
-        #     Do something or not ?? it's better if we can avoid, need to check
         
         #- Generic metadata
         if survey == 'DESI':
-            fibermap_keys = ['EXPID', 'NIGHT', 'TILEID', 'MORPHTYPE']
-            for fm_key in fibermap_keys:
-                if fm_key in spectra.fibermap.keys():
-                    self.cds_metadata.add(spectra.fibermap[fm_key], name=fm_key) 
-               # else:
-                    # ? self.cds_targetinfo.add(['-1' for i in range(nspec)], name=cds_key)
             #- Special case for targetids: No int64 in js !!
             self.cds_metadata.add([str(x) for x in spectra.fibermap['TARGETID']], name='TARGETID')
+            #- "Special" keys: check for FIRST/LAST/NUM
+            for fm_key in special_fm_keys:
+                use_first_last_num = False
+                if all([ (x+fm_key in spectra.fibermap.keys()) for x in ['FIRST_','LAST_','NUM_'] ]):
+                    if np.any(spectra.fibermap['NUM_'+fm_key] > 1) : # if NUM==1, use fm_key only
+                        use_first_last_num = True
+                        self.cds_metadata.add(spectra.fibermap['FIRST_'+fm_key], name='FIRST_'+fm_key)
+                        self.cds_metadata.add(spectra.fibermap['LAST_'+fm_key], name='LAST_'+fm_key)
+                        self.cds_metadata.add(spectra.fibermap['NUM_'+fm_key], name='NUM_'+fm_key)
+                if (not use_first_last_num) and fm_key in spectra.fibermap.keys():
+                    # Do not load placeholder metadata:
+                    if not (np.all(spectra.fibermap[fm_key]==0) or np.all(spectra.fibermap[fm_key]==-1)):
+                        self.cds_metadata.add(spectra.fibermap[fm_key], name=fm_key)
+            #- "Normal" keys
+            for fm_key in fibermap_keys:
+                # Arbitrary choice:
+                if fm_key == 'COADD_NUMEXP' and 'NUM_EXPID' in self.cds_metadata.data.keys():
+                    continue
+                if fm_key in spectra.fibermap.keys():
+                    if not (np.all(spectra.fibermap[fm_key]==0) or np.all(spectra.fibermap[fm_key]==-1)):
+                        self.cds_metadata.add(spectra.fibermap[fm_key], name=fm_key)
         elif survey == 'SDSS':
+            #- Set 'TARGETID' name to OBJID for convenience
             self.cds_metadata.add([str(x.tolist()) for x in spectra.meta['plugmap']['OBJID']], name='TARGETID')
         
         #- Photometry
         for i, bandname in enumerate(self.phot_bands) :
-            # TODO: define what todo if FLX_BAND not in fibermap
             if survey == 'SDSS':
                 mag = spectra.meta['plugmap']['MAG'][:, i]
             else :
@@ -244,7 +265,7 @@ class ViewerCDS(object):
             elif survey == 'SDSS':
                 assert mask_type in supported_masks
                 target_info = [ mask_type + ' (DUMMY)' for x in spectra.meta['plugmap'] ] # placeholder
-            self.cds_metadata.add(target_info, name='target_info')
+            self.cds_metadata.add(target_info, name='Targeting masks')
 
         #- Software versions
         #- TODO : get redrock version (from zcatalog...)
@@ -268,10 +289,10 @@ class ViewerCDS(object):
                 self.cds_metadata.add(data, name=zcat_key)
         
         #- VI informations
-        default_vi_info = [ (x[0],x[3]) for x in vi_file_fields if x[0][0:3]=="VI_" ]
+        default_vi_info = [ (x[1],x[3]) for x in vi_file_fields if x[0][0:3]=="VI_" ]
         for vi_key, vi_value in default_vi_info:
             self.cds_metadata.add([vi_value for i in range(nspec)], name=vi_key)
-            
+    
     
     def load_spectral_lines(self, z=0):    
     
