@@ -23,7 +23,7 @@ class ViewerVIWidgets(object):
     """
     
     def __init__(self, title, viewer_cds):
-        self.vi_class_labels = [ x["label"] for x in vi_flags if x["type"]=="class" ]
+        self.vi_quality_labels = [ x["label"] for x in vi_flags if x["type"]=="quality" ]
         self.vi_issue_labels = [ x["label"] for x in vi_flags if x["type"]=="issue" ]
         self.vi_issue_slabels = [ x["shortlabel"] for x in vi_flags if x["type"]=="issue" ]
         self.js_files = get_resources('js')
@@ -172,27 +172,27 @@ class ViewerVIWidgets(object):
         self.vi_std_comment_select.js_on_change('value', self.vi_std_comment_callback)
 
 
-    def add_vi_classification(self, viewer_cds, widgets):
-        #- Main VI classification
-        self.vi_class_input = RadioButtonGroup(labels=self.vi_class_labels)
-        vi_class_code = self.js_files["CSVtoArray.js"] + self.js_files["save_vi.js"]
-        vi_class_code += """
-            if ( vi_class_input.active >= 0 ) {
-                cds_metadata.data['VI_class_flag'][ifiberslider.value] = vi_class_labels[vi_class_input.active]
+    def add_vi_quality(self, viewer_cds, widgets):
+        #- Main VI quality widget
+        self.vi_quality_input = RadioButtonGroup(labels=self.vi_quality_labels)
+        vi_quality_code = self.js_files["CSVtoArray.js"] + self.js_files["save_vi.js"]
+        vi_quality_code += """
+            if ( vi_quality_input.active >= 0 ) {
+                cds_metadata.data['VI_quality_flag'][ifiberslider.value] = vi_quality_labels[vi_quality_input.active]
             } else {
-                cds_metadata.data['VI_class_flag'][ifiberslider.value] = "-1"
+                cds_metadata.data['VI_quality_flag'][ifiberslider.value] = "-1"
             }
             autosave_vi_localStorage(output_file_fields, cds_metadata.data, title)
             cds_metadata.change.emit()
         """
-        self.vi_class_callback = CustomJS(
+        self.vi_quality_callback = CustomJS(
             args = dict(cds_metadata = viewer_cds.cds_metadata,
-                        vi_class_input = self.vi_class_input,
-                        vi_class_labels = self.vi_class_labels,
+                        vi_quality_input = self.vi_quality_input,
+                        vi_quality_labels = self.vi_quality_labels,
                         ifiberslider = widgets.ifiberslider,
                         title=self.title, output_file_fields = self.output_file_fields),
-            code=vi_class_code )
-        self.vi_class_input.js_on_click(self.vi_class_callback)
+            code=vi_quality_code )
+        self.vi_quality_input.js_on_click(self.vi_quality_callback)
 
     def add_vi_scanner(self, viewer_cds, nspec):
         ## TODO nspec arg ??
@@ -253,9 +253,9 @@ class ViewerVIWidgets(object):
             args = dict(title=self.title, output_file_fields=self.output_file_fields,
                         cds_metadata = viewer_cds.cds_metadata,
                         ifiber = widgets.ifiberslider.value, vi_comment_input = self.vi_comment_input,
-                        vi_name_input=self.vi_name_input, vi_class_input=self.vi_class_input,
+                        vi_name_input=self.vi_name_input, vi_quality_input=self.vi_quality_input,
                         vi_issue_input=self.vi_issue_input,
-                        vi_issue_slabels=self.vi_issue_slabels, vi_class_labels=self.vi_class_labels),
+                        vi_issue_slabels=self.vi_issue_slabels, vi_quality_labels=self.vi_quality_labels),
                         code = recover_vi_code )
         self.recover_vi_button.js_on_event('button_click', self.recover_vi_callback)
 
@@ -269,7 +269,7 @@ class ViewerVIWidgets(object):
     def add_vi_table(self, viewer_cds):
         #- Show VI in a table
         vi_table_columns = [
-            TableColumn(field="VI_class_flag", title="Flag", width=40),
+            TableColumn(field="VI_quality_flag", title="Flag", width=40),
             TableColumn(field="VI_issue_flag", title="Opt.", width=50),
             TableColumn(field="VI_z", title="VI z", width=50),
             TableColumn(field="VI_spectype", title="VI spectype", width=150),

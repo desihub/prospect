@@ -3,7 +3,7 @@
 
 // Recover auto-saved VI infos from browser's localStorage
 // args = title, cds_metadata, output_file_fields, ifiber, 
-//   vi_comment_input, vi_name_input, vi_class_input, vi_issue_input, vi_issue_slabels, vi_class_labels
+//   vi_comment_input, vi_name_input, vi_quality_input, vi_issue_input, vi_issue_slabels, vi_quality_labels
 
 if (title in localStorage) {
     var recovered_csv = localStorage.getItem(title)
@@ -19,7 +19,7 @@ if (title in localStorage) {
         if (i_spec == ifiber) { // update VI buttons for current spectrum
             vi_comment_input.value = cds_metadata.data['VI_comment'][ifiber] ;
             vi_name_input.value = cds_metadata.data['VI_scanner'][ifiber] ;
-            vi_class_input.active = vi_class_labels.indexOf(cds_metadata.data['VI_class_flag'][ifiber]) ; // -1 if nothing
+            vi_quality_input.active = vi_quality_labels.indexOf(cds_metadata.data['VI_quality_flag'][ifiber]) ; // -1 if nothing
             var issues_on = []
             for (var i=0; i<vi_issue_slabels.length; i++) {
                 if ( (cds_metadata.data['VI_issue_flag'][ifiber]).indexOf(vi_issue_slabels[i]) >= 0 ) {

@@ -6,7 +6,7 @@
 function vi_to_csv(output_file_fields, cds_data, for_localStorage, localStorage_key) {
     // output_file_fields: VI fields to be stored (from the list defined in prospect.utilities)
     // cds_data: data from Bokeh CDS containing VI informations
-    //    must contain at least "VI_class_flag", "VI_comment", "VI_issue_flag"
+    //    must contain at least "VI_quality_flag", "VI_comment", "VI_issue_flag"
     // for_localStorage (bool): if true, the output format is slightly modified:
     //    no header, add a first column providing spectrum number.
     // localStorage_key: if not undefined, previous VI information from the
@@ -14,7 +14,7 @@ function vi_to_csv(output_file_fields, cds_data, for_localStorage, localStorage_
     //    beforehand and included to the output.
 
     var nb_fields = output_file_fields.length
-    var nspec = cds_data['VI_class_flag'].length
+    var nspec = cds_data['VI_quality_flag'].length
 
     var array_to_store = []
 
@@ -38,9 +38,9 @@ function vi_to_csv(output_file_fields, cds_data, for_localStorage, localStorage_
     }
 
     for (var i_spec=0; i_spec<nspec; i_spec++) {
-        //  Record only information if a VI classification was assigned
+        //  Record only information if a VI quality was assigned
         //    or some VI comment/issue/z was given:
-        if ( (cds_data['VI_class_flag'][i_spec] != "-1") ||
+        if ( (cds_data['VI_quality_flag'][i_spec] != "-1") ||
             (cds_data['VI_comment'][i_spec].trim() != "") ||
             (cds_data['VI_issue_flag'][i_spec].trim() != "") ||
             (cds_data['VI_z'][i_spec].trim() != "") ) {

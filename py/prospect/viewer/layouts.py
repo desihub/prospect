@@ -32,11 +32,11 @@ class ViewerLayout(object):
         self.navigator = bl.row(
             bl.column(widgets.prev_button, width=widgets.navigation_button_width+15),
             bl.column(widgets.next_button, width=widgets.navigation_button_width+20),
-            bl.column(widgets.ifiberslider, width=plots.plot_width+(plots.plot_height//2)-(60*len(vi_widgets.vi_class_labels)+2*widgets.navigation_button_width+35))
+            bl.column(widgets.ifiberslider, width=plots.plot_width+(plots.plot_height//2)-(60*len(vi_widgets.vi_quality_labels)+2*widgets.navigation_button_width+35))
         )
         
         if with_vi_widgets :
-            self.navigator.children.insert(1, bl.column(vi_widgets.vi_class_input, width=60*len(vi_widgets.vi_class_labels)) )
+            self.navigator.children.insert(1, bl.column(vi_widgets.vi_quality_input, width=60*len(vi_widgets.vi_quality_labels)) )
             if vi_widgets.vi_countdown_toggle is None :
                 vi_header_block = bl.column( Div(text="VI optional indications :"), width=300 )
             else :

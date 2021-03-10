@@ -64,13 +64,12 @@ from prospect import myspecselect, myspecupdate
 
 vi_flags = [
     # Definition of VI flags
-    # Replaces former list viflags = ["Yes","No","Maybe","LowSNR","Bad"]
     # shortlabels for "issue" flags must be a unique single-letter identifier
-    {"label" : "4", "type" : "class", "description" : "Confident classification: two or more secure features."},
-    {"label" : "3", "type" : "class", "description" : "Probable classification: at least one secure spectral feature + continuum or many weak spectral features."},
-    {"label" : "2", "type" : "class", "description" : "Possible classification: one strong spectral feature but unsure what it is."},
-    {"label" : "1", "type" : "class", "description" : "Unlikely classification: clear signal but features are unidentified."},
-    {"label" : "0", "type" : "class", "description" : "Nothing there, no signal."},
+    {"label" : "4", "type" : "quality", "description" : "Confident classification: two or more secure features."},
+    {"label" : "3", "type" : "quality", "description" : "Probable classification: at least one secure spectral feature + continuum or many weak spectral features."},
+    {"label" : "2", "type" : "quality", "description" : "Possible classification: one strong spectral feature but unsure what it is."},
+    {"label" : "1", "type" : "quality", "description" : "Unlikely classification: clear signal but features are unidentified."},
+    {"label" : "0", "type" : "quality", "description" : "Nothing there, no signal."},
     {"label" : "Bad redshift fit", "shortlabel" : "R", "type" : "issue", "description" : "Mis-estimation of redshift by the pipeline fitter"},
     {"label" : "Bad spectype fit", "shortlabel" : "C", "type" : "issue", "description" : "Mis-identification of spectral type from the best-fit pipeline solution; e.g., star vs QSO..."},
     {"label" : "Bad spectrum", "shortlabel" : "S", "type" : "issue", "description" : "Bad spectrum; e.g. strong cosmic/skyline subtraction residuals."}
@@ -93,7 +92,7 @@ vi_file_fields = [
     ["Redrock_spectype", "SPECTYPE", "U10", ""],
     ["Redrock_z", "Z", "U6", "-1"],
     ["VI_scanner", "VI_scanner", "U10", " "],
-    ["VI_quality", "VI_class_flag", "U2", "-1"],
+    ["VI_quality", "VI_quality_flag", "U2", "-1"],
     ["VI_issue", "VI_issue_flag", "U3", ""],
     ["VI_z", "VI_z", "U6", ""],
     ["VI_spectype", "VI_spectype", "U10", ""],

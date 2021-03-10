@@ -426,7 +426,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     viewer_vi_widgets.add_vi_z(viewer_cds, viewer_widgets)
     viewer_vi_widgets.add_vi_spectype(viewer_cds, viewer_widgets)
     viewer_vi_widgets.add_vi_comment(viewer_cds, viewer_widgets)
-    viewer_vi_widgets.add_vi_classification(viewer_cds, viewer_widgets)
+    viewer_vi_widgets.add_vi_quality(viewer_cds, viewer_widgets)
     viewer_vi_widgets.add_vi_scanner(viewer_cds, nspec)
     viewer_vi_widgets.add_guidelines()
     viewer_vi_widgets.add_vi_storage(viewer_cds, viewer_widgets)

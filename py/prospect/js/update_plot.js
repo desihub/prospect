@@ -73,7 +73,7 @@ if (cb_obj == ifiberslider) {
     vi_std_comment_select.value = ' ';
     vi_comment_input.value = metadata.data['VI_comment'][ifiber];
     vi_name_input.value = (metadata.data['VI_scanner'][ifiber]).trim();
-    vi_class_input.active = vi_class_labels.indexOf(metadata.data['VI_class_flag'][ifiber]); // -1 if nothing
+    vi_quality_input.active = vi_quality_labels.indexOf(metadata.data['VI_quality_flag'][ifiber]); // -1 if nothing
     var issues_on = [];
     for (var i=0; i<vi_issue_slabels.length; i++) {
         if ( (metadata.data['VI_issue_flag'][ifiber]).indexOf(vi_issue_slabels[i]) >= 0 ) {
