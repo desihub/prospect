@@ -21,19 +21,8 @@ try:
 except ImportError:
     _specutils_imported = False
 
-_desitarget_imported = True
-try:
-    from desitarget.targetmask import desi_mask, bgs_mask, mws_mask, scnd_mask
-    from desitarget.cmx.cmx_targetmask import cmx_mask
-    from desitarget.sv1.sv1_targetmask import desi_mask as sv1_desi_mask
-    from desitarget.sv1.sv1_targetmask import bgs_mask as sv1_bgs_mask
-    from desitarget.sv1.sv1_targetmask import mws_mask as sv1_mws_mask
-    from desitarget.sv1.sv1_targetmask import scnd_mask as sv1_scnd_mask
-except ImportError:
-    _desitarget_imported = False
-
 from ..mycoaddcam import coaddcam_prospect
-from ..utilities import vi_file_fields
+from ..utilities import supported_desitarget_masks, vi_file_fields
 
 
 def _airtovac(w):
@@ -191,18 +180,7 @@ class ViewerCDS(object):
             self.zcat_keys = ['Z', 'SPECTYPE', 'SUBTYPE', 'ZERR', 'ZWARN', 'DELTACHI2']
             # Mandatory metadata:
             self.phot_bands = ['G','R','Z', 'W1', 'W2']
-            assert _desitarget_imported
-            supported_masks = {
-                'DESI_TARGET': desi_mask,
-                'BGS_TARGET': bgs_mask,
-                'MWS_TARGET': mws_mask,
-                'SECONDARY_TARGET': scnd_mask,
-                'CMX_TARGET': cmx_mask,
-                'SV1_DESI_TARGET': sv1_desi_mask,
-                'SV1_BGS_TARGET': sv1_bgs_mask,
-                'SV1_MWS_TARGET': sv1_mws_mask,
-                'SV1_SECONDARY_TARGET': sv1_scnd_mask,
-                }
+            supported_masks = supported_desitarget_masks
         elif survey == 'SDSS':
             nspec = spectra.flux.shape[0]
             # Mandatory keys if zcatalog is set:
