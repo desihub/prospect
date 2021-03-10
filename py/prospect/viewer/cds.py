@@ -253,7 +253,7 @@ class ViewerCDS(object):
             self.cds_metadata.add(target_info, name='Targeting masks')
 
         #- Software versions
-        #- TODO : get redrock version (from zcatalog...)
+        #- TODO : get template version (from zcatalog...)
         if survey == 'SDSS':
             desispec_version = 'SDSS'
         else :
@@ -261,7 +261,10 @@ class ViewerCDS(object):
             for xx,yy in spectra.meta.items() :
                 if yy=="desispec" : desispec_specversion = spectra.meta[xx.replace('NAM','VER')]
         self.cds_metadata.add([desispec_specversion for i in range(nspec)], name='spec_version')
-        self.cds_metadata.add(np.zeros(nspec)-1, name='redrock_version')
+        redrock_version = "0"
+        if zcatalog is not None:
+            if 'RRVER' in zcatalog.keys(): redrock_version = zcatalog['RRVER'].data
+        self.cds_metadata.add(redrock_version, name='redrock_version')
         self.cds_metadata.add(np.zeros(nspec)-1, name='template_version')
 
         #- Redshift fit

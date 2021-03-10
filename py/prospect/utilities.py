@@ -353,12 +353,13 @@ def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None, nig
 
     return target_dict
 
-def load_spectra_zcat_from_targets(targets, tiledir, obs_db, with_redrock=False) :
+def load_spectra_zcat_from_targets(targets, tiledir, obs_db, with_redrock=False, with_redrock_version=True) :
     '''
     Creates (spectra,zcat,[redrock_cat]) = (Spectra object, zcatalog Table, [redrock Table]) from a list of targetids
     - targets must be a list of int64
     - obs_db: "mini-db" produced by make_targetdict()
     - with_redrock: if True, also get redrock Table
+    - with_redrock_version: if True, add a Column to zcat with RRVER from hdu0 in zbest files
     '''
 
     targets = np.asarray(targets)
@@ -383,6 +384,9 @@ def load_spectra_zcat_from_targets(targets, tiledir, obs_db, with_redrock=False)
                 the_spec = desispec.io.read_spectra(os.path.join(tiledir,the_path,"coadd-"+petal+"-"+tile_night+".fits"))
                 the_spec = myspecselect.myspecselect(the_spec, targets=targets_subset, remove_scores=True)
                 the_zcat = Table.read(os.path.join(tiledir,the_path,"zbest-"+petal+"-"+tile_night+".fits"),'ZBEST')
+                if with_redrock_version:
+                    hdulist = astropy.io.fits.open(os.path.join(tiledir,the_path,"zbest-"+petal+"-"+tile_night+".fits"))
+                    the_zcat['RRVER'] = hdulist[hdulist.index_of('PRIMARY')].header['RRVER']
                 the_zcat, dummy = match_zcat_to_spectra(the_zcat, the_spec)
                 ztables.append(the_zcat)
                 if with_redrock :
