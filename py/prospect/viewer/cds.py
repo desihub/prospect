@@ -261,7 +261,7 @@ class ViewerCDS(object):
             for xx,yy in spectra.meta.items() :
                 if yy=="desispec" : desispec_specversion = spectra.meta[xx.replace('NAM','VER')]
         self.cds_metadata.add([desispec_specversion for i in range(nspec)], name='spec_version')
-        redrock_version = "0"
+        redrock_version = ["-1" for i in range(nspec)]
         if zcatalog is not None:
             if 'RRVER' in zcatalog.keys(): redrock_version = zcatalog['RRVER'].data
         self.cds_metadata.add(redrock_version, name='redrock_version')

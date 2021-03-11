@@ -12,6 +12,7 @@ import os, sys, glob
 import argparse
 import numpy as np
 from astropy.table import Table, vstack
+import astropy.io.fits
 
 import desispec.io
 from desiutil.log import get_logger
@@ -135,12 +136,15 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
                             clean_fiberstatus=clean_fiberstatus, fibers=fibers, remove_scores=True)
         if all_spectra is None : return 0
 
-    # zcatalog
+    # zcatalog (adding redrock version)
     if with_zcatalog :
         ztables = []
         for petal_num in tile_db_subset['petals'] :
             fname = os.path.join(fdir,"zbest-"+petal_num+"-"+tile+'-'+night+".fits")
-            ztables.append(Table.read(fname,'ZBEST'))
+            the_ztable = Table.read(fname,'ZBEST')
+            hdulist = astropy.io.fits.open(fname)
+            the_ztable['RRVER'] = hdulist[hdulist.index_of('PRIMARY')].header['RRVER']
+            ztables.append(the_ztable)
         zcat = vstack(ztables)
     else : zcat = None
 
