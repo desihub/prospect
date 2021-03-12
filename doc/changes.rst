@@ -5,7 +5,16 @@ prospect's Change Log
 1.1.1 (unreleased)
 ------------------
 
-* No changes yet.
+* Make specutils_ imports optional, for DESI-only users.
+* Improved metadata handling and display, including FIRST/LAST/NUM_EXPID/TILEID/NIGHT/FIBER, MORPHTYPE,
+redrock version, and support all current DESI targeting masks (PR `#21`_, `#51`_ and `#55`_)
+* List of "major" spectral lines updated (PR `#69`_).
+
+.. _specutils: https://specutils.readthedocs.io
+.. _`#21`: https://github.com/desihub/prospect/issues/21
+.. _`#51`: https://github.com/desihub/prospect/issues/51
+.. _`#55`: https://github.com/desihub/prospect/issues/55
+.. _`#69`: https://github.com/desihub/prospect/issues/69
 
 1.1.0 (2021-02-10)
 ------------------
