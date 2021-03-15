@@ -32,6 +32,8 @@ def _parse():
     parser.add_argument('--with_multiple_models', help='Display several models (requires full redrock outputs)', action='store_true')
     parser.add_argument('--template_dir', help='Redrock template directory', type=str, default=None)
     parser.add_argument('--countdown', help='Insert a countdown widget (in minutes)', type=int, default=-1)
+    parser.add_argument('--top_metadata', help='List of highlighted metadata', nargs='+', type=str, default=None)
+    parser.add_argument('--mask_type', help='Target mask type', type=str, default='CMX_TARGET')
 
     args = parser.parse_args()
     return args
@@ -83,9 +85,10 @@ def main():
 
         titlepage = args.titlepage_prefix+"_"+str(i_page)
         plotspectra(thespec, with_noise=True, zcatalog=the_zcat,
-                    title=titlepage, html_dir=args.webdir, mask_type='CMX_TARGET', with_thumb_only_page=True,
+                    title=titlepage, html_dir=args.webdir, mask_type=args.mask_type, with_thumb_only_page=True,
                     template_dir=args.template_dir, redrock_cat=the_rrtable, num_approx_fits=num_approx_fits,
-                    with_full_2ndfit=with_full_2ndfit, vi_countdown=args.countdown)
+                    with_full_2ndfit=with_full_2ndfit, vi_countdown=args.countdown,
+                    top_metadata=args.top_metadata)
 
     log.info("End of specview_cmx_targets script.")
     return 0
