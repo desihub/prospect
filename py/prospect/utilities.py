@@ -41,12 +41,12 @@ try:
         'DESI_TARGET': desi_mask,
         'BGS_TARGET': bgs_mask,
         'MWS_TARGET': mws_mask,
-        'SECONDARY_TARGET': scnd_mask,
+        'SECONDARY_TARGET': scnd_mask, # To confirm !
         'CMX_TARGET': cmx_mask,
         'SV1_DESI_TARGET': sv1_desi_mask,
         'SV1_BGS_TARGET': sv1_bgs_mask,
         'SV1_MWS_TARGET': sv1_mws_mask,
-        'SV1_SECONDARY_TARGET': sv1_scnd_mask,
+        'SV1_SCND_TARGET': sv1_scnd_mask,
         }
 except ImportError:
     _desitarget_imported = False

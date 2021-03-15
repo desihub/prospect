@@ -223,7 +223,7 @@ class ViewerVIWidgets(object):
         vi_guideline_txt = "<B> VI guidelines </B>"
         vi_guideline_txt += "<BR /> <B> Classification flags: </B>"
         for flag in vi_flags :
-            if flag['type'] == 'class' : vi_guideline_txt += ("<BR />&emsp;&emsp;[&emsp;"+flag['label']+"&emsp;] "+flag['description'])
+            if flag['type'] == 'quality' : vi_guideline_txt += ("<BR />&emsp;&emsp;[&emsp;"+flag['label']+"&emsp;] "+flag['description'])
         vi_guideline_txt += "<BR /> <B> Optional indications: </B>"
         for flag in vi_flags :
             if flag['type'] == 'issue' :
