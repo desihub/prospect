@@ -37,7 +37,7 @@ class ViewerVIWidgets(object):
             if file_field[1] in viewer_cds.cds_metadata.data.keys() :
                 self.output_file_fields.append([file_field[0], file_field[1]])
 
-    def add_filename(self, username='unknown_user'):
+    def add_filename(self, username='unknown-user'):
         #- VI file name
         default_vi_filename = "desi-vi_"+self.title
         default_vi_filename += ("_"+username)
@@ -194,24 +194,22 @@ class ViewerVIWidgets(object):
             code=vi_quality_code )
         self.vi_quality_input.js_on_click(self.vi_quality_callback)
 
-    def add_vi_scanner(self, viewer_cds, nspec):
-        ## TODO nspec arg ??
+    def add_vi_scanner(self, viewer_cds):
         #- VI scanner name
         self.vi_name_input = TextInput(value=(viewer_cds.cds_metadata.data['VI_scanner'][0]).strip(), title="Your name (3-letter acronym):")
         vi_name_code = self.js_files["CSVtoArray.js"] + self.js_files["save_vi.js"]
         vi_name_code += """
-            for (var i=0; i<nspec; i++) {
+            for (var i=0; i<(cds_metadata.data['VI_scanner']).length; i++) {
                 cds_metadata.data['VI_scanner'][i]=vi_name_input.value
             }
             var newname = vi_filename_input.value
-            var pepe = newname.split("_")
-            newname = ( pepe.slice(0,pepe.length-1).join("_") ) + ("_"+vi_name_input.value+".csv")
+            var name_chunks = newname.split("_")
+            newname = ( name_chunks.slice(0,name_chunks.length-1).join("_") ) + ("_"+vi_name_input.value+".csv")
             vi_filename_input.value = newname
             autosave_vi_localStorage(output_file_fields, cds_metadata.data, title)
             """
         self.vi_name_callback = CustomJS(
             args = dict(cds_metadata = viewer_cds.cds_metadata,
-                        nspec = nspec, 
                         vi_name_input = self.vi_name_input,
                         vi_filename_input = self.vi_filename_input, title=self.title,
                         output_file_fields = self.output_file_fields),
