@@ -255,12 +255,12 @@ class ViewerCDS(object):
         #- Software versions
         #- TODO : get template version (from zcatalog...)
         if survey == 'SDSS':
-            desispec_version = 'SDSS'
+            spec_version = 'SDSS'
         else :
-            desispec_specversion = "0"
+            spec_version = '0'
             for xx,yy in spectra.meta.items() :
-                if yy=="desispec" : desispec_specversion = spectra.meta[xx.replace('NAM','VER')]
-        self.cds_metadata.add([desispec_specversion for i in range(nspec)], name='spec_version')
+                if yy=="desispec" : spec_version = spectra.meta[xx.replace('NAM','VER')]
+        self.cds_metadata.add([spec_version for i in range(nspec)], name='spec_version')
         redrock_version = ["-1" for i in range(nspec)]
         if zcatalog is not None:
             if 'RRVER' in zcatalog.keys(): redrock_version = zcatalog['RRVER'].data
