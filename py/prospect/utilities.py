@@ -91,6 +91,7 @@ vi_file_fields = [
     ["Template_version", "template_version", "U16", "-1"],
     ["Redrock_spectype", "SPECTYPE", "U10", ""],
     ["Redrock_z", "Z", "U6", "-1"],
+    ["Redrock_deltachi2", "DELTACHI2", "U10", "-1"],
     ["VI_scanner", "VI_scanner", "U10", " "],
     ["VI_quality", "VI_quality_flag", "U2", "-1"],
     ["VI_issue", "VI_issue_flag", "U3", ""],

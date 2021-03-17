@@ -51,6 +51,7 @@ function vi_to_csv(output_file_fields, cds_data, for_localStorage, localStorage_
             for (var j=0; j<nb_fields; j++) {
                 var entry = cds_data[output_file_fields[j][1]][i_spec]
                 if (output_file_fields[j][1] == "Z") entry = entry.toFixed(4)
+                if (output_file_fields[j][1] == "DELTACHI2") entry = entry.toFixed(1)
                 if ( typeof(entry) != "string" ) entry = entry.toString()
                 entry = entry.replace(/"/g, '""')
                 entry = entry.replace(/,/g, '","')
