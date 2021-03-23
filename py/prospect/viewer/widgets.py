@@ -24,7 +24,9 @@ def _metadata_table(table_keys, viewer_cds, table_width=500, shortcds_name='shor
     """ Returns bokeh's (ColumnDataSource, DataTable) needed to display a set of metadata given by table_keys.
     
     """
-    special_cell_width = {'TARGETID': 150, 'MORPHTYPE':70}
+    special_cell_width = { 'TARGETID':150, 'MORPHTYPE':70, 'SPECTYPE':70, 'SUBTYPE':60, 
+                         'Z':50, 'ZERR':50, 'Z_ERR':50, 'ZWARN':50, 'ZWARNING':50, 'DELTACHI2':70 }
+    special_cell_title = { 'DELTACHI2': 'Δχ2(N+1/N)' }
     
     table_columns = []
     cdsdata = dict()
@@ -33,11 +35,19 @@ def _metadata_table(table_keys, viewer_cds, table_width=500, shortcds_name='shor
             cell_width = special_cell_width[key]
         else:
             cell_width = table_width//len(table_keys)
+        if key in special_cell_title.keys():
+            cell_title = special_cell_title[key]
+        else:
+            cell_title = key
         if 'mag_' in key:
             cdsdata[key] = [ "{:.2f}".format(viewer_cds.cds_metadata.data[key][0]) ]
+        elif 'CHI2' in key:
+            cdsdata[key] = [ "{:.1f}".format(viewer_cds.cds_metadata.data[key][0]) ]
+        elif key in ['Z', 'ZERR', 'Z_ERR']:
+            cdsdata[key] = [ "{:.4f}".format(viewer_cds.cds_metadata.data[key][0]) ]
         else:
             cdsdata[key] = [ viewer_cds.cds_metadata.data[key][0] ]
-        table_columns.append( TableColumn(field=key, title=key, width=cell_width) )
+        table_columns.append( TableColumn(field=key, title=cell_title, width=cell_width) )
     shortcds = ColumnDataSource(cdsdata, name=shortcds_name)
     # In order to be able to copy-paste the metadata in browser,
     #   the combination selectable=True, editable=True is needed:
@@ -421,24 +431,14 @@ class ViewerWidgets(object):
                                 ZWARN = fit_results['ZWARN'][0],
                                 CHI2 = [ "{:.1f}".format(x) for x in fit_results['CHI2'][0] ],
                                 DELTACHI2 = [ "{:.1f}".format(x) for x in full_deltachi2s ])
+                self.shortcds_table_z = ColumnDataSource(cdsdata, name='shortcds_table_z')
+                columns_table_z = [ TableColumn(field=x, title=t, width=w) for x,t,w in [ ('Nfit','Nfit',5), ('SPECTYPE','SPECTYPE',70), ('SUBTYPE','SUBTYPE',60), ('Z','Z',50) , ('ZERR','ZERR',50), ('ZWARN','ZWARN',50), ('DELTACHI2','Δχ2(N+1/N)',70)] ]
+                self.table_z = DataTable(source=self.shortcds_table_z, columns=columns_table_z,
+                                         selectable=False, index_position=None, width=self.plot_widget_width)
+                self.table_z.height = 3 * self.table_z.row_height
             else :
-                cdsdata = dict()
-                for zcat_key in viewer_cds.zcat_keys:
-                    if 'CHI2' in zcat_key:
-                        cdsdata[zcat_key] = [ "{:.1f}".format(viewer_cds.cds_metadata.data[zcat_key][0]) ]
-                    elif 'CLASS' in zcat_key or 'TYPE' in zcat_key or 'WARN' in zcat_key:
-                        cdsdata[zcat_key] = [ viewer_cds.cds_metadata.data[zcat_key][0] ]
-                    else: # Z, ZERR
-                        cdsdata[zcat_key] = [ "{:.4f}".format(viewer_cds.cds_metadata.data[zcat_key][0]) ]
-            self.shortcds_table_z = ColumnDataSource(cdsdata, name='shortcds_table_z')
-            # Todo: change that:
-            columns_table_z = [ TableColumn(field=x, title=t, width=w) for x,t,w in [ ('SPECTYPE','SPECTYPE',70), ('SUBTYPE','SUBTYPE',60), ('Z','Z',50) , ('ZERR','ZERR',50), ('ZWARN','ZWARN',50), ('DELTACHI2','Δχ2(N+1/N)',70)] ]
-            if template_dicts is not None :
-                columns_table_z.insert(0, TableColumn(field='Nfit', title='Nfit', width=5))
-            self.table_z = DataTable(source=self.shortcds_table_z, columns=columns_table_z,
-                                     selectable=False, index_position=None, width=self.plot_widget_width)
-            self.table_z.height = 2 * self.table_z.row_height
-            if template_dicts is not None : self.table_z.height = 3 * self.table_z.row_height
+                self.shortcds_table_z, self.table_z = _metadata_table(viewer_cds.zcat_keys, viewer_cds,
+                                    table_width=self.plot_widget_width, shortcds_name='shortcds_table_z', selectable=False)
         else :
             self.table_z = Div(text="Not available ")
             self.shortcds_table_z = None

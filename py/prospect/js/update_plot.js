@@ -59,12 +59,16 @@ if (cb_obj == ifiberslider) {
                 shortcds_table_z.data['DELTACHI2'][i] = shortcds_table_z.data['DELTACHI2'][i].toFixed(1);
             }
         } else {
-            shortcds_table_z.data['SPECTYPE'] = [ metadata.data['SPECTYPE'][ifiber] ];
-            shortcds_table_z.data['SUBTYPE'] = [ metadata.data['SUBTYPE'][ifiber] ];
-            shortcds_table_z.data['Z'] = [ metadata.data['Z'][ifiber].toFixed(4) ];
-            shortcds_table_z.data['ZERR'] = [ metadata.data['ZERR'][ifiber].toFixed(4) ];
-            shortcds_table_z.data['ZWARN'] = [ metadata.data['ZWARN'][ifiber] ];
-            shortcds_table_z.data['DELTACHI2'] = [ metadata.data['DELTACHI2'][ifiber].toFixed(1) ];
+            var table_keys = Object.getOwnPropertyNames(shortcds_table_z.data);
+            for (var i=0; i<table_keys.length; i++) {
+                if ( table_keys[i].includes('CHI2') ) {
+                    shortcds_table_z.data[table_keys[i]] = [ metadata.data[table_keys[i]][ifiber].toFixed(1) ];
+                } else if ( table_keys[i].includes('CLASS') || table_keys[i].includes('TYPE') || table_keys[i].includes('WARN')) {
+                    shortcds_table_z.data[table_keys[i]] = [ metadata.data[table_keys[i]][ifiber] ];
+                } else { // Z, ZERR
+                    shortcds_table_z.data[table_keys[i]] = [ metadata.data[table_keys[i]][ifiber].toFixed(4) ];
+                }
+            }
         }
         shortcds_table_z.change.emit();
     }
