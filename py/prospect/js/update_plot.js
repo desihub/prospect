@@ -24,9 +24,10 @@ if (cb_obj == ifiberslider) {
     // Update metadata using "shortcds" objects.
     //
     var shortcds_list = [shortcds_table_a, shortcds_table_b, shortcds_table_c]
-    if (shortcds_table_d != undefined) {
+    if (shortcds_table_d !== null) {
         shortcds_list.push(shortcds_table_d)
     }
+    //console.log(typeof(shortcds_table_d), shortcds_table_d != undefined, shortcds_table_d !== undefined, typeof(shortcds_table_d) !== undefined, shortcds_table_d != null, shortcds_table_d !== null)
     for (var i_cds=0; i_cds<shortcds_list.length; i_cds++) {
         var table_keys = Object.getOwnPropertyNames(shortcds_list[i_cds].data);
         for (var i=0; i<table_keys.length; i++) {
@@ -38,8 +39,8 @@ if (cb_obj == ifiberslider) {
         }
         shortcds_list[i_cds].change.emit();
     }
-    if (metadata.data['Z'] != undefined && shortcds_table_z != null) {
-        if (fit_results != undefined) {
+    if (shortcds_table_z !== null) {
+        if (fit_results !== null) {
             shortcds_table_z.data['SPECTYPE'] = fit_results['SPECTYPE'][ifiberslider.value].slice(); // (0,num_best_fits)
             shortcds_table_z.data['SUBTYPE'] = fit_results['SUBTYPE'][ifiberslider.value].slice();
             shortcds_table_z.data['Z'] = fit_results['Z'][ifiberslider.value].slice();
@@ -100,7 +101,7 @@ if (cb_obj == ifiberslider) {
 //
 // Update redshift.
 //
-if (metadata.data['Z'] != undefined && cb_obj == ifiberslider && model_select == undefined) {
+if (metadata.data['Z'] !== undefined && cb_obj == ifiberslider && model_select === null) {
     // if model_select is defined : this will be done in select_model.
     z_input.value = metadata.data['Z'][ifiber].toFixed(4);
 }

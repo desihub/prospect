@@ -24,7 +24,7 @@ function vi_to_csv(output_file_fields, cds_data, for_localStorage, localStorage_
         array_to_store.push(header)
     }
 
-    if (localStorage_key != undefined) {
+    if (localStorage_key !== undefined) {
         var previously_stored_ispecs = []
         if (localStorage_key in localStorage) {
             var recovered_csv = localStorage.getItem(localStorage_key)
@@ -61,7 +61,7 @@ function vi_to_csv(output_file_fields, cds_data, for_localStorage, localStorage_
                 row.push(entry)
             }
             var i_rec = -1
-            if (localStorage_key != undefined) {
+            if (localStorage_key !== undefined) {
                 var i_rec = -1
                 i_rec = previously_stored_ispecs.indexOf(i_spec)
                 if (i_rec == -1) {

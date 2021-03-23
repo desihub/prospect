@@ -258,7 +258,7 @@ class ViewerWidgets(object):
                     shift_plotwave(othermodel, waveshift_model)
                 } else if (model) {
                     var zfit = 0.0
-                    if(metadata.data['Z'] != undefined) {
+                    if(metadata.data['Z'] !== undefined) {
                         zfit = metadata.data['Z'][ifiber]
                     }
                     var waveshift_model = (waveframe_buttons.active == 0) ? (1+z)/(1+zfit) : 1/(1+zfit) ;
