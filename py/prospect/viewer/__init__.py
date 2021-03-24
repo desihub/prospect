@@ -24,7 +24,6 @@ import scipy.ndimage.filters
 
 from astropy.table import Table
 import astropy.io.fits
-from specutils import Spectrum1D, SpectrumList
 
 import bokeh.plotting as bk
 from bokeh.models import ColumnDataSource, CDSView, IndexFilter
@@ -33,6 +32,12 @@ from bokeh.models.widgets import (
     Slider, Button, Div, CheckboxGroup, CheckboxButtonGroup, RadioButtonGroup,
     TextInput, Select, DataTable, TableColumn, Toggle)
 import bokeh.layouts as bl
+
+_specutils_imported = True
+try:
+    from specutils import Spectrum1D, SpectrumList
+except ImportError:
+    _specutils_imported = False
 
 _desispec_imported = True
 try:
@@ -50,8 +55,7 @@ try:
 except ImportError:
     _redrock_imported = False
 
-from ..utilities import (get_resources, frames2spectra, create_zcat_from_redrock_cat,
-                        vi_flags, vi_file_fields, vi_spectypes, vi_std_comments)
+from ..utilities import frames2spectra, create_zcat_from_redrock_cat
 from .cds import ViewerCDS
 from .plots import ViewerPlots
 from .widgets import ViewerWidgets
@@ -89,7 +93,10 @@ def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, templ
     if np.any(zbest['TARGETID'] != spectra.fibermap['TARGETID']) :
         raise ValueError('zcatalog and spectra do not match (different targetids)')
 
-    templates = load_redrock_templates(template_dir=template_dir)
+    if archetype_fit:
+        archetypes = All_archetypes(archetypes_dir=archetypes_dir).archetypes
+    else:
+        templates = load_redrock_templates(template_dir=template_dir)
 
     #- Empty model flux arrays per band to fill
     model_flux = dict()
@@ -100,25 +107,24 @@ def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, templ
         zb = zbest[i]
 
         if archetype_fit:
-          archetypes = All_archetypes(archetypes_dir=archetypes_dir).archetypes
-          archetype  = archetypes[zb['SPECTYPE']]
-          coeff      = zb['COEFF']
-
-          for band in spectra.bands:
-              wave                = spectra.wave[band]
-              wavehash            = hash((len(wave), wave[0], wave[1], wave[-2], wave[-1], spectra.R[band].data.shape[0]))
-              dwave               = {wavehash: wave}
-              mx                  = archetype.eval(zb['SUBTYPE'], dwave, coeff, wave, zb['Z'])
-              model_flux[band][i] = spectra.R[band][i].dot(mx)
+            archetype  = archetypes[zb['SPECTYPE']]
+            coeff      = zb['COEFF']
+            
+            for band in spectra.bands:
+                wave                = spectra.wave[band]
+                wavehash            = hash((len(wave), wave[0], wave[1], wave[-2], wave[-1], spectra.R[band].data.shape[0]))
+                dwave               = {wavehash: wave}
+                mx                  = archetype.eval(zb['SUBTYPE'], dwave, coeff, wave, zb['Z']) * (1+zb['Z'])
+                model_flux[band][i] = spectra.R[band][i].dot(mx)
 
         else:
-          tx    = templates[(zb['SPECTYPE'], zb['SUBTYPE'])]
-          coeff = zb['COEFF'][0:tx.nbasis]
-          model = tx.flux.T.dot(coeff).T
+            tx    = templates[(zb['SPECTYPE'], zb['SUBTYPE'])]
+            coeff = zb['COEFF'][0:tx.nbasis]
+            model = tx.flux.T.dot(coeff).T
 
-          for band in spectra.bands:
-              mx                  = resample_flux(spectra.wave[band], tx.wave*(1+zb['Z']), model)
-              model_flux[band][i] = spectra.R[band][i].dot(mx)
+            for band in spectra.bands:
+                mx                  = resample_flux(spectra.wave[band], tx.wave*(1+zb['Z']), model)
+                model_flux[band][i] = spectra.R[band][i].dot(mx)
 
     #- Now combine, if needed, to a single wavelength grid across all cameras
     if spectra.bands == ['brz'] :
@@ -197,8 +203,8 @@ def make_template_dicts(redrock_cat, delta_lambd_templates=3, with_fit_templates
 
 def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_dir=None, title=None,
                 with_imaging=True, with_noise=True, with_thumb_tab=True, with_vi_widgets=True,
-                vi_countdown=-1, with_thumb_only_page=False,
-                is_coadded=True, with_coaddcam=True, mask_type='DESI_TARGET',
+                top_metadata=None, vi_countdown=-1, with_thumb_only_page=False,
+                with_coaddcam=True, mask_type='DESI_TARGET',
                 model_from_zcat=True, model=None, num_approx_fits=None, with_full_2ndfit=True,
                 template_dir=None, archetype_fit=False, archetypes_dir=None):
     '''Main prospect routine. From a set of spectra, creates a bokeh document
@@ -229,15 +235,15 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     with_vi_widgets : :class:`bool`, optional
         Include widgets used to enter VI information. Set it to ``False`` if
         you do not intend to record VI files.
+    top_metadata : :class:`list`, optional
+        List of metadata to be highlighted in the top (most visible) table.
+        Default values ['TARGETID', 'EXPID']
     vi_countdown : :class:`int`, optional
         If ``>0``, add a countdown widget in the VI panel, with a value in minutes given
         by `vi_countdown``.
     with_thumb_only_page : :class:`bool`, optional
         When creating a static HTML (`notebook` is ``False``), a light HTML
         page including only the thumb gallery will also be produced.
-    is_coadded : :class:`bool`, optional
-        Set to ``True`` if `spectra` are coadds.  This will always be assumed
-        for SDSS-style inputs, but not for DESI inputs.
     with_coaddcam : :class:`bool`, optional
         Include camera-coaddition, only relevant for DESI.
     mask_type : :class:`str`, optional (default: DESI_TARGET)
@@ -265,27 +271,25 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
 
     #- Check input spectra.
     #- Set masked bins to NaN for compatibility with bokeh.
-    if isinstance(spectra, Spectrum1D):
+    if _specutils_imported and isinstance(spectra, Spectrum1D):
         # We will assume this is from an SDSS/BOSS/eBOSS spPlate file.
-        sdss = True
-        is_coadded = True
+        survey = 'SDSS'
         nspec = spectra.flux.shape[0]
         bad = (spectra.uncertainty.array == 0.0) | spectra.mask
         spectra.flux[bad] = np.nan
-    elif isinstance(spectra, SpectrumList):
+    elif _specutils_imported and isinstance(spectra, SpectrumList):
         # We will assume this is from a DESI spectra-64 file.
-        sdss = False
+        survey = 'DESI'
         nspec = spectra[0].flux.shape[0]
         for s in spectra:
             bad = (s.uncertainty.array == 0.0) | s.mask
             s.flux[bad] = np.nan
     else:
         # DESI object (Spectra or list of Frame)
-        sdss = False
-        assert _desispec_imported == True
-        if isinstance(spectra, desispec.spectra.Spectra):
+        survey = 'DESI'
+        if _desispec_imported and isinstance(spectra, desispec.spectra.Spectra):
             nspec = spectra.num_spectra()
-        elif isinstance(spectra, list) and isinstance(spectra[0], desispec.frame.Frame):
+        elif _desispec_imported and isinstance(spectra, list) and isinstance(spectra[0], desispec.frame.Frame):
         # If inputs are frames, convert to a spectra object
             spectra = frames2spectra(spectra)
             nspec = spectra.num_spectra()
@@ -294,19 +298,21 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
                     spectra.meta['NIGHT'], spectra.meta['EXPID'], spectra.meta['CAMERA'][1],
                 )
         else:
-            raise ValueError('Unsupported type for input spectra!')
+            raise ValueError("Unsupported type for input spectra. \n"+
+                    "    _specutils_imported = "+str(_specutils_imported)+"\n"+ 
+                    "    _desispec_imported = "+str(_desispec_imported))
         for band in spectra.bands:
             bad = (spectra.ivar[band] == 0.0) | (spectra.mask[band] != 0)
             spectra.flux[band][bad] = np.nan
         #- No coaddition if spectra is already single-band
         if len(spectra.bands)==1 : with_coaddcam = False
-
+    
     if title is None:
         title = "specviewer"
 
     #- Input zcatalog / model
     if zcatalog is not None:
-        if sdss:
+        if survey == 'SDSS':
             if len(zcatalog) != spectra.flux.shape[0]:
                 raise ValueError('zcatalog and spectra do not match (different lengths)')
         else:
@@ -358,18 +364,14 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     else :
         template_dicts = None
 
-    if notebook and ("USER" in os.environ) :
-        username = os.environ['USER'][0:3] # 3-letter acronym
-    else :
-        username = " "
-    viewer_cds.load_targetinfo(spectra, zcatalog, is_coadded, mask_type, username=username)
-
+    viewer_cds.load_metadata(spectra, mask_type=mask_type, zcatalog=zcatalog, survey=survey)
+    
     #-------------------------
     #-- Graphical objects --
     #-------------------------
 
     viewer_plots = ViewerPlots()
-    viewer_plots.create_mainfig(spectra, title, viewer_cds, sdss,
+    viewer_plots.create_mainfig(spectra, title, viewer_cds, survey,
                                 with_noise=with_noise, with_coaddcam=with_coaddcam)
     viewer_plots.create_zoomfig(viewer_cds, 
                                 with_noise=with_noise, with_coaddcam=with_coaddcam)
@@ -403,9 +405,9 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     if zcatalog is not None :
         show_zcat = True
     else : show_zcat = False
-    viewer_widgets.add_targetinfos(viewer_cds, sdss, show_zcat=show_zcat,
-                                   template_dicts=template_dicts)
-
+    if top_metadata is None: top_metadata = ['TARGETID', 'EXPID']
+    viewer_widgets.add_metadata_tables(viewer_cds, top_metadata=top_metadata,
+                                       show_zcat=show_zcat, template_dicts=template_dicts)
     viewer_widgets.add_specline_toggles(viewer_cds, viewer_plots)
 
     if template_dicts is not None :
@@ -417,15 +419,15 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     #- VI-related widgets
     ## TODO if with_vi_widgets (need to adapt update_plot.js..)
 
-    viewer_vi_widgets = ViewerVIWidgets(title)
+    viewer_vi_widgets = ViewerVIWidgets(title, viewer_cds)
 
-    viewer_vi_widgets.add_filename(username=username)
+    viewer_vi_widgets.add_filename()
     viewer_vi_widgets.add_vi_issues(viewer_cds, viewer_widgets)
     viewer_vi_widgets.add_vi_z(viewer_cds, viewer_widgets)
     viewer_vi_widgets.add_vi_spectype(viewer_cds, viewer_widgets)
     viewer_vi_widgets.add_vi_comment(viewer_cds, viewer_widgets)
-    viewer_vi_widgets.add_vi_classification(viewer_cds, viewer_widgets)
-    viewer_vi_widgets.add_vi_scanner(viewer_cds, nspec)
+    viewer_vi_widgets.add_vi_quality(viewer_cds, viewer_widgets)
+    viewer_vi_widgets.add_vi_scanner(viewer_cds)
     viewer_vi_widgets.add_guidelines()
     viewer_vi_widgets.add_vi_storage(viewer_cds, viewer_widgets)
     viewer_vi_widgets.add_vi_table(viewer_cds)

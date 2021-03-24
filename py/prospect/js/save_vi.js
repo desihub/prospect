@@ -3,28 +3,28 @@
 // Requires to include functions in: CSVtoArray.js
 
 // Create a string variable containing VI records in CSV format.
-function vi_to_csv(vi_file_fields, cds_data, for_localStorage, localStorage_key) {
-    // vi_file_fields: VI fields to be stored (defined in prospect.utilities)
+function vi_to_csv(output_file_fields, cds_data, for_localStorage, localStorage_key) {
+    // output_file_fields: VI fields to be stored (from the list defined in prospect.utilities)
     // cds_data: data from Bokeh CDS containing VI informations
-    //    must contain at least "VI_class_flag", "VI_comment", "VI_issue_flag"
+    //    must contain at least "VI_quality_flag", "VI_comment", "VI_issue_flag"
     // for_localStorage (bool): if true, the output format is slightly modified:
     //    no header, add a first column providing spectrum number.
     // localStorage_key: if not undefined, previous VI information from the
     //    browser's localStorage (with corresponding key) is read
     //    beforehand and included to the output.
 
-    var nb_fields = vi_file_fields.length
-    var nspec = cds_data['VI_class_flag'].length
+    var nb_fields = output_file_fields.length
+    var nspec = cds_data['VI_quality_flag'].length
 
     var array_to_store = []
 
     if (for_localStorage == false) {
         var header = []
-        for (var j=0; j<nb_fields; j++) header.push(vi_file_fields[j][0])
+        for (var j=0; j<nb_fields; j++) header.push(output_file_fields[j][0])
         array_to_store.push(header)
     }
 
-    if (localStorage_key != undefined) {
+    if (localStorage_key !== undefined) {
         var previously_stored_ispecs = []
         if (localStorage_key in localStorage) {
             var recovered_csv = localStorage.getItem(localStorage_key)
@@ -38,9 +38,9 @@ function vi_to_csv(vi_file_fields, cds_data, for_localStorage, localStorage_key)
     }
 
     for (var i_spec=0; i_spec<nspec; i_spec++) {
-        //  Record only information if a VI classification was assigned
+        //  Record only information if a VI quality was assigned
         //    or some VI comment/issue/z was given:
-        if ( (cds_data['VI_class_flag'][i_spec] != "-1") ||
+        if ( (cds_data['VI_quality_flag'][i_spec] != "-1") ||
             (cds_data['VI_comment'][i_spec].trim() != "") ||
             (cds_data['VI_issue_flag'][i_spec].trim() != "") ||
             (cds_data['VI_z'][i_spec].trim() != "") ) {
@@ -48,9 +48,10 @@ function vi_to_csv(vi_file_fields, cds_data, for_localStorage, localStorage_key)
             if (for_localStorage == true) {
                 row.push(i_spec.toString())
             }
-            for (var j=0; j<vi_file_fields.length; j++) {
-                var entry = cds_data[vi_file_fields[j][1]][i_spec]
-                if (vi_file_fields[j][1] == "z") entry = entry.toFixed(4)
+            for (var j=0; j<nb_fields; j++) {
+                var entry = cds_data[output_file_fields[j][1]][i_spec]
+                if (output_file_fields[j][1] == "Z") entry = entry.toFixed(4)
+                if (output_file_fields[j][1] == "DELTACHI2") entry = entry.toFixed(1)
                 if ( typeof(entry) != "string" ) entry = entry.toString()
                 entry = entry.replace(/"/g, '""')
                 entry = entry.replace(/,/g, '","')
@@ -60,7 +61,7 @@ function vi_to_csv(vi_file_fields, cds_data, for_localStorage, localStorage_key)
                 row.push(entry)
             }
             var i_rec = -1
-            if (localStorage_key != undefined) {
+            if (localStorage_key !== undefined) {
                 var i_rec = -1
                 i_rec = previously_stored_ispecs.indexOf(i_spec)
                 if (i_rec == -1) {
@@ -84,10 +85,10 @@ function vi_to_csv(vi_file_fields, cds_data, for_localStorage, localStorage_key)
 }
 
 // Store VI information to localStorage
-function autosave_vi_localStorage(vi_file_fields, cds_data, localStorage_key) {
+function autosave_vi_localStorage(output_file_fields, cds_data, localStorage_key) {
     if (typeof(localStorage) !== "undefined") {
         var for_localStorage = true
-        var csv_to_store = vi_to_csv(vi_file_fields, cds_data, for_localStorage, localStorage_key)
+        var csv_to_store = vi_to_csv(output_file_fields, cds_data, for_localStorage, localStorage_key)
         localStorage.setItem(localStorage_key, csv_to_store)
     } else {
         console.log("Warning : no local storage available in browser.")
@@ -95,9 +96,9 @@ function autosave_vi_localStorage(vi_file_fields, cds_data, localStorage_key) {
 }
 
 // Store VI information to VI csv file
-function download_vi_file(vi_file_fields, cds_data, output_file) {
+function download_vi_file(output_file_fields, cds_data, output_file) {
     var for_localStorage = false
-    var csv_to_store = vi_to_csv(vi_file_fields, cds_data, for_localStorage)
+    var csv_to_store = vi_to_csv(output_file_fields, cds_data, for_localStorage)
     var blob = new window.Blob([csv_to_store], {type: 'text/csv'})
     saveAs(blob, output_file)
 }

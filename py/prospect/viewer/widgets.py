@@ -19,6 +19,45 @@ from bokeh.models.widgets import (
 
 from ..utilities import get_resources
 
+
+def _metadata_table(table_keys, viewer_cds, table_width=500, shortcds_name='shortcds', selectable=False):
+    """ Returns bokeh's (ColumnDataSource, DataTable) needed to display a set of metadata given by table_keys.
+    
+    """
+    special_cell_width = { 'TARGETID':150, 'MORPHTYPE':70, 'SPECTYPE':70, 'SUBTYPE':60, 
+                         'Z':50, 'ZERR':50, 'Z_ERR':50, 'ZWARN':50, 'ZWARNING':50, 'DELTACHI2':70 }
+    special_cell_title = { 'DELTACHI2': 'Δχ2(N+1/N)' }
+    
+    table_columns = []
+    cdsdata = dict()
+    for key in table_keys:
+        if key in special_cell_width.keys():
+            cell_width = special_cell_width[key]
+        else:
+            cell_width = table_width//len(table_keys)
+        if key in special_cell_title.keys():
+            cell_title = special_cell_title[key]
+        else:
+            cell_title = key
+        if 'mag_' in key:
+            cdsdata[key] = [ "{:.2f}".format(viewer_cds.cds_metadata.data[key][0]) ]
+        elif 'CHI2' in key:
+            cdsdata[key] = [ "{:.1f}".format(viewer_cds.cds_metadata.data[key][0]) ]
+        elif key in ['Z', 'ZERR', 'Z_ERR']:
+            cdsdata[key] = [ "{:.4f}".format(viewer_cds.cds_metadata.data[key][0]) ]
+        else:
+            cdsdata[key] = [ viewer_cds.cds_metadata.data[key][0] ]
+        table_columns.append( TableColumn(field=key, title=cell_title, width=cell_width) )
+    shortcds = ColumnDataSource(cdsdata, name=shortcds_name)
+    # In order to be able to copy-paste the metadata in browser,
+    #   the combination selectable=True, editable=True is needed:
+    editable = True if selectable else False
+    output_table = DataTable(source = shortcds, columns=table_columns,
+                             index_position=None, selectable=selectable, editable=editable, width=table_width)
+    output_table.height = 2 * output_table.row_height
+    return (shortcds, output_table)
+    
+    
 class ViewerWidgets(object):
     """ 
     Encapsulates Bokeh widgets, and related callbacks, that are part of prospect's GUI.
@@ -144,10 +183,10 @@ class ViewerWidgets(object):
 
         self.zreset_button = Button(label='Reset to z_pipe')
         self.zreset_callback = CustomJS(
-            args=dict(z_input=self.z_input, targetinfo=viewer_cds.cds_targetinfo, ifiberslider=self.ifiberslider),
+            args=dict(z_input=self.z_input, metadata=viewer_cds.cds_metadata, ifiberslider=self.ifiberslider),
             code="""
                 var ifiber = ifiberslider.value
-                var z = targetinfo.data['z'][ifiber]
+                var z = metadata.data['Z'][ifiber]
                 z_input.value = z.toFixed(4)
             """)
         self.zreset_button.js_on_event('button_click', self.zreset_callback)
@@ -157,7 +196,7 @@ class ViewerWidgets(object):
                 coaddcam_spec = viewer_cds.cds_coaddcam_spec,
                 model = viewer_cds.cds_model,
                 othermodel = viewer_cds.cds_othermodel,
-                targetinfo = viewer_cds.cds_targetinfo,
+                metadata = viewer_cds.cds_metadata,
                 ifiberslider = self.ifiberslider,
                 zslider = self.zslider,
                 dzslider = self.dzslider,
@@ -229,8 +268,8 @@ class ViewerWidgets(object):
                     shift_plotwave(othermodel, waveshift_model)
                 } else if (model) {
                     var zfit = 0.0
-                    if(targetinfo.data['z'] != undefined) {
-                        zfit = targetinfo.data['z'][ifiber]
+                    if(metadata.data['Z'] !== undefined) {
+                        zfit = metadata.data['Z'][ifiber]
                     }
                     var waveshift_model = (waveframe_buttons.active == 0) ? (1+z)/(1+zfit) : 1/(1+zfit) ;
                     shift_plotwave(model, waveshift_model)
@@ -278,14 +317,14 @@ class ViewerWidgets(object):
             cds_oii_saveinfo.data['nsmooth'] = [smootherslider.value]
             // Center on the middle of the redshifted OII doublet (vaccum)
             var z = parseFloat(z_input.value)
-            fig.x_range.start = 3728.48 * (1+z) - 30
-            fig.x_range.end = 3728.48 * (1+z) + 30
+            fig.x_range.start = 3728.48 * (1+z) - 100
+            fig.x_range.end = 3728.48 * (1+z) + 100
             // No smoothing (this implies a call to update_plot)
             smootherslider.value = 0
             """)
         self.oii_zoom_button.js_on_event('button_click', self.oii_zoom_callback)
 
-        self.oii_undo_button = Button(label="Undo", button_type="default")
+        self.oii_undo_button = Button(label="Undo OII-zoom", button_type="default")
         self.oii_undo_callback = CustomJS(
             args = dict(fig=plots.fig, smootherslider=self.smootherslider, cds_oii_saveinfo=cds_oii_saveinfo),
             code = """
@@ -328,26 +367,53 @@ class ViewerWidgets(object):
         self.coaddcam_buttons.js_on_click(self.coaddcam_callback)
     
     
-    def add_targetinfos(self, viewer_cds, sdss, show_zcat=True, template_dicts=None):
-        #-----
-        # Display object-related informations
-        ## BYPASS DIV to be able to copy targetid...
-        ## target_info_div = Div(text=cds_targetinfo.data['target_info'][0])
-        tmp_dict = dict()
-        tmp_dict['TARGETID'] = [ viewer_cds.cds_targetinfo.data['targetid'][0] ]
-        tmp_dict['Target class'] = [ viewer_cds.cds_targetinfo.data['target_info'][0] ]
-        targ_disp_cols = [ TableColumn(field='TARGETID', title='TARGETID', width=150),
-                         TableColumn(field='Target class', title='Target class', width=250) ] # TODO tune width
-        if sdss:
-            phot_bands = ['u', 'g', 'r', 'i', 'z']
+    def add_metadata_tables(self, viewer_cds, show_zcat=True, template_dicts=None,
+                           top_metadata=['TARGETID', 'EXPID']):
+        """ Display object-related informations
+                top_metadata: metadata to be highlighted in table_a
+            
+            Note: "short" CDS, with a single row, are used to fill these bokeh tables.
+            When changing object, js code modifies these short CDS so that tables are updated.  
+        """
+
+        #- Sorted list of potential metadata:
+        metadata_to_check = ['TARGETID', 'HPXPIXEL', 'TILEID', 'COADD_NUMEXP', 'COADD_EXPTIME', 
+                             'NIGHT', 'EXPID', 'FIBER', 'CAMERA', 'MORPHTYPE']
+        metadata_to_check += [ ('mag_'+x) for x in viewer_cds.phot_bands ]
+        table_keys = []
+        for key in metadata_to_check:
+            if key in viewer_cds.cds_metadata.data.keys():
+                table_keys.append(key)
+            if 'NUM_'+key in viewer_cds.cds_metadata.data.keys():
+                for prefix in ['FIRST','LAST','NUM']:
+                    table_keys.append(prefix+'_'+key)
+                    if key in top_metadata:
+                        top_metadata.append(prefix+'_'+key)
+        
+        #- Table a: "top metadata"
+        table_a_keys = [ x for x in table_keys if x in top_metadata ]
+        self.shortcds_table_a, self.table_a = _metadata_table(table_a_keys, viewer_cds, table_width=600, 
+                                                              shortcds_name='shortcds_table_a', selectable=True)
+        #- Table b: Targeting information
+        self.shortcds_table_b, self.table_b = _metadata_table(['Targeting masks'], viewer_cds, table_width=self.plot_widget_width,
+                                                              shortcds_name='shortcds_table_b', selectable=True)
+        #- Table(s) c/d : Other information (imaging, etc.)
+        remaining_keys = [ x for x in table_keys if x not in top_metadata ]
+        if len(remaining_keys) > 7:
+            table_c_keys = remaining_keys[0:len(remaining_keys)//2]
+            table_d_keys = remaining_keys[len(remaining_keys)//2:]
         else:
-            phot_bands = ['G', 'R', 'Z', 'W1', 'W2']
-        for band in phot_bands:
-            tmp_dict['mag_'+band] = [ "{:.2f}".format(viewer_cds.cds_targetinfo.data['mag_'+band][0]) ]
-            targ_disp_cols.append( TableColumn(field='mag_'+band, title='mag_'+band, width=40) )
-        self.targ_disp_cds = ColumnDataSource(tmp_dict, name='targ_disp_cds')
-        self.targ_display = DataTable(source = self.targ_disp_cds, columns=targ_disp_cols,index_position=None, selectable=True, editable=True) # width=...
-        self.targ_display.height = 2 * self.targ_display.row_height
+            table_c_keys = remaining_keys
+            table_d_keys = None
+        self.shortcds_table_c, self.table_c = _metadata_table(table_c_keys, viewer_cds, table_width=self.plot_widget_width,
+                                                             shortcds_name='shortcds_table_c', selectable=False)
+        if table_d_keys is None:
+            self.shortcds_table_d, self.table_d = None, None
+        else:
+            self.shortcds_table_d, self.table_d = _metadata_table(table_d_keys, viewer_cds, table_width=self.plot_widget_width,
+                                                                 shortcds_name='shortcds_table_d', selectable=False)
+
+        #- Table z: redshift fitting information
         if show_zcat is not None :
             if template_dicts is not None : # Add other best fits
                 fit_results = template_dicts[1]
@@ -357,31 +423,25 @@ class ViewerWidgets(object):
                 chi2s = fit_results['CHI2'][0]
                 full_deltachi2s = np.zeros(len(chi2s))-1
                 full_deltachi2s[:-1] = chi2s[1:]-chi2s[:-1]
-                tmp_dict = dict(Nfit = np.arange(1,len(chi2s)+1),
+                cdsdata = dict(Nfit = np.arange(1,len(chi2s)+1),
                                 SPECTYPE = fit_results['SPECTYPE'][0],  # [0:num_best_fits] (if we want to restrict... TODO?)
                                 SUBTYPE = fit_results['SUBTYPE'][0],
                                 Z = [ "{:.4f}".format(x) for x in fit_results['Z'][0] ],
                                 ZERR = [ "{:.4f}".format(x) for x in fit_results['ZERR'][0] ],
                                 ZWARN = fit_results['ZWARN'][0],
                                 CHI2 = [ "{:.1f}".format(x) for x in fit_results['CHI2'][0] ],
-                                DeltaChi2 = [ "{:.1f}".format(x) for x in full_deltachi2s ])
+                                DELTACHI2 = [ "{:.1f}".format(x) for x in full_deltachi2s ])
+                self.shortcds_table_z = ColumnDataSource(cdsdata, name='shortcds_table_z')
+                columns_table_z = [ TableColumn(field=x, title=t, width=w) for x,t,w in [ ('Nfit','Nfit',5), ('SPECTYPE','SPECTYPE',70), ('SUBTYPE','SUBTYPE',60), ('Z','Z',50) , ('ZERR','ZERR',50), ('ZWARN','ZWARN',50), ('DELTACHI2','Δχ2(N+1/N)',70)] ]
+                self.table_z = DataTable(source=self.shortcds_table_z, columns=columns_table_z,
+                                         selectable=False, index_position=None, width=self.plot_widget_width)
+                self.table_z.height = 3 * self.table_z.row_height
             else :
-                tmp_dict = dict(SPECTYPE = [ viewer_cds.cds_targetinfo.data['spectype'][0] ],
-                    SUBTYPE = [ viewer_cds.cds_targetinfo.data['subtype'][0] ],
-                    Z = [ "{:.4f}".format(viewer_cds.cds_targetinfo.data['z'][0]) ],
-                    ZERR = [ "{:.4f}".format(viewer_cds.cds_targetinfo.data['zerr'][0]) ],
-                    ZWARN = [ viewer_cds.cds_targetinfo.data['zwarn'][0] ],
-                    DeltaChi2 = [ "{:.1f}".format(viewer_cds.cds_targetinfo.data['deltachi2'][0]) ])
-            self.zcat_disp_cds = ColumnDataSource(tmp_dict, name='zcat_disp_cds')
-            zcat_disp_cols = [ TableColumn(field=x, title=t, width=w) for x,t,w in [ ('SPECTYPE','SPECTYPE',70), ('SUBTYPE','SUBTYPE',60), ('Z','Z',50) , ('ZERR','ZERR',50), ('ZWARN','ZWARN',50), ('DeltaChi2','Δχ2(N/N+1)',70)] ]
-            if template_dicts is not None :
-                zcat_disp_cols.insert(0, TableColumn(field='Nfit', title='Nfit', width=5))
-            self.zcat_display = DataTable(source=self.zcat_disp_cds, columns=zcat_disp_cols, selectable=False, index_position=None, width=self.plot_widget_width)
-            self.zcat_display.height = 2 * self.zcat_display.row_height
-            if template_dicts is not None : self.zcat_display.height = 3 * self.zcat_display.row_height
+                self.shortcds_table_z, self.table_z = _metadata_table(viewer_cds.zcat_keys, viewer_cds,
+                                    table_width=self.plot_widget_width, shortcds_name='shortcds_table_z', selectable=False)
         else :
-            self.zcat_display = Div(text="Not available ")
-            self.zcat_disp_cds = None
+            self.table_z = Div(text="Not available ")
+            self.shortcds_table_z = None
 
 
     def add_specline_toggles(self, viewer_cds, plots):
@@ -462,7 +522,7 @@ class ViewerWidgets(object):
                         median_spectra = viewer_cds.cds_median_spectra,
                         smootherslider = self.smootherslider,
                         z_input = self.z_input,
-                        cds_targetinfo = viewer_cds.cds_targetinfo),
+                        cds_metadata = viewer_cds.cds_metadata),
                         code = model_select_code)
         self.model_select.js_on_change('value', self.model_select_callback)
 
@@ -482,10 +542,13 @@ class ViewerWidgets(object):
                 model = viewer_cds.cds_model,
                 othermodel = viewer_cds.cds_othermodel,
                 model_2ndfit = viewer_cds.cds_model_2ndfit,
-                targetinfo = viewer_cds.cds_targetinfo,
+                metadata = viewer_cds.cds_metadata,
                 fit_results = the_fit_results,
-                zcat_disp_cds = self.zcat_disp_cds,
-                targ_disp_cds = self.targ_disp_cds,
+                shortcds_table_z = self.shortcds_table_z,
+                shortcds_table_a = self.shortcds_table_a,
+                shortcds_table_b = self.shortcds_table_b,
+                shortcds_table_c = self.shortcds_table_c,
+                shortcds_table_d = self.shortcds_table_d,
                 ifiberslider = self.ifiberslider,
                 smootherslider = self.smootherslider,
                 z_input = self.z_input,
@@ -496,8 +559,8 @@ class ViewerWidgets(object):
                 vi_comment_input = vi_widgets.vi_comment_input,
                 vi_std_comment_select = vi_widgets.vi_std_comment_select,
                 vi_name_input = vi_widgets.vi_name_input,
-                vi_class_input = vi_widgets.vi_class_input,
-                vi_class_labels = vi_widgets.vi_class_labels,
+                vi_quality_input = vi_widgets.vi_quality_input,
+                vi_quality_labels = vi_widgets.vi_quality_labels,
                 vi_issue_input = vi_widgets.vi_issue_input,
                 vi_z_input = vi_widgets.vi_z_input,
                 vi_category_select = vi_widgets.vi_category_select,

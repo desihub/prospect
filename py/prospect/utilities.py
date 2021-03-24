@@ -31,12 +31,26 @@ except ImportError:
 
 _desitarget_imported = True
 try:
-    from desitarget.targetmask import desi_mask
+    from desitarget.targetmask import desi_mask, bgs_mask, mws_mask, scnd_mask
     from desitarget.cmx.cmx_targetmask import cmx_mask
     from desitarget.sv1.sv1_targetmask import desi_mask as sv1_desi_mask
     from desitarget.sv1.sv1_targetmask import bgs_mask as sv1_bgs_mask
+    from desitarget.sv1.sv1_targetmask import mws_mask as sv1_mws_mask
+    from desitarget.sv1.sv1_targetmask import scnd_mask as sv1_scnd_mask
+    supported_desitarget_masks = {
+        'DESI_TARGET': desi_mask,
+        'BGS_TARGET': bgs_mask,
+        'MWS_TARGET': mws_mask,
+        'SECONDARY_TARGET': scnd_mask, # To confirm !
+        'CMX_TARGET': cmx_mask,
+        'SV1_DESI_TARGET': sv1_desi_mask,
+        'SV1_BGS_TARGET': sv1_bgs_mask,
+        'SV1_MWS_TARGET': sv1_mws_mask,
+        'SV1_SCND_TARGET': sv1_scnd_mask,
+        }
 except ImportError:
     _desitarget_imported = False
+    supported_desitarget_masks = dict()
 
 _redrock_imported = True
 try:
@@ -50,13 +64,12 @@ from prospect import myspecselect, myspecupdate
 
 vi_flags = [
     # Definition of VI flags
-    # Replaces former list viflags = ["Yes","No","Maybe","LowSNR","Bad"]
     # shortlabels for "issue" flags must be a unique single-letter identifier
-    {"label" : "4", "type" : "class", "description" : "Confident classification: two or more secure features."},
-    {"label" : "3", "type" : "class", "description" : "Probable classification: at least one secure spectral feature + continuum or many weak spectral features."},
-    {"label" : "2", "type" : "class", "description" : "Possible classification: one strong spectral feature but unsure what it is."},
-    {"label" : "1", "type" : "class", "description" : "Unlikely classification: clear signal but features are unidentified."},
-    {"label" : "0", "type" : "class", "description" : "Nothing there, no signal."},
+    {"label" : "4", "type" : "quality", "description" : "Confident classification: two or more secure features."},
+    {"label" : "3", "type" : "quality", "description" : "Probable classification: at least one secure spectral feature + continuum or many weak spectral features."},
+    {"label" : "2", "type" : "quality", "description" : "Possible classification: one strong spectral feature but unsure what it is."},
+    {"label" : "1", "type" : "quality", "description" : "Unlikely classification: clear signal but features are unidentified."},
+    {"label" : "0", "type" : "quality", "description" : "Nothing there, no signal."},
     {"label" : "Bad redshift fit", "shortlabel" : "R", "type" : "issue", "description" : "Mis-estimation of redshift by the pipeline fitter"},
     {"label" : "Bad spectype fit", "shortlabel" : "C", "type" : "issue", "description" : "Mis-identification of spectral type from the best-fit pipeline solution; e.g., star vs QSO..."},
     {"label" : "Bad spectrum", "shortlabel" : "S", "type" : "issue", "description" : "Bad spectrum; e.g. strong cosmic/skyline subtraction residuals."}
@@ -65,24 +78,26 @@ vi_flags = [
 vi_file_fields = [
     # Contents of VI files: [
     #      field name (in VI file header),
-    #      associated variable in cds_targetinfo,
-    #      dtype in VI file ]
+    #      associated variable in viewer_cds.cds_metadata,
+    #      dtype in VI file
+    #      default value ]
     # Ordered list
-    ["TARGETID", "targetid", "i8"],
-    ["EXPID", "expid", "i4"],
-    ["NIGHT", "night", "i4"],
-    ["TILEID", "tileid", "i4"],
-    ["Spec_version", "spec_version", "i4"],
-    ["Redrock_version", "redrock_version", "i4"], # TODO define
-    ["Template_version", "template_version", "i4"], # TODO define
-    ["Redrock_spectype", "spectype", "S10"],
-    ["Redrock_z", "z", "f4"],
-    ["VI_scanner", "VI_scanner", "S10"],
-    ["VI_quality", "VI_class_flag", "i2"],
-    ["VI_issue", "VI_issue_flag", "S6"],
-    ["VI_z", "VI_z", "f4"],
-    ["VI_spectype", "VI_spectype", "S10"],
-    ["VI_comment", "VI_comment", "S100"]
+    ["TARGETID", "TARGETID", "i8", -1],
+    ["EXPID", "EXPID", "i4", -1],
+    ["NIGHT", "NIGHT", "i4", -1],
+    ["TILEID", "TILEID", "i4", -1],
+    ["Spec_version", "spec_version", "U16", "-1"],
+    ["Redrock_version", "redrock_version", "U16", "-1"],
+    ["Template_version", "template_version", "U16", "-1"],
+    ["Redrock_spectype", "SPECTYPE", "U10", ""],
+    ["Redrock_z", "Z", "U6", "-1"],
+    ["Redrock_deltachi2", "DELTACHI2", "U10", "-1"],
+    ["VI_scanner", "VI_scanner", "U10", " "],
+    ["VI_quality", "VI_quality_flag", "U2", "-1"],
+    ["VI_issue", "VI_issue_flag", "U3", ""],
+    ["VI_z", "VI_z", "U6", ""],
+    ["VI_spectype", "VI_spectype", "U10", ""],
+    ["VI_comment", "VI_comment", "U100", ""]
 ]
 
 vi_spectypes =[
@@ -130,7 +145,8 @@ def get_resources(filetype):
     if _resource_cache[filetype] is None:
         _resource_cache[filetype] = dict()
         for f in resource_listdir('prospect', filetype):
-            _resource_cache[filetype][f] = resource_string('prospect', filetype + '/' + f).decode('utf-8')
+            if not f.startswith("."):
+                _resource_cache[filetype][f] = resource_string('prospect', filetype + '/' + f).decode('utf-8')
     return _resource_cache[filetype]
 
 
@@ -337,12 +353,13 @@ def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None, nig
 
     return target_dict
 
-def load_spectra_zcat_from_targets(targets, tiledir, obs_db, with_redrock=False) :
+def load_spectra_zcat_from_targets(targets, tiledir, obs_db, with_redrock=False, with_redrock_version=True) :
     '''
     Creates (spectra,zcat,[redrock_cat]) = (Spectra object, zcatalog Table, [redrock Table]) from a list of targetids
     - targets must be a list of int64
     - obs_db: "mini-db" produced by make_targetdict()
     - with_redrock: if True, also get redrock Table
+    - with_redrock_version: if True, add a Column to zcat with RRVER from hdu0 in zbest files
     '''
 
     targets = np.asarray(targets)
@@ -367,6 +384,9 @@ def load_spectra_zcat_from_targets(targets, tiledir, obs_db, with_redrock=False)
                 the_spec = desispec.io.read_spectra(os.path.join(tiledir,the_path,"coadd-"+petal+"-"+tile_night+".fits"))
                 the_spec = myspecselect.myspecselect(the_spec, targets=targets_subset, remove_scores=True)
                 the_zcat = Table.read(os.path.join(tiledir,the_path,"zbest-"+petal+"-"+tile_night+".fits"),'ZBEST')
+                if with_redrock_version:
+                    hdulist = astropy.io.fits.open(os.path.join(tiledir,the_path,"zbest-"+petal+"-"+tile_night+".fits"))
+                    the_zcat['RRVER'] = hdulist[hdulist.index_of('PRIMARY')].header['RRVER']
                 the_zcat, dummy = match_zcat_to_spectra(the_zcat, the_spec)
                 ztables.append(the_zcat)
                 if with_redrock :
@@ -467,28 +487,20 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
 
     # Target mask selection
     if mask is not None :
-        assert mask_type in ['SV1_DESI_TARGET', 'DESI_TARGET', 'CMX_TARGET', 'SV1_BGS_TARGET']
-        if mask_type == 'SV1_DESI_TARGET' :
-            assert ( mask in sv1_desi_mask.names() )
-            w, = np.where( (spectra.fibermap['SV1_DESI_TARGET'] & sv1_desi_mask[mask]) )
-        elif mask_type == 'SV1_BGS_TARGET' :
-            assert ( mask in sv1_bgs_mask.names() )
-            w, = np.where( (spectra.fibermap['SV1_BGS_TARGET'] & sv1_bgs_mask[mask]) )
-        elif mask_type == 'DESI_TARGET' :
-            assert ( mask in desi_mask.names() )
-            w, = np.where( (spectra.fibermap['DESI_TARGET'] & desi_mask[mask]) )
-        elif mask_type == 'CMX_TARGET' :
-            assert ( mask in cmx_mask.names() )
+        assert _desitarget_imported
+        if mask_type not in spectra.fibermap.keys():
+            raise ValueError("mask_type is not in spectra.fibermap: "+mask_type)
+        mask_used = supported_desitarget_masks[mask_type]
+        assert ( mask in mask_used.names() )
+        w, = np.where( (spectra.fibermap[mask_type] & mask_used[mask]) )
+        if mask_type == 'CMX_TARGET' and with_dirty_mask_merge: # Self-explanatory... only for fast VI of minisv
             mask2 = None
-            if with_dirty_mask_merge : # Self-explanatory... only for fast VI of minisv
-                if mask in ['SV0_QSO', 'SV0_ELG', 'SV0_LRG'] : mask2 = mask.replace('SV0','MINI_SV')
-                if mask == 'SV0_BGS' : mask2 = 'MINI_SV_BGS_BRIGHT'
-                if mask in ['SV0_STD_FAINT', 'SV0_STD_BRIGHT'] : mask2 = mask.replace('SV0_','')
-            if mask2 is None :
-                w, = np.where( (spectra.fibermap['CMX_TARGET'] & cmx_mask[mask]) )
-            else :
-                w, = np.where( (spectra.fibermap['CMX_TARGET'] & cmx_mask[mask]) |
-                             (spectra.fibermap['CMX_TARGET'] & cmx_mask[mask2]) )
+            if mask in ['SV0_QSO', 'SV0_ELG', 'SV0_LRG']: mask2 = mask.replace('SV0','MINI_SV')
+            if mask == 'SV0_BGS': mask2 = 'MINI_SV_BGS_BRIGHT'
+            if mask in ['SV0_STD_FAINT', 'SV0_STD_BRIGHT']: mask2 = mask.replace('SV0_','')
+            if mask2 is not None:
+                w, = np.where( (spectra.fibermap[mask_type] & mask_used[mask]) |
+                             (spectra.fibermap[mask_type] & mask_used[mask2]) )
         if len(w) == 0 :
             if log is not None : log.info(" * No spectra with mask "+mask)
             return 0

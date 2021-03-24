@@ -10,7 +10,11 @@ Class containing bokeh plots needed for the viewer
 """
 
 import numpy as np
-from specutils import SpectrumList
+_specutils_imported = True
+try:
+    from specutils import Spectrum1D, SpectrumList
+except ImportError:
+    _specutils_imported = False
 
 import bokeh.plotting as bk
 from bokeh.models import CustomJS, ColumnDataSource, BoxAnnotation, Legend, Span, Label
@@ -48,7 +52,13 @@ class ViewerPlots(object):
 
     def __init__(self):
         # "Hardcoded" plotting parameters here:
-        self.xmargin = 300.
+        self.legend_outside_plot = False # PROTOTYPE option
+        if (self.legend_outside_plot):
+            self.xmargin_left = 100.
+            self.xmargin_right = 100.
+        else:
+            self.xmargin_left = 200.
+            self.xmargin_right = 400.
         self.plot_width=800
         self.plot_height=400
         self.colors = dict(b='#1f77b4', r='#d62728', z='maroon', coadd='#d62728', brz='#d62728')
@@ -64,13 +74,13 @@ class ViewerPlots(object):
         self.imfig_source = self.imfig_urls = None
 
 
-    def create_mainfig(self, spectra, title, viewer_cds, sdss, with_noise=True, with_coaddcam=True):
+    def create_mainfig(self, spectra, title, viewer_cds, survey, with_noise=True, with_coaddcam=True):
         #-----
         #- Main figure
         #- Determine initial ymin, ymax, xmin, xmax
         self.ymin = self.ymax = self.xmax = 0
         self.xmin = 100000.
-        if sdss:
+        if survey == 'SDSS':
             bands = ['coadd']
             self.ymin = np.nanmin(spectra.flux.value[0])
             self.ymax = np.nanmax(spectra.flux.value[0])
@@ -79,7 +89,7 @@ class ViewerPlots(object):
         else:
             bands = spectra.bands
             for i, band in enumerate(bands):
-                if isinstance(spectra, SpectrumList):
+                if _specutils_imported and isinstance(spectra, SpectrumList):
                     sp_flux = spectra[i].flux.value[0]
                     sp_wave = spectra[i].spectral_axis.value
                 else:
@@ -89,8 +99,8 @@ class ViewerPlots(object):
                 self.ymax = max(self.ymax, np.nanmax(sp_flux))
                 self.xmin = min(self.xmin, np.min(sp_wave))
                 self.xmax = max(self.xmax, np.max(sp_wave))
-        self.xmin -= self.xmargin
-        self.xmax += self.xmargin
+        self.xmin -= self.xmargin_left
+        self.xmax += self.xmargin_right
 
         tools = 'pan,box_zoom,wheel_zoom,save'
         tooltips_fig = [("wave","$x"),("flux","$y")]
@@ -111,7 +121,7 @@ class ViewerPlots(object):
         self.overlap_bands = []
         if bands == ['brz'] or set(bands) == set(['b','r','z']) :
             for i in range(len(self.overlap_waves)) :
-                fill_alpha = self.alpha_overlapband if with_coaddcam else 0
+                fill_alpha = self.alpha_overlapband # if with_coaddcam else 0
                 self.overlap_bands.append( BoxAnnotation(left=self.overlap_waves[i][0], right=self.overlap_waves[i][1], fill_color='blue', fill_alpha=fill_alpha, line_alpha=0) )
                 self.fig.add_layout(self.overlap_bands[-1])
 
@@ -153,8 +163,16 @@ class ViewerPlots(object):
             legend_items.append(("other model", self.othermodel_lines))
         if with_noise :
             legend_items.append(("noise", self.noise_lines[-1::-1])) # same as for data_lines
-        legend = Legend(items=legend_items)
-        self.fig.add_layout(legend, 'center')
+        if (self.legend_outside_plot):
+            legend = Legend(items=legend_items,
+                            border_line_alpha=0, label_text_font_size='11px',
+                            glyph_width=20, margin=0, padding=0, spacing=20,
+                            orientation='horizontal')
+            self.fig.add_layout(legend, 'below')
+        else:
+            legend = Legend(items=legend_items)
+            self.fig.add_layout(legend, 'center')
+
         self.fig.legend.click_policy = 'hide'    #- or 'mute'
 
     def create_zoomfig(self, viewer_cds, with_noise=True, with_coaddcam=True):
@@ -231,7 +249,7 @@ class ViewerPlots(object):
 
 
 
-    def add_spectral_lines(self, viewer_cds, figure='main', fig_height=None, label_offsets=(100, 5)):
+    def add_spectral_lines(self, viewer_cds, figure='main', fig_height=None, label_offsets=[100, 5]):
         """Add spectral line markers to plot.
 
         Parameters
@@ -242,7 +260,7 @@ class ViewerPlots(object):
             Figure to add spectral lines to.
         fig_height : :class:`float`, optional,
             Overall height of the plot.
-        label_offsets : :func:`tuple`, optional
+        label_offsets : list, optional
             Offsets in y-position for line labels with respect to top (bottom)
             of the figure for absorption (emission) lines.
         """
@@ -253,6 +271,8 @@ class ViewerPlots(object):
             raise ValueError("Unknown input figure type.")
 
         if fig_height is None : fig_height = bk_figure.plot_height
+        if self.legend_outside_plot and figure=='main':
+            label_offsets[0] += 10
 
         line_data = dict(viewer_cds.cds_spectral_lines.data)
         y = list()

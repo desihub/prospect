@@ -114,7 +114,7 @@ def main():
                 os.makedirs(html_dir)
                 os.mkdir(html_dir+"/vignettes")
 
-            plotspectra(thespec, zcatalog=zbest, model_from_zcat=True, model=None, title=titlepage, html_dir=html_dir, is_coadded=True, mask_type=args.mask_type)
+            plotspectra(thespec, zcatalog=zbest, model_from_zcat=True, model=None, title=titlepage, html_dir=html_dir, mask_type=args.mask_type)
 #             for i_spec in range(thespec.num_spectra()) :
 #                 saveplot = html_dir+"/vignettes/pix"+pixel+"_"+str(i_page)+"_"+str(i_spec)+".png"
 #                 miniplot_spectrum(thespec, i_spec, model=model, saveplot=saveplot, smoothing = args.vignette_smoothing)

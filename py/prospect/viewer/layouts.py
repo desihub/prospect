@@ -32,11 +32,11 @@ class ViewerLayout(object):
         self.navigator = bl.row(
             bl.column(widgets.prev_button, width=widgets.navigation_button_width+15),
             bl.column(widgets.next_button, width=widgets.navigation_button_width+20),
-            bl.column(widgets.ifiberslider, width=plots.plot_width+(plots.plot_height//2)-(60*len(vi_widgets.vi_class_labels)+2*widgets.navigation_button_width+35))
+            bl.column(widgets.ifiberslider, width=plots.plot_width+(plots.plot_height//2)-(60*len(vi_widgets.vi_quality_labels)+2*widgets.navigation_button_width+35))
         )
         
         if with_vi_widgets :
-            self.navigator.children.insert(1, bl.column(vi_widgets.vi_class_input, width=60*len(vi_widgets.vi_class_labels)) )
+            self.navigator.children.insert(1, bl.column(vi_widgets.vi_quality_input, width=60*len(vi_widgets.vi_quality_labels)) )
             if vi_widgets.vi_countdown_toggle is None :
                 vi_header_block = bl.column( Div(text="VI optional indications :"), width=300 )
             else :
@@ -69,8 +69,10 @@ class ViewerLayout(object):
             )
             
         self.plot_widget_set = bl.column(
+            bl.column(widgets.table_b, width=widgets.plot_widget_width),
+            bl.column(widgets.smootherslider, width=widgets.plot_widget_width),
             bl.column( Div(text="Pipeline fit: ") ),
-            bl.column(widgets.zcat_display, width=widgets.plot_widget_width),
+            bl.column(widgets.table_z, width=widgets.plot_widget_width),
             bl.row(
                 bl.column(
                     bl.row(
@@ -91,13 +93,15 @@ class ViewerLayout(object):
                 ),
                 background='#fff7e6'
             ),
-            bl.column(widgets.smootherslider, width=widgets.plot_widget_width),
+            bl.column(widgets.table_c, width=widgets.plot_widget_width),
             bl.row(
                 bl.column(widgets.speclines_button_group, width=200),
                 bl.column(bl.Spacer(width=30)),
                 bl.column(widgets.majorline_checkbox, width=120)
             )
         )
+        if widgets.table_d is not None:
+            self.plot_widget_set.children.insert(-2, bl.column(widgets.table_d, width=widgets.plot_widget_width))
         if widgets.coaddcam_buttons is not None :
             waveframe_block = bl.row(
                                 bl.column(widgets.coaddcam_buttons, width=200),
@@ -108,22 +112,23 @@ class ViewerLayout(object):
             waveframe_block = bl.column(widgets.waveframe_buttons, width=120)
         self.plot_widget_set.children.append(waveframe_block)
         if widgets.model_select is not None :
-            self.plot_widget_set.children.insert(3, bl.column(widgets.model_select, width=200))
+            self.plot_widget_set.children.insert(4, bl.column(widgets.model_select, width=200))
         
         if with_vi_widgets :
-            self.plot_widget_set.children.append( bl.column(bl.Spacer(height=30)) )
-            self.plot_widget_set.children.append( bl.column(vi_widgets.vi_guideline_div, width=widgets.plot_widget_width) )
-            self.full_widget_set = bl.row(
-                self.vi_widget_set,
-                bl.column(bl.Spacer(width=40)),
-                self.plot_widget_set
+            self.full_widget_set = bl.column(
+                bl.row(
+                    self.vi_widget_set,
+                    bl.column(bl.Spacer(width=40)),
+                    self.plot_widget_set
+                ),
+                bl.column(vi_widgets.vi_guideline_div, width=2*widgets.plot_widget_width)
             )
         else : self.full_widget_set = self.plot_widget_set
 
         self.main_bokehlayout = bl.column(
             bl.row(plots.fig, bl.column(plots.imfig, plots.zoomfig), bl.Spacer(width=20)),
             bl.row(
-                bl.column(widgets.targ_display, width=600), # plot_width - 200
+                bl.column(widgets.table_a, width=600), # plot_width - 200
                 bl.column(bl.Spacer(width=20)),
                 bl.column(widgets.reset_plotrange_button, width = 120),
                 bl.column(bl.Spacer(width=80)),
