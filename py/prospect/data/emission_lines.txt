@@ -33,7 +33,7 @@ Ne V,Ne V 3426,3426.85,True,False
 He I,He I 3389,3889.752,True,False
 H8,Balmer 8,3890.151,True,False
 Hζ,Balmer ζ,3889.049,False,False
-[Ne III],[Ne III] 3970,3970.00,False,True
+[Ne III],[Ne III] 3967,3967.47,False,True
 Hε,Balmer ε,3970.072,False,False
 Hδ,Balmer δ,4101.734,False,True
 Hγ,Balmer γ,4340.464,False,True
