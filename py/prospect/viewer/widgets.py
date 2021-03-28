@@ -553,6 +553,7 @@ class ViewerWidgets(object):
                 smootherslider = self.smootherslider,
                 z_input = self.z_input,
                 fig = plots.fig,
+                xrange = [plots.xmin, plots.xmax],
                 imfig_source = plots.imfig_source,
                 imfig_urls = plots.imfig_urls,
                 model_select = self.model_select,

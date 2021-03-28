@@ -101,6 +101,11 @@ if (cb_obj == ifiberslider) {
         imfig_source.data.txt[0] = imfig_urls[ifiber][2];
         imfig_source.change.emit();
     }
+    //
+    // reset x-range
+    //
+    fig.x_range.start = xrange[0];
+    fig.x_range.end = xrange[1];
 }
 //
 // Update redshift.
