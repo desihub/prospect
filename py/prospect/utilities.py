@@ -363,7 +363,7 @@ def load_spectra_zcat_from_targets(targets, tiledir, obs_db, with_redrock=False,
     '''
 
     targets = np.asarray(targets)
-    if targets.dtype != 'int64' :
+    if targets.dtype not in ['int64', 'i8', '>i8'] :
         raise TypeError('Targetids should be int64.')
     spectra = None
     ztables, rrtables = [], []

@@ -11,6 +11,7 @@ Write static html files from a set of targets, using tile-based coadds in CMX da
 import os
 import argparse
 import numpy as np
+import astropy.io.fits
 
 import desispec.io
 from desiutil.log import get_logger
@@ -23,7 +24,7 @@ def _parse():
 
     parser = argparse.ArgumentParser(description='Create static html pages from a set of targets, using CMX tile-based coadds')
     parser.add_argument('--specprod_dir', help='Location of directory tree (data in specprod_dir/tiles/)', type=str)
-    parser.add_argument('--target_list', help='ASCII file providing the list of targetids', type=str)
+    parser.add_argument('--target_list', help='ASCII or FITS file providing the list of targetids. FITS must contain a table with TARGETID column, and optionally TILEID. ASCII must be a simple list of TARGETIDs.', type=str)
     parser.add_argument('--tiles', help='Name of tile[s] to be processed (avoids to scan all tiles)', nargs='+', type=str, default=None)
     parser.add_argument('--nights', help='Name of night[s] to be processed (avoids to scan all nights)', nargs='+', type=str, default=None)
     parser.add_argument('--nspecperfile', help='Number of spectra in each html page', type=int, default=50)
@@ -44,15 +45,22 @@ def main():
     log = get_logger()
 
     tile_dir = os.path.join(args.specprod_dir,'tiles')
+    tile_list = os.listdir(tile_dir)
     if args.tiles :
         tile_list = args.tiles
-    else :
-        tile_list = os.listdir(tile_dir)
-    obs_db = make_targetdict(tile_dir, tiles=tile_list, nights=args.nights)
 
-    targetids = np.loadtxt(args.target_list, dtype='int64', comments='#')
+    if args.target_list[-5:] in ['.fits', '.FITS']:
+        hlist = astropy.io.fits.open(args.target_list)
+        targetids = hlist[1].data['TARGETID']
+        if 'TILEID' in hlist[1].data.names:
+            all_tiles = hlist[1].data['TILEID']
+            tile_list = [ str(x) for x in np.unique(all_tiles) ]
+    else:
+        targetids = np.loadtxt(args.target_list, dtype='int64', comments='#')
     log.info(str(len(targetids))+" targets provided.")
+    log.info("Tiles: "+' '.join(tile_list))
 
+    obs_db = make_targetdict(tile_dir, tiles=tile_list, nights=args.nights)
     if args.with_multiple_models :
         spectra, zcat, rrtable = load_spectra_zcat_from_targets(targetids, tile_dir, obs_db, with_redrock=True)
     else :
