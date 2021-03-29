@@ -208,7 +208,17 @@ def myspecupdate(spectra_in, other) :
     # Append new spectra
 
     if nnew > 0:
-        newfmap[nold:] = other.fibermap[indx_new]
+        # EA - March 2021
+        # dirty fix for the case where fibermaps don't match
+        #   newfmap's keys are determined from first Spectra.
+        #   if key not in 'other', then corresponding values are zero in newfmap
+        # TODO - check desispec new functions ?
+        if set(newfmap.keys()) == set(other.fibermap.keys()):
+            newfmap[nold:] = other.fibermap[indx_new]
+        else:
+            for k in newfmap.keys():
+                if k in other.fibermap.keys():
+                    newfmap[k][nold:] = other.fibermap[k][indx_new]
 
         for b in other.bands:
             newflux[b][nold:,:] = other.flux[b][indx_new].astype(spectra_in._ftype)
