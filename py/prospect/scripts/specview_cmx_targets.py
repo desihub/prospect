@@ -91,7 +91,8 @@ def main():
             num_approx_fits = None
             with_full_2ndfit = False
 
-        titlepage = args.titlepage_prefix+"_"+str(i_page)
+        titlepage = args.titlepage_prefix
+        if nbpages>1: titlepage += ("_"+str(i_page))
         plotspectra(thespec, with_noise=True, zcatalog=the_zcat,
                     title=titlepage, html_dir=args.webdir, mask_type=args.mask_type, with_thumb_only_page=True,
                     template_dir=args.template_dir, redrock_cat=the_rrtable, num_approx_fits=num_approx_fits,

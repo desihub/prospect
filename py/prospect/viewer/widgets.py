@@ -124,6 +124,7 @@ class ViewerWidgets(object):
         dz = z-z1
         self.zslider = Slider(start=-0.1, end=5.0, value=z1, step=0.01, title='Redshift rough tuning')
         self.dzslider = Slider(start=0.0, end=0.0099, value=dz, step=0.0001, title='Redshift fine-tuning')
+        self.zslider.format = "0[.]00" # default bokeh value, for record
         self.dzslider.format = "0[.]0000"
         self.z_input = TextInput(value="{:.4f}".format(z), title="Redshift value:")
 
@@ -194,7 +195,7 @@ class ViewerWidgets(object):
         self.zreset_button.js_on_event('button_click', self.zreset_callback)
 
         self.z_input_callback = CustomJS(
-            args=dict(spectra = viewer_cds.cds_spectra,
+            args = dict(spectra = viewer_cds.cds_spectra,
                 coaddcam_spec = viewer_cds.cds_coaddcam_spec,
                 model = viewer_cds.cds_model,
                 othermodel = viewer_cds.cds_othermodel,
@@ -213,70 +214,8 @@ class ViewerWidgets(object):
                 overlap_bands = plots.overlap_bands,
                 fig = plots.fig
                 ),
-            code="""
-                var z = parseFloat(z_input.value)
-                if ( z >=-0.1 && z <= 5.0 ) {
-                    // update zsliders only if needed (avoid recursive call)
-                    z_input.value = parseFloat(z_input.value).toFixed(4)
-                    var z1 = Math.floor(z*100) / 100
-                    var z2 = z-z1
-                    if ( Math.abs(z1-zslider.value) >= 0.01) zslider.value = parseFloat(parseFloat(z1).toFixed(2))
-                    if ( Math.abs(z2-dzslider.value) >= 0.0001) dzslider.value = parseFloat(parseFloat(z2).toFixed(4))
-                } else {
-                    if (z_input.value < -0.1) z_input.value = (-0.1).toFixed(4)
-                    if (z_input.value > 5) z_input.value = (5.0).toFixed(4)
-                }
-
-                var line_restwave = line_data.data['restwave']
-                var ifiber = ifiberslider.value
-                var waveshift_lines = (waveframe_buttons.active == 0) ? 1+z : 1 ;
-                var waveshift_spec = (waveframe_buttons.active == 0) ? 1 : 1/(1+z) ;
-
-                for(var i=0; i<line_restwave.length; i++) {
-                    lines[i].location = line_restwave[i] * waveshift_lines
-                    line_labels[i].x = line_restwave[i] * waveshift_lines
-                    zlines[i].location = line_restwave[i] * waveshift_lines
-                    zline_labels[i].x = line_restwave[i] * waveshift_lines
-                }
-                if (overlap_bands.length>0) {
-                    for (var i=0; i<overlap_bands.length; i++) {
-                        overlap_bands[i].left = overlap_waves[i][0] * waveshift_spec
-                        overlap_bands[i].right = overlap_waves[i][1] * waveshift_spec
-                    }
-                }
-
-                function shift_plotwave(cds_spec, waveshift) {
-                    var data = cds_spec.data
-                    var origwave = data['origwave']
-                    var plotwave = data['plotwave']
-                    if ( plotwave[0] != origwave[0] * waveshift ) { // Avoid redo calculation if not needed
-                        for (var j=0; j<plotwave.length; j++) {
-                            plotwave[j] = origwave[j] * waveshift ;
-                        }
-                        cds_spec.change.emit()
-                    }
-                }
-
-                for(var i=0; i<spectra.length; i++) {
-                    shift_plotwave(spectra[i], waveshift_spec)
-                }
-                if (coaddcam_spec) shift_plotwave(coaddcam_spec, waveshift_spec)
-
-                // Update model wavelength array
-                // NEW : don't shift model if othermodel is there
-                if (othermodel) {
-                    var zref = othermodel.data['zref'][0]
-                    var waveshift_model = (waveframe_buttons.active == 0) ? (1+z)/(1+zref) : 1/(1+zref) ;
-                    shift_plotwave(othermodel, waveshift_model)
-                } else if (model) {
-                    var zfit = 0.0
-                    if(metadata.data['Z'] !== undefined) {
-                        zfit = metadata.data['Z'][ifiber]
-                    }
-                    var waveshift_model = (waveframe_buttons.active == 0) ? (1+z)/(1+zfit) : 1/(1+zfit) ;
-                    shift_plotwave(model, waveshift_model)
-                }
-            """)
+            code = self.js_files["modify_redshift.js"]
+        )
         self.z_input.js_on_change('value', self.z_input_callback)
         self.waveframe_buttons.js_on_click(self.z_input_callback)
 
