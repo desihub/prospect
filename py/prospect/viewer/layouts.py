@@ -29,12 +29,46 @@ class ViewerLayout(object):
         vi_widgets : :class:`ViewerVIWidgets`
         '''
 
+        #- Main 'navigator'
         self.navigator = bl.row(
             bl.column(widgets.prev_button, width=widgets.navigation_button_width+15),
             bl.column(widgets.next_button, width=widgets.navigation_button_width+20),
             bl.column(widgets.ifiberslider, width=plots.plot_width+(plots.plot_height//2)-(60*len(vi_widgets.vi_quality_labels)+2*widgets.navigation_button_width+35))
         )
         
+        #- Redshift widgets
+        redshift_set_a = bl.row(
+            bl.column(widgets.z_minus_button, width=widgets.z_button_width+15),
+            bl.column(widgets.zslider, width=widgets.plot_widget_width-2*widgets.z_button_width-135),
+            bl.column(widgets.z_plus_button, width=widgets.z_button_width)
+        )
+        if with_vi_widgets:
+            redshift_set_b = bl.row(
+                bl.column(widgets.dzslider, width=widgets.plot_widget_width-235),
+                bl.column(bl.Spacer(width=20)),
+                bl.column(widgets.zreset_button, width=100)
+            )
+            redshift_set_c = bl.column(
+                bl.column(widgets.z_input, width=100),
+                bl.column(vi_widgets.z_tovi_button, width=100)
+            )
+        else:
+            redshift_set_b = bl.column(widgets.dzslider, width=widgets.plot_widget_width-135)
+            redshift_set_c = bl.column(
+                bl.column(widgets.z_input, width=120),
+                bl.column(widgets.zreset_button, width=120)
+            )
+        self.redshift_widget_set = bl.row(
+            bl.column(
+                redshift_set_a,
+                redshift_set_b
+            ),
+            bl.column(bl.Spacer(width=15)),
+            redshift_set_c,
+            background='#fff7e6'
+        )
+
+        #- VI widgets
         if with_vi_widgets :
             self.navigator.children.insert(1, bl.column(vi_widgets.vi_quality_input, width=60*len(vi_widgets.vi_quality_labels)) )
             if vi_widgets.vi_countdown_toggle is None :
@@ -67,32 +101,14 @@ class ViewerLayout(object):
                 ),
                 background='#f5f5f0'
             )
-            
+
+        #- Plot-related widgets (ie. all the rest)
         self.plot_widget_set = bl.column(
-            bl.column(widgets.table_b, width=widgets.plot_widget_width),
             bl.column(widgets.smootherslider, width=widgets.plot_widget_width),
+            self.redshift_widget_set,
             bl.column( Div(text="Pipeline fit: ") ),
             bl.column(widgets.table_z, width=widgets.plot_widget_width),
-            bl.row(
-                bl.column(
-                    bl.row(
-                        bl.column(widgets.z_minus_button, width=widgets.z_button_width+15),
-                        bl.column(widgets.zslider, width=widgets.plot_widget_width-2*widgets.z_button_width-135),
-                        bl.column(widgets.z_plus_button, width=widgets.z_button_width)
-                    ),
-                    bl.row(
-                        bl.column(widgets.dzslider, width=widgets.plot_widget_width-235),
-                        bl.column(bl.Spacer(width=20)),
-                        bl.column(widgets.zreset_button, width=100)
-                    )
-                ),
-                bl.column(bl.Spacer(width=15)),
-                bl.column(
-                    bl.column(widgets.z_input, width=100),
-                    bl.column(vi_widgets.z_tovi_button, width=100) # TODO if with_vi_widget
-                ),
-                background='#fff7e6'
-            ),
+            bl.column(widgets.table_b, width=widgets.plot_widget_width),
             bl.column(widgets.table_c, width=widgets.plot_widget_width),
             bl.row(
                 bl.column(widgets.speclines_button_group, width=200),
@@ -114,6 +130,7 @@ class ViewerLayout(object):
         if widgets.model_select is not None :
             self.plot_widget_set.children.insert(4, bl.column(widgets.model_select, width=200))
         
+        #- Assemble all widgets
         if with_vi_widgets :
             self.full_widget_set = bl.column(
                 bl.row(

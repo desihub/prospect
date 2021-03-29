@@ -26,6 +26,8 @@ def _metadata_table(table_keys, viewer_cds, table_width=500, shortcds_name='shor
     """
     special_cell_width = { 'TARGETID':150, 'MORPHTYPE':70, 'SPECTYPE':70, 'SUBTYPE':60, 
                          'Z':50, 'ZERR':50, 'Z_ERR':50, 'ZWARN':50, 'ZWARNING':50, 'DELTACHI2':70 }
+    for x in viewer_cds.phot_bands:
+        special_cell_width['mag_'+x] = 40
     special_cell_title = { 'DELTACHI2': 'Δχ2(N+1/N)' }
     
     table_columns = []
@@ -448,9 +450,9 @@ class ViewerWidgets(object):
         #-----
         #- Toggle lines
         self.speclines_button_group = CheckboxButtonGroup(
-                labels=["Emission lines", "Absorption lines"], active=[])
+                labels=["Emission lines", "Absorption lines"], active=[0, 1])
         self.majorline_checkbox = CheckboxGroup(
-                labels=['Show only major lines'], active=[])
+                labels=['Show only major lines'], active=[0])
 
         self.speclines_callback = CustomJS(
             args = dict(line_data = viewer_cds.cds_spectral_lines,

@@ -52,7 +52,7 @@ class ViewerPlots(object):
 
     def __init__(self):
         # "Hardcoded" plotting parameters here:
-        self.legend_outside_plot = False # PROTOTYPE option
+        self.legend_outside_plot = True
         if (self.legend_outside_plot):
             self.xmargin_left = 100.
             self.xmargin_right = 100.
@@ -304,24 +304,23 @@ class ViewerPlots(object):
         else :
             self.zoom_speclines = list()
             self.zoom_specline_labels = list()
-        for w, y, name, emission in zip(
+        for w, y, name, emission, major in zip(
                 line_data['plotwave'],
                 line_data['y'],
                 line_data['plotname'],
-                line_data['emission']
+                line_data['emission'],
+                line_data['major']
                 ):
-            if emission:
-                color = 'blueviolet'
-            else:
-                color = 'green'
+            color = 'blueviolet' if emission else 'green'
+            visible = True if major else False
 
             s = Span(location=w, dimension='height', line_color=color,
-                    line_alpha=1.0, line_dash='dashed', visible=False)
+                    line_alpha=1.0, line_dash='dashed', visible=visible)
             bk_figure.add_layout(s)
 
             lb = Label(x=w, y=y, x_units='data', y_units='screen',
                         text=name, text_color='gray', text_font_size="8pt",
-                        x_offset=2, y_offset=0, visible=False)
+                        x_offset=2, y_offset=0, visible=visible)
             bk_figure.add_layout(lb)
 
             if figure == 'main' :
