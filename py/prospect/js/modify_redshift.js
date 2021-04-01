@@ -1,6 +1,6 @@
 // CustomJS, callback for the "Redshift value" button
 //  - args = spectra, coaddcam_spec, model, othermodel, metadata, ifiberslider,
-//           zslider, dzslider, z_input, waveframe_buttons, line_data, lines,
+//           zslider, dzslider, z_input, widgetinfos, line_data, lines,
 //           line_labels, zlines, zline_labels, overlap_waves, overlap_bands, fig.
 
 var z = parseFloat(z_input.value)
@@ -16,11 +16,12 @@ if ( z >=-0.1 && z <= 5.0 ) {
     if (z_input.value < -0.1) z_input.value = (-0.1).toFixed(4)
     if (z_input.value > 5) z_input.value = (5.0).toFixed(4)
 }
+z = parseFloat(z_input.value)
 
 var line_restwave = line_data.data['restwave']
 var ifiber = ifiberslider.value
-var waveshift_lines = (waveframe_buttons.active == 0) ? 1+z : 1 ;
-var waveshift_spec = (waveframe_buttons.active == 0) ? 1 : 1/(1+z) ;
+var waveshift_lines = (widgetinfos.data['waveframe_active'][0] == 0) ? 1+z : 1 ;
+var waveshift_spec = (widgetinfos.data['waveframe_active'][0] == 0) ? 1 : 1/(1+z) ;
 
 for(var i=0; i<line_restwave.length; i++) {
     lines[i].location = line_restwave[i] * waveshift_lines
@@ -56,14 +57,14 @@ if (coaddcam_spec) shift_plotwave(coaddcam_spec, waveshift_spec)
 // NEW : don't shift model if othermodel is there
 if (othermodel) {
     var zref = othermodel.data['zref'][0]
-    var waveshift_model = (waveframe_buttons.active == 0) ? (1+z)/(1+zref) : 1/(1+zref) ;
+    var waveshift_model = (widgetinfos.data['waveframe_active'][0] == 0) ? (1+z)/(1+zref) : 1/(1+zref) ;
     shift_plotwave(othermodel, waveshift_model)
 } else if (model) {
     var zfit = 0.0
     if(metadata.data['Z'] !== undefined) {
         zfit = metadata.data['Z'][ifiber]
     }
-    var waveshift_model = (waveframe_buttons.active == 0) ? (1+z)/(1+zfit) : 1/(1+zfit) ;
+    var waveshift_model = (widgetinfos.data['waveframe_active'][0] == 0) ? (1+z)/(1+zfit) : 1/(1+zfit) ;
     shift_plotwave(model, waveshift_model)
 }
 

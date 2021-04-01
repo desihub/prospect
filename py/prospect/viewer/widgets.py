@@ -85,7 +85,8 @@ class ViewerWidgets(object):
         self.cds_widgetinfos = ColumnDataSource({'oii_save_xmin': [plots.fig.x_range.start],
                                                  'oii_save_xmax': [plots.fig.x_range.end],
                                                  'oii_save_nsmooth': [self.smootherslider.value],
-                                                 'waveframe_active': [0]
+                                                 'waveframe_active': [0],
+                                                 'z_input_value': [0]
                                                 })
 
     def add_navigation(self, nspec):
@@ -131,6 +132,7 @@ class ViewerWidgets(object):
         self.zslider.format = "0[.]00" # default bokeh value, for record
         self.dzslider.format = "0[.]0000"
         self.z_input = TextInput(value="{:.4f}".format(z), title="Redshift value:")
+        self.cds_widgetinfos.data['z_input_value'][0] = self.z_input.value
 
         #- Observer vs. Rest frame wavelengths
         self.waveframe_buttons = RadioButtonGroup(
@@ -198,71 +200,69 @@ class ViewerWidgets(object):
             """)
         self.zreset_button.js_on_event('button_click', self.zreset_callback)
 
+        z_input_args = dict(spectra = viewer_cds.cds_spectra,
+            coaddcam_spec = viewer_cds.cds_coaddcam_spec,
+            model = viewer_cds.cds_model,
+            othermodel = viewer_cds.cds_othermodel,
+            metadata = viewer_cds.cds_metadata,
+            widgetinfos = self.cds_widgetinfos,
+            ifiberslider = self.ifiberslider,
+            zslider = self.zslider,
+            dzslider = self.dzslider,
+            z_input = self.z_input,
+            line_data = viewer_cds.cds_spectral_lines,
+            lines = plots.speclines,
+            line_labels = plots.specline_labels,
+            zlines = plots.zoom_speclines,
+            zline_labels = plots.zoom_specline_labels,
+            overlap_waves = plots.overlap_waves,
+            overlap_bands = plots.overlap_bands,
+            fig = plots.fig)
+        z_input_code = self.js_files["modify_redshift.js"]
+        z_input_code += """
+            widgetinfos.data['z_input_value'][0] = z_input.value ;
+            """
         self.z_input_callback = CustomJS(
-            args = dict(spectra = viewer_cds.cds_spectra,
-                coaddcam_spec = viewer_cds.cds_coaddcam_spec,
-                model = viewer_cds.cds_model,
-                othermodel = viewer_cds.cds_othermodel,
-                metadata = viewer_cds.cds_metadata,
-                ifiberslider = self.ifiberslider,
-                zslider = self.zslider,
-                dzslider = self.dzslider,
-                z_input = self.z_input,
-                waveframe_buttons = self.waveframe_buttons,
-                line_data = viewer_cds.cds_spectral_lines,
-                lines = plots.speclines,
-                line_labels = plots.specline_labels,
-                zlines = plots.zoom_speclines,
-                zline_labels = plots.zoom_specline_labels,
-                overlap_waves = plots.overlap_waves,
-                overlap_bands = plots.overlap_bands,
-                fig = plots.fig
-                ),
-            code = self.js_files["modify_redshift.js"]
+            args = z_input_args,
+            code = z_input_code
         )
         self.z_input.js_on_change('value', self.z_input_callback)
-        self.waveframe_buttons.js_on_click(self.z_input_callback)
 
-        self.plotrange_callback = CustomJS(
-            args = dict(
-                z_input=self.z_input,
-                waveframe_buttons=self.waveframe_buttons,
-                widgetinfos=self.cds_widgetinfos,
-                fig=plots.fig,
-            ),
-            code="""
-            var z =  parseFloat(z_input.value)
-            // Observer Frame
-            if (waveframe_buttons.active == 0) {
-                fig.x_range.start = fig.x_range.start * (1+z)
-                fig.x_range.end = fig.x_range.end * (1+z)
+        waveframe_args = z_input_args.copy()
+        waveframe_code = """
+            var z = parseFloat(z_input.value)
+            if (cb_obj.active == 0) {
+                fig.x_range.start = fig.x_range.start * (1+z) ;
+                fig.x_range.end = fig.x_range.end * (1+z) ;
             } else {
-                fig.x_range.start = fig.x_range.start / (1+z)
-                fig.x_range.end = fig.x_range.end / (1+z)
+                fig.x_range.start = fig.x_range.start / (1+z) ;
+                fig.x_range.end = fig.x_range.end / (1+z) ;
             }
-            widgetinfos.data['waveframe_active'][0] = waveframe_buttons.active ;
+            widgetinfos.data['waveframe_active'][0] = cb_obj.active ;
             """
-        )
-        self.waveframe_buttons.js_on_click(self.plotrange_callback) # TODO: for record: is this related to waveframe bug? : 2 callbakcs for same click...
+        waveframe_code += self.js_files["modify_redshift.js"]
+        self.waveframe_callback = CustomJS(
+            args = waveframe_args,
+            code = waveframe_code)
+        self.waveframe_buttons.js_on_click(self.waveframe_callback)
 
     def add_oii_widgets(self, plots):
         #------
         #- Zoom on the OII doublet TODO mv js code to other file
-        # TODO: is there another trick than using a cds to pass the "oii_saveinfo" ?
-        # TODO: optimize smoothing for autozoom (current value: 0)
+        # TODO? optimize smoothing for autozoom (current value: 0)
         self.oii_zoom_button = Button(label="OII-zoom", button_type="default")
         self.oii_zoom_callback = CustomJS(
-            args = dict(z_input=self.z_input, fig=plots.fig, smootherslider=self.smootherslider,
+            args = dict(fig=plots.fig, smootherslider=self.smootherslider,
                         widgetinfos=self.cds_widgetinfos),
             code = """
             // Save previous setting (for the "Undo" button)
-            widgetinfos.data['oii_save_xmin'] = [fig.x_range.start]
-            widgetinfos.data['oii_save_xmax'] = [fig.x_range.end]
-            widgetinfos.data['oii_save_nsmooth'] = [smootherslider.value]
+            widgetinfos.data['oii_save_xmin'][0] = fig.x_range.start
+            widgetinfos.data['oii_save_xmax'][0] = fig.x_range.end
+            widgetinfos.data['oii_save_nsmooth'][0] = smootherslider.value
             // Center on the middle of the redshifted OII doublet (vaccum)
             var central_wave = 3728.48;
             if (widgetinfos.data['waveframe_active'][0] == 0) {
-                var z = parseFloat(z_input.value)
+                var z = parseFloat(widgetinfos.data['z_input_value'][0])
                 central_wave *= (1+z)
             }
             fig.x_range.start = central_wave - 100
