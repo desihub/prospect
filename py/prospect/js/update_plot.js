@@ -106,6 +106,11 @@ if (cb_obj == ifiberslider) {
     //
     fig.x_range.start = xrange[0];
     fig.x_range.end = xrange[1];
+    if (widgetinfos.data['waveframe_active'][0] == 1) {
+        var z = metadata.data['Z'][ifiber];
+        fig.x_range.start /= (1+z);
+        fig.x_range.end /= (1+z);
+    }
 }
 //
 // Update redshift.

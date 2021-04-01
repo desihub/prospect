@@ -5,6 +5,11 @@
 // x-range : use fixed x-range determined once for all
 fig.x_range.start = xmin
 fig.x_range.end = xmax
+if (widgetinfos.data['waveframe_active'][0] == 1) {
+    var z = metadata.data['Z'][ifiberslider.value];
+    fig.x_range.start /= (1+z);
+    fig.x_range.end /= (1+z);
+}
 
 var ymin = 0.0
 var ymax = 0.0

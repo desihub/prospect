@@ -81,7 +81,12 @@ class ViewerWidgets(object):
         self.smootherslider = Slider(start=0, end=26, value=0, step=1.0, title='Gaussian Sigma Smooth')
         self.coaddcam_buttons = None
         self.model_select = None
-
+        #- Small CDS to contain informations on widgets/plots status
+        self.cds_widgetinfos = ColumnDataSource({'oii_save_xmin': [plots.fig.x_range.start],
+                                                 'oii_save_xmax': [plots.fig.x_range.end],
+                                                 'oii_save_nsmooth': [self.smootherslider.value],
+                                                 'waveframe_active': [0]
+                                                })
 
     def add_navigation(self, nspec):
         #-----
@@ -110,10 +115,9 @@ class ViewerWidgets(object):
         #- Axis reset button (superseeds the default bokeh "reset"
         self.reset_plotrange_button = Button(label="Reset X-Y range", button_type="default")
         reset_plotrange_code = self.js_files["adapt_plotrange.js"] + self.js_files["reset_plotrange.js"]
-        self.reset_plotrange_callback = CustomJS(args = dict(fig=plots.fig, xmin=plots.xmin, xmax=plots.xmax, spectra=viewer_cds.cds_spectra),
+        self.reset_plotrange_callback = CustomJS(args = dict(fig=plots.fig, xmin=plots.xmin, xmax=plots.xmax, spectra=viewer_cds.cds_spectra, widgetinfos=self.cds_widgetinfos, metadata=viewer_cds.cds_metadata, ifiberslider=self.ifiberslider),
                                             code = reset_plotrange_code)
         self.reset_plotrange_button.js_on_event('button_click', self.reset_plotrange_callback)
-
 
     def add_redshift_widgets(self, z, viewer_cds, plots):
         ## TODO handle "z" (same issue as viewerplots TBD)
@@ -223,43 +227,46 @@ class ViewerWidgets(object):
             args = dict(
                 z_input=self.z_input,
                 waveframe_buttons=self.waveframe_buttons,
+                widgetinfos=self.cds_widgetinfos,
                 fig=plots.fig,
             ),
             code="""
             var z =  parseFloat(z_input.value)
             // Observer Frame
-            if(waveframe_buttons.active == 0) {
+            if (waveframe_buttons.active == 0) {
                 fig.x_range.start = fig.x_range.start * (1+z)
                 fig.x_range.end = fig.x_range.end * (1+z)
             } else {
                 fig.x_range.start = fig.x_range.start / (1+z)
                 fig.x_range.end = fig.x_range.end / (1+z)
             }
+            widgetinfos.data['waveframe_active'][0] = waveframe_buttons.active ;
             """
         )
         self.waveframe_buttons.js_on_click(self.plotrange_callback) # TODO: for record: is this related to waveframe bug? : 2 callbakcs for same click...
-
 
     def add_oii_widgets(self, plots):
         #------
         #- Zoom on the OII doublet TODO mv js code to other file
         # TODO: is there another trick than using a cds to pass the "oii_saveinfo" ?
         # TODO: optimize smoothing for autozoom (current value: 0)
-        cds_oii_saveinfo = ColumnDataSource(
-            {'xmin':[plots.fig.x_range.start], 'xmax':[plots.fig.x_range.end], 'nsmooth':[self.smootherslider.value]})
         self.oii_zoom_button = Button(label="OII-zoom", button_type="default")
         self.oii_zoom_callback = CustomJS(
             args = dict(z_input=self.z_input, fig=plots.fig, smootherslider=self.smootherslider,
-                       cds_oii_saveinfo=cds_oii_saveinfo),
+                        widgetinfos=self.cds_widgetinfos),
             code = """
             // Save previous setting (for the "Undo" button)
-            cds_oii_saveinfo.data['xmin'] = [fig.x_range.start]
-            cds_oii_saveinfo.data['xmax'] = [fig.x_range.end]
-            cds_oii_saveinfo.data['nsmooth'] = [smootherslider.value]
+            widgetinfos.data['oii_save_xmin'] = [fig.x_range.start]
+            widgetinfos.data['oii_save_xmax'] = [fig.x_range.end]
+            widgetinfos.data['oii_save_nsmooth'] = [smootherslider.value]
             // Center on the middle of the redshifted OII doublet (vaccum)
-            var z = parseFloat(z_input.value)
-            fig.x_range.start = 3728.48 * (1+z) - 100
-            fig.x_range.end = 3728.48 * (1+z) + 100
+            var central_wave = 3728.48;
+            if (widgetinfos.data['waveframe_active'][0] == 0) {
+                var z = parseFloat(z_input.value)
+                central_wave *= (1+z)
+            }
+            fig.x_range.start = central_wave - 100
+            fig.x_range.end = central_wave + 100
             // No smoothing (this implies a call to update_plot)
             smootherslider.value = 0
             """)
@@ -267,11 +274,11 @@ class ViewerWidgets(object):
 
         self.oii_undo_button = Button(label="Undo OII-zoom", button_type="default")
         self.oii_undo_callback = CustomJS(
-            args = dict(fig=plots.fig, smootherslider=self.smootherslider, cds_oii_saveinfo=cds_oii_saveinfo),
+            args = dict(fig=plots.fig, smootherslider=self.smootherslider, widgetinfos=self.cds_widgetinfos),
             code = """
-            fig.x_range.start = cds_oii_saveinfo.data['xmin'][0]
-            fig.x_range.end = cds_oii_saveinfo.data['xmax'][0]
-            smootherslider.value = cds_oii_saveinfo.data['nsmooth'][0]
+            fig.x_range.start = widgetinfos.data['oii_save_xmin'][0]
+            fig.x_range.end = widgetinfos.data['oii_save_xmax'][0]
+            smootherslider.value = widgetinfos.data['oii_save_nsmooth'][0]
             """)
         self.oii_undo_button.js_on_event('button_click', self.oii_undo_callback)
 
@@ -493,6 +500,7 @@ class ViewerWidgets(object):
                 ifiberslider = self.ifiberslider,
                 smootherslider = self.smootherslider,
                 z_input = self.z_input,
+                widgetinfos = self.cds_widgetinfos,
                 fig = plots.fig,
                 xrange = [plots.xmin, plots.xmax],
                 imfig_source = plots.imfig_source,
