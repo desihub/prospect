@@ -23,7 +23,7 @@ import desispec.frame
 
 from ..myspecselect import myspecselect # special (to be edited)
 from ..viewer import plotspectra
-from ..utilities import match_zcat_to_spectra  #, match_vi_targets, miniplot_spectrum
+from ..utilities import match_zcat_to_spectra
 
 def _parse():
 
@@ -70,10 +70,6 @@ def main():
                 the_indices = sort_indices[(i_page-1)*args.nspecperfile:i_page*args.nspecperfile]
                 thespec = myspecselect(spectra, indices=the_indices)
                 thezb, kk = match_zcat_to_spectra(zbest,thespec)
-                #model = plotframes.create_model(thespec, thezb)
-                ### No VI results to display by default
-                # vifile = os.environ['HOME']+"/prospect/vilist_prototype.fits"
-                # vidata = match_vi_targets(vifile, thespec.fibermap["TARGETID"])
                 titlepage = "specviewer_night"+thenight+"_"+file_label+"_"+str(i_page)
                 html_dir=webdir+"/nights/night"+thenight
                 if not os.path.exists(html_dir) :

@@ -22,8 +22,8 @@ import desispec.spectra
 import desispec.frame
 
 from ..myspecselect import myspecselect  # special (to be edited)
-from ..plotframes import create_model, plotspectra
-from ..utilities import match_zcat_to_spectra, match_vi_targets  #, miniplot_spectrum
+from ..viewer import plotspectra
+from ..utilities import match_zcat_to_spectra
 
 def _parse():
     parser = argparse.ArgumentParser(description='Create html pages for the spectral viewer')
@@ -75,16 +75,12 @@ def main():
             print("** Page "+str(i_page)+" / "+str(nbpages))
             thespec = myspecselect(spectra, fibers=fiberlist[(i_page-1)*args.nspecperfile:i_page*args.nspecperfile])
             thezb = match_zbest_to_spectra(zbest,thespec)
-            # VI "catalog" - location to define later ..
-            vifile = os.environ['HOME']+"/prospect/vilist_prototype.fits"
-            vidata = match_vi_targets(vifile, thespec.fibermap["TARGETID"])
             titlepage = "specviewer_expo"+str(exposure)+"_fiberset"+str(i_page)
-            model = create_model(thespec, thezb)
             savedir=args.webdir+"/exposures/expo"+str(exposure)
             if not os.path.exists(savedir) :
                 os.mkdir(savedir)
                 os.mkdir(savedir+"/vignettes")
-            plotspectra(thespec, zcatalog=thezb, vidata=vidata, model=model, title=titlepage, savedir=savedir)
+            plotspectra(thespec, zcatalog=thezb, title=titlepage, savedir=savedir)
             # for i_spec in range(thespec.num_spectra()) :
             #     saveplot = savedir+"/vignettes/expo"+str(exposure)+"_fiberset"+str(i_page)+"_"+str(i_spec)+".png"
             #     miniplot_spectrum(thespec,i_spec,model=model,saveplot=saveplot, smoothing = args.vignette_smoothing)
