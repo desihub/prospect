@@ -243,8 +243,8 @@ class ViewerPlots(object):
         # This has to be called once the wisgets are done.. => fct separated from create_imfig()
         self.imfig_callback = CustomJS(args = dict(
                                     urls = self.imfig_urls,
-                                    ifiberslider = viewer_widgets.ifiberslider),
-                                       code='''window.open(urls[ifiberslider.value][1], "_blank");''')
+                                    ispectrumslider = viewer_widgets.ispectrumslider),
+                                       code='''window.open(urls[ispectrumslider.value][1], "_blank");''')
         self.imfig.js_on_event('tap', self.imfig_callback)
 
 

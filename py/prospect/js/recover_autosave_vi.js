@@ -2,7 +2,7 @@
 // Requires to include functions in: CSVtoArray.js
 
 // Recover auto-saved VI infos from browser's localStorage
-// args = title, cds_metadata, output_file_fields, ifiber, 
+// args = title, cds_metadata, output_file_fields, ispectrumslider,
 //   vi_comment_input, vi_name_input, vi_quality_input, vi_issue_input, vi_issue_slabels, vi_quality_labels
 
 if (title in localStorage) {
@@ -16,13 +16,13 @@ if (title in localStorage) {
                 cds_metadata.data[output_file_fields[k-1][1]][i_spec] = row[k]
             }
         }
-        if (i_spec == ifiber) { // update VI buttons for current spectrum
-            vi_comment_input.value = cds_metadata.data['VI_comment'][ifiber] ;
-            vi_name_input.value = cds_metadata.data['VI_scanner'][ifiber] ;
-            vi_quality_input.active = vi_quality_labels.indexOf(cds_metadata.data['VI_quality_flag'][ifiber]) ; // -1 if nothing
+        if (i_spec == ispectrumslider.value) { // update VI buttons for current spectrum
+            vi_comment_input.value = cds_metadata.data['VI_comment'][i_spec] ;
+            vi_name_input.value = cds_metadata.data['VI_scanner'][i_spec] ;
+            vi_quality_input.active = vi_quality_labels.indexOf(cds_metadata.data['VI_quality_flag'][i_spec]) ; // -1 if nothing
             var issues_on = []
             for (var i=0; i<vi_issue_slabels.length; i++) {
-                if ( (cds_metadata.data['VI_issue_flag'][ifiber]).indexOf(vi_issue_slabels[i]) >= 0 ) {
+                if ( (cds_metadata.data['VI_issue_flag'][i_spec]).indexOf(vi_issue_slabels[i]) >= 0 ) {
                     issues_on.push(i)
                 }
             }

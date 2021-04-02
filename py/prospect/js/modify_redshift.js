@@ -1,5 +1,5 @@
 // CustomJS, callback for the "Redshift value" button
-//  - args = spectra, coaddcam_spec, model, othermodel, metadata, ifiberslider,
+//  - args = spectra, coaddcam_spec, model, othermodel, metadata, ispectrumslider,
 //           zslider, dzslider, z_input, widgetinfos, line_data, lines,
 //           line_labels, zlines, zline_labels, overlap_waves, overlap_bands, fig.
 
@@ -19,7 +19,6 @@ if ( z >=-0.1 && z <= 5.0 ) {
 z = parseFloat(z_input.value)
 
 var line_restwave = line_data.data['restwave']
-var ifiber = ifiberslider.value
 var waveshift_lines = (widgetinfos.data['waveframe_active'][0] == 0) ? 1+z : 1 ;
 var waveshift_spec = (widgetinfos.data['waveframe_active'][0] == 0) ? 1 : 1/(1+z) ;
 
@@ -62,7 +61,7 @@ if (othermodel) {
 } else if (model) {
     var zfit = 0.0
     if(metadata.data['Z'] !== undefined) {
-        zfit = metadata.data['Z'][ifiber]
+        zfit = metadata.data['Z'][ispectrumslider.value]
     }
     var waveshift_model = (widgetinfos.data['waveframe_active'][0] == 0) ? (1+z)/(1+zfit) : 1/(1+zfit) ;
     shift_plotwave(model, waveshift_model)

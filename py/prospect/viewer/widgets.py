@@ -73,11 +73,11 @@ class ViewerWidgets(object):
         self.plot_widget_width = (plots.plot_width+(plots.plot_height//2))//2 - 40 # used for widgets scaling
     
         #-----
-        #- Ifiberslider and smoothing widgets
-        # Ifiberslider's value controls which spectrum is displayed
+        #- Ispectrumslider and smoothing widgets
+        # Ispectrumslider's value controls which spectrum is displayed
         # These two widgets call update_plot(), later defined
         slider_end = nspec-1 if nspec > 1 else 0.5 # Slider cannot have start=end
-        self.ifiberslider = Slider(start=0, end=slider_end, value=0, step=1, title='Spectrum (of '+str(nspec)+')')
+        self.ispectrumslider = Slider(start=0, end=slider_end, value=0, step=1, title='Spectrum (0 to '+str(nspec-1)+')')
         self.smootherslider = Slider(start=0, end=26, value=0, step=1.0, title='Gaussian Sigma Smooth')
         self.coaddcam_buttons = None
         self.model_select = None
@@ -95,17 +95,17 @@ class ViewerWidgets(object):
         self.prev_button = Button(label="<", width=self.navigation_button_width)
         self.next_button = Button(label=">", width=self.navigation_button_width)
         self.prev_callback = CustomJS(
-            args=dict(ifiberslider=self.ifiberslider),
+            args=dict(ispectrumslider=self.ispectrumslider),
             code="""
-            if(ifiberslider.value>0 && ifiberslider.end>=1) {
-                ifiberslider.value--
+            if(ispectrumslider.value>0 && ispectrumslider.end>=1) {
+                ispectrumslider.value--
             }
             """)
         self.next_callback = CustomJS(
-            args=dict(ifiberslider=self.ifiberslider, nspec=nspec),
+            args=dict(ispectrumslider=self.ispectrumslider, nspec=nspec),
             code="""
-            if(ifiberslider.value<nspec-1 && ifiberslider.end>=1) {
-                ifiberslider.value++
+            if(ispectrumslider.value<nspec-1 && ispectrumslider.end>=1) {
+                ispectrumslider.value++
             }
             """)
         self.prev_button.js_on_event('button_click', self.prev_callback)
@@ -116,8 +116,13 @@ class ViewerWidgets(object):
         #- Axis reset button (superseeds the default bokeh "reset"
         self.reset_plotrange_button = Button(label="Reset X-Y range", button_type="default")
         reset_plotrange_code = self.js_files["adapt_plotrange.js"] + self.js_files["reset_plotrange.js"]
-        self.reset_plotrange_callback = CustomJS(args = dict(fig=plots.fig, xmin=plots.xmin, xmax=plots.xmax, spectra=viewer_cds.cds_spectra, widgetinfos=self.cds_widgetinfos, metadata=viewer_cds.cds_metadata, ifiberslider=self.ifiberslider),
-                                            code = reset_plotrange_code)
+        self.reset_plotrange_callback = CustomJS(
+            args = dict(fig = plots.fig,
+                        xmin = plots.xmin,
+                        xmax = plots.xmax,
+                        spectra = viewer_cds.cds_spectra,
+                        widgetinfos = self.cds_widgetinfos),
+            code = reset_plotrange_code)
         self.reset_plotrange_button.js_on_event('button_click', self.reset_plotrange_callback)
 
     def add_redshift_widgets(self, z, viewer_cds, plots):
@@ -192,10 +197,9 @@ class ViewerWidgets(object):
 
         self.zreset_button = Button(label='Reset to z_pipe')
         self.zreset_callback = CustomJS(
-            args=dict(z_input=self.z_input, metadata=viewer_cds.cds_metadata, ifiberslider=self.ifiberslider),
+            args=dict(z_input=self.z_input, metadata=viewer_cds.cds_metadata, ispectrumslider=self.ispectrumslider),
             code="""
-                var ifiber = ifiberslider.value
-                var z = metadata.data['Z'][ifiber]
+                var z = metadata.data['Z'][ispectrumslider.value]
                 z_input.value = z.toFixed(4)
             """)
         self.zreset_button.js_on_event('button_click', self.zreset_callback)
@@ -206,7 +210,7 @@ class ViewerWidgets(object):
             othermodel = viewer_cds.cds_othermodel,
             metadata = viewer_cds.cds_metadata,
             widgetinfos = self.cds_widgetinfos,
-            ifiberslider = self.ifiberslider,
+            ispectrumslider = self.ispectrumslider,
             zslider = self.zslider,
             dzslider = self.dzslider,
             z_input = self.z_input,
@@ -459,7 +463,7 @@ class ViewerWidgets(object):
         self.model_select = Select(value=model_options[0], title="Other model (dashed curve):", options=model_options)
         model_select_code = self.js_files["interp_grid.js"] + self.js_files["smooth_data.js"] + self.js_files["select_model.js"]
         self.model_select_callback = CustomJS(
-            args = dict(ifiberslider = self.ifiberslider,
+            args = dict(ispectrumslider = self.ispectrumslider,
                         model_select = self.model_select,
                         fit_templates=template_dicts[0],
                         cds_othermodel = viewer_cds.cds_othermodel,
@@ -497,7 +501,7 @@ class ViewerWidgets(object):
                 shortcds_table_b = self.shortcds_table_b,
                 shortcds_table_c = self.shortcds_table_c,
                 shortcds_table_d = self.shortcds_table_d,
-                ifiberslider = self.ifiberslider,
+                ispectrumslider = self.ispectrumslider,
                 smootherslider = self.smootherslider,
                 z_input = self.z_input,
                 widgetinfos = self.cds_widgetinfos,
@@ -519,6 +523,6 @@ class ViewerWidgets(object):
             code = update_plot_code
         )
         self.smootherslider.js_on_change('value', self.update_plot_callback)
-        self.ifiberslider.js_on_change('value', self.update_plot_callback)
+        self.ispectrumslider.js_on_change('value', self.update_plot_callback)
 
 

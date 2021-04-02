@@ -33,7 +33,7 @@ class ViewerLayout(object):
         self.navigator = bl.row(
             bl.column(widgets.prev_button, width=widgets.navigation_button_width+15),
             bl.column(widgets.next_button, width=widgets.navigation_button_width+20),
-            bl.column(widgets.ifiberslider, width=plots.plot_width+(plots.plot_height//2)-(60*len(vi_widgets.vi_quality_labels)+2*widgets.navigation_button_width+35))
+            bl.column(widgets.ispectrumslider, width=plots.plot_width+(plots.plot_height//2)-(60*len(vi_widgets.vi_quality_labels)+2*widgets.navigation_button_width+35))
         )
         
         #- Redshift widgets
@@ -174,11 +174,11 @@ class ViewerLayout(object):
         self.full_viewer.tabs=[ tab1, tab2 ]
 
         # Dirty trick : callback functions on thumbs need to be defined AFTER the full_viewer is implemented
-        # Otherwise, at least one issue = no toolbar anymore for main fig. (apparently due to ifiberslider in callback args)
+        # Otherwise, at least one issue = no toolbar anymore for main fig. (apparently due to ispectrumslider in callback args)
         for i_spec in range(nspec) :
-            self.thumb_callback = CustomJS(args=dict(full_viewer=self.full_viewer, i_spec=i_spec, ifiberslider=widgets.ifiberslider), code="""
+            self.thumb_callback = CustomJS(args=dict(full_viewer=self.full_viewer, i_spec=i_spec, ispectrumslider=widgets.ispectrumslider), code="""
             full_viewer.active = 0
-             ifiberslider.value = i_spec
+            ispectrumslider.value = i_spec
             """)
             (self.thumb_grid.children[i_spec][0]).js_on_event(bokeh.events.DoubleTap, self.thumb_callback)
 
