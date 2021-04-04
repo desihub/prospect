@@ -107,9 +107,10 @@ if (cb_obj == ispectrumslider) {
     fig.x_range.start = xrange[0];
     fig.x_range.end = xrange[1];
     if (widgetinfos.data['waveframe_active'][0] == 1) {
-        var z = metadata.data['Z'][i_spectrum];
-        fig.x_range.start /= (1+z);
-        fig.x_range.end /= (1+z);
+        // Combines with the x-range update done in change_redshift.js
+        var old_z = parseFloat(z_input.value)
+        fig.x_range.start /= (1+old_z);
+        fig.x_range.end /= (1+old_z);
     }
 }
 //

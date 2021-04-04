@@ -222,37 +222,21 @@ class ViewerWidgets(object):
             overlap_waves = plots.overlap_waves,
             overlap_bands = plots.overlap_bands,
             fig = plots.fig)
-        z_input_code = self.js_files["modify_redshift.js"]
-        z_input_code += """
-            widgetinfos.data['z_input_value'][0] = z_input.value ;
-            """
         self.z_input_callback = CustomJS(
             args = z_input_args,
-            code = z_input_code
+            code = self.js_files["shift_wave.js"] + self.js_files["change_redshift.js"]
         )
         self.z_input.js_on_change('value', self.z_input_callback)
 
-        waveframe_args = z_input_args.copy()
-        waveframe_code = """
-            var z = parseFloat(z_input.value)
-            if (cb_obj.active == 0) {
-                fig.x_range.start = fig.x_range.start * (1+z) ;
-                fig.x_range.end = fig.x_range.end * (1+z) ;
-            } else {
-                fig.x_range.start = fig.x_range.start / (1+z) ;
-                fig.x_range.end = fig.x_range.end / (1+z) ;
-            }
-            widgetinfos.data['waveframe_active'][0] = cb_obj.active ;
-            """
-        waveframe_code += self.js_files["modify_redshift.js"]
+        waveframe_args = z_input_args
         self.waveframe_callback = CustomJS(
             args = waveframe_args,
-            code = waveframe_code)
+            code = self.js_files["shift_wave.js"] + self.js_files["change_waveframe.js"])
         self.waveframe_buttons.js_on_click(self.waveframe_callback)
 
     def add_oii_widgets(self, plots):
         #------
-        #- Zoom on the OII doublet TODO mv js code to other file
+        #- Zoom on the OII doublet
         # TODO? optimize smoothing for autozoom (current value: 0)
         self.oii_zoom_button = Button(label="OII-zoom", button_type="default")
         self.oii_zoom_callback = CustomJS(
