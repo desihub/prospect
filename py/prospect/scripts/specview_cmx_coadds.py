@@ -35,6 +35,7 @@ def _parse():
 
     parser = argparse.ArgumentParser(description='Create static html pages from CMX coadds, tile-based')
     parser.add_argument('--specprod_dir', help='Location of directory tree (data in specprod_dir/tiles/)', type=str)
+    parser.add_argument('--cumulative', help='Use data from specprod_dir/tiles/cumulative/', action='store_true')
     parser.add_argument('--tile', help='Name of single tile to be processed',type=str, default=None)
     parser.add_argument('--tile_list', help='ASCII file providing list of tiles', type=str, default=None)
     parser.add_argument('--night', help='Filter night to be processed (night name can also be "deep")',type=str, default=None)
@@ -56,7 +57,7 @@ def _parse():
     return args
 
 
-def tile_db(specprod_dir, tile_subset=None, night_subset=None, petals=None, with_zcatalog=False) :
+def tile_db(specprod_dir, tile_subset=None, night_subset=None, petals=None, with_zcatalog=False, cumulative=False) :
     '''
     Returns [ {tile, night, petals} for all tile/night available in specprod_dir/tiles tree ],
         with b,r,z frames whose name matches frametype
@@ -68,18 +69,21 @@ def tile_db(specprod_dir, tile_subset=None, night_subset=None, petals=None, with
 
     if petals is None : petals = [str(i) for i in range(10)]
     tiles_db = list()
-    for tile in os.listdir( os.path.join(specprod_dir,'tiles') ) :
+    basedir = os.path.join(specprod_dir,'tiles')
+    if cumulative: basedir = os.path.join(basedir,'cumulative')
+    for tile in os.listdir(basedir) :
         if tile_subset is not None and tile not in tile_subset : continue
-        for night in os.listdir( os.path.join(specprod_dir,'tiles',tile) ) :
+        for night in os.listdir( os.path.join(basedir,tile) ) :
             if night_subset is not None and night not in night_subset : continue
             petals_avail = []
             for petal_num in petals :
                 add_petal = True
-                filename = "coadd-"+petal_num+"-"+tile+"-"+night+".fits"
-                if not os.path.isfile( os.path.join(specprod_dir,'tiles',tile,night,filename) ) : add_petal=False
+                night_label = 'thru'+night if cumulative else night
+                filename = "coadd-"+petal_num+"-"+tile+"-"+night_label+".fits"
+                if not os.path.isfile( os.path.join(basedir,tile,night,filename) ) : add_petal=False
                 if with_zcatalog :
-                    filename = "zbest-"+petal_num+"-"+tile+"-"+night+".fits"
-                    if not os.path.isfile( os.path.join(specprod_dir,'tiles',tile,night,filename) ) : add_petal=False
+                    filename = "zbest-"+petal_num+"-"+tile+"-"+night_label+".fits"
+                    if not os.path.isfile( os.path.join(basedir,tile,night,filename) ) : add_petal=False
                 if add_petal :
                     petals_avail.append(petal_num)
             if len(petals_avail) > 0 :
@@ -95,6 +99,7 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
 
     tile = tile_db_subset['tile']
     night = tile_db_subset['night']
+    night_label = 'thru'+night if 'cumulative' in fdir else night
     nspec_done = 0
     all_spectra = None
     log.info("Tile "+tile+": reading coadds from night "+night)
@@ -102,19 +107,19 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
         rrtables = []
 
     for petal_num in tile_db_subset['petals'] :
-        fname = os.path.join(fdir,"coadd-"+petal_num+"-"+tile+'-'+night+".fits")
+        fname = os.path.join(fdir,"coadd-"+petal_num+"-"+tile+'-'+night_label+".fits")
         spectra = desispec.io.read_spectra(fname)
         # Filtering
         if (mask != None) or (snr_cut != None) :
             spectra = specviewer_selection(spectra, log=log,
                         mask=mask, mask_type=mask_type, snr_cut=snr_cut, with_dirty_mask_merge=True)
             if spectra == 0 : continue
-            # Display multiple models: requires redrock catalog
-            # Hardcoded: display up to 4th best fit (=> need 5 best fits in redrock table)
-            if with_multiple_models :
-                fname = os.path.join(fdir,"redrock-"+petal_num+"-"+tile+'-'+night+".h5")
-                rr_table = match_redrock_zfit_to_spectra(fname, spectra)
-                rrtables.append(rr_table)
+        # Display multiple models: requires redrock catalog
+        # Hardcoded: display up to 4th best fit (=> need 5 best fits in redrock table)
+        if with_multiple_models :
+            fname = os.path.join(fdir,'redrock-'+petal_num+'-'+tile+'-'+night_label+".h5")
+            rr_table = match_redrock_zfit_to_spectra(fname, spectra)
+            rrtables.append(rr_table)
         # Merge
         if all_spectra is None :
             all_spectra = spectra
@@ -140,7 +145,7 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
     if with_zcatalog :
         ztables = []
         for petal_num in tile_db_subset['petals'] :
-            fname = os.path.join(fdir,"zbest-"+petal_num+"-"+tile+'-'+night+".fits")
+            fname = os.path.join(fdir,"zbest-"+petal_num+"-"+tile+'-'+night_label+".fits")
             the_ztable = Table.read(fname,'ZBEST')
             hdulist = astropy.io.fits.open(fname)
             the_ztable['RRVER'] = hdulist[hdulist.index_of('PRIMARY')].header['RRVER']
@@ -206,7 +211,7 @@ def main():
         night_subset = np.loadtxt(args.night_list, dtype=str, comments='#')
     else : night_subset = None
     subset_db = tile_db(args.specprod_dir, tile_subset=tile_subset, night_subset=night_subset,
-                        petals=args.petals, with_zcatalog=args.with_zcatalog)
+                        petals=args.petals, with_zcatalog=args.with_zcatalog, cumulative=args.cumulative)
     tmplist = [ x['tile'] for x in subset_db ]
     missing_tiles = [ x for x in tile_subset if x not in tmplist ]
     for x in missing_tiles : log.info("Missing tile, cannot be processed: "+x)
@@ -217,7 +222,10 @@ def main():
     for the_subset in subset_db :
 
         log.info("Working on tile "+the_subset['tile']+" - night "+the_subset['night'])
-        fdir = os.path.join( args.specprod_dir, 'tiles', the_subset['tile'], the_subset['night'] )
+        if args.cumulative:
+            fdir = os.path.join( args.specprod_dir, 'tiles', 'cumulative', the_subset['tile'], the_subset['night'] )
+        else:
+            fdir = os.path.join( args.specprod_dir, 'tiles', the_subset['tile'], the_subset['night'] )
         html_dir = os.path.join(webdir,"tiles",the_subset['tile'],the_subset['night'])
         titlepage_prefix = "tile"+the_subset['tile']+"_night"+the_subset['night']
         if args.mask != None :

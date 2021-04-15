@@ -6,7 +6,7 @@ import unittest
 import re
 import sys
 from pkg_resources import resource_filename
-from ..utilities import vi_file_fields, get_resources, read_vi
+from ..utilities import vi_file_fields, get_resources
 
 
 class TestUtilities(unittest.TestCase):
@@ -35,16 +35,6 @@ class TestUtilities(unittest.TestCase):
         bar = get_resources('js')
         with self.assertRaises(ValueError):
             bad = get_resources('foo')
-
-    # def test_read_vi(self):
-    #     """Test reading of VI files.
-    #     """
-    #     with self.assertRaises(ValueError) as e:
-    #         vi = read_vi('foo.txt')
-    #     self.assertEqual(str(e.exception), 'Invalid file extension: .txt!')
-    #     csv = resource_filename('prospect.test', 't/test_read_vi.csv')
-    #     vi = read_vi(csv)
-    #     self.assertListEqual(vi.colnames, self.vi_colnames)
 
 
 def test_suite():
