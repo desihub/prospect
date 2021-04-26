@@ -249,7 +249,7 @@ class ViewerPlots(object):
 
 
 
-    def add_spectral_lines(self, viewer_cds, figure='main', fig_height=None, label_offsets=[100, 5]):
+    def add_spectral_lines(self, viewer_cds, figure='main', label_offset_top=100, label_offset_bottom=5):
         """Add spectral line markers to plot.
 
         Parameters
@@ -258,11 +258,12 @@ class ViewerPlots(object):
             Viewer data.
         figure : {'main', 'zoom'}, optional
             Figure to add spectral lines to.
-        fig_height : :class:`float`, optional,
-            Overall height of the plot.
-        label_offsets : list, optional
-            Offsets in y-position for line labels with respect to top (bottom)
-            of the figure for absorption (emission) lines.
+        label_offset_top : float, optional
+            Offset in y-position for line labels with respect to top
+            of the figure for emission lines.
+        label_offset_bottom : float, optional
+            Offset in y-position for line labels with respect to bottom
+            of the figure for absorption lines.
         """
 
         if figure=='main' : bk_figure = self.fig
@@ -270,31 +271,34 @@ class ViewerPlots(object):
         else :
             raise ValueError("Unknown input figure type.")
 
-        if fig_height is None : fig_height = bk_figure.plot_height
+        fig_height = bk_figure.plot_height
         if self.legend_outside_plot and figure=='main':
-            label_offsets[0] += 10
+            label_offset_top += 10
 
         line_data = dict(viewer_cds.cds_spectral_lines.data)
+
+        #- Labels y-position: default values
         y = list()
         for i in range(len(line_data['restwave'])):
-            if i == 0:
-                if line_data['emission'][i]:
-                    y.append(fig_height - label_offsets[0])
-                else:
-                    y.append(label_offsets[1])
+            if line_data['emission'][i]:
+                y.append(fig_height - label_offset_top)
             else:
-                if (line_data['restwave'][i] < line_data['restwave'][i-1]+label_offsets[0]) and \
-                   (line_data['emission'][i] == line_data['emission'][i-1]):
-                    if line_data['emission'][i]:
-                        y.append(y[-1] - 15)
-                    else:
-                        y.append(y[-1] + 15)
-                else:
-                    if line_data['emission'][i]:
-                        y.append(fig_height-label_offsets[0])
-                    else:
-                        y.append(label_offsets[1])
+                y.append(label_offset_bottom)
 
+        #- Labels y-position: avoid overlaps
+        restwave = np.asarray(line_data['restwave'])
+        emission = np.asarray(line_data['emission'])
+        for emission_flag in [True, False]:
+            w, = np.where( (emission == emission_flag) )
+            # Indices for the restwave array, sorted, and filtering emission_flag:
+            sorted_indices = w[np.argsort(restwave[w])]
+            for i in range(len(sorted_indices)-1):
+                if (restwave[sorted_indices[i+1]] < restwave[sorted_indices[i]]+100):
+                    # The following allows to have 4 levels of y-position offsets:
+                    if emission_flag and (y[sorted_indices[i]]>=fig_height-label_offset_top-2*15):
+                        y[sorted_indices[i+1]] = y[sorted_indices[i]] - 15
+                    elif (not emission_flag) and (y[sorted_indices[i]]<=label_offset_bottom+2*15):
+                        y[sorted_indices[i+1]] = y[sorted_indices[i]] + 15
         line_data['y'] = y
 
         #- Add vertical spans to figure

@@ -383,7 +383,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     z = zcatalog['Z'][0] if (zcatalog is not None) else 0.0
     viewer_cds.load_spectral_lines(z)
     viewer_plots.add_spectral_lines(viewer_cds, figure='main')
-    viewer_plots.add_spectral_lines(viewer_cds, figure='zoom', label_offsets=[50, 5])
+    viewer_plots.add_spectral_lines(viewer_cds, figure='zoom', label_offset_top=50)
     
 
     #-------------------------
