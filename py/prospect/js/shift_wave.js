@@ -22,10 +22,10 @@ function shift_lines(lines, labels, line_restwave, waveshift) {
 }
 
 
-function shift_bands(bands, waveshift) {
+function shift_bands(bands, band_waves, waveshift) {
     for (var i=0; i<bands.length; i++) {
-        bands[i].left = bands[i][0] * waveshift ;
-        bands[i].right = bands[i][1] * waveshift ;
+        bands[i].left = band_waves[i][0] * waveshift ;
+        bands[i].right = band_waves[i][1] * waveshift ;
     }
 }
 

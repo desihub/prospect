@@ -23,7 +23,7 @@ var waveshift_spec = (cb_obj.active == 0) ? 1 : 1/(1+z) ;
 shift_lines(lines, line_labels, line_restwave, waveshift_lines) ;
 shift_lines(zlines, zline_labels, line_restwave, waveshift_lines) ;
 
-if (overlap_bands.length>0) shift_bands(overlap_bands, waveshift_spec) ;
+if (overlap_bands.length>0) shift_bands(overlap_bands, overlap_waves, waveshift_spec) ;
 
 for(var i=0; i<spectra.length; i++) {
     shift_plotwave(spectra[i], waveshift_spec) ;
