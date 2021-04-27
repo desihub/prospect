@@ -14,7 +14,7 @@ function shift_plotwave(cds_spec, waveshift) {
 }
 
 
-function shift_lines(lines, labels, line_restwave, waveshift) {
+function shift_lines(lines, line_labels, line_restwave, waveshift) {
     for (var i=0; i<line_restwave.length; i++) {
         lines[i].location = line_restwave[i] * waveshift ;
         line_labels[i].x = line_restwave[i] * waveshift ;
