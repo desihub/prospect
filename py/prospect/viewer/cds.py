@@ -181,6 +181,13 @@ class ViewerCDS(object):
             # Mandatory metadata:
             self.phot_bands = ['G','R','Z', 'W1', 'W2']
             supported_masks = supported_desitarget_masks
+            # Galactic extinction coefficients:
+            # - Wise bands from https://github.com/dstndstn/tractor/blob/master/tractor/sfd.py
+            # - Other bands from desiutil.dust (updated coefficients Apr 2021,
+            #   matching https://desi.lbl.gov/trac/wiki/ImagingStandardBandpass)
+            R_extinction = {'W1':0.184, 'W2':0.113, 'W3':0.0241, 'W4':0.00910,
+                            'G_N':3.258, 'R_N':2.176, 'Z_N':1.199,
+                            'G_S':3.212, 'R_S':2.164, 'Z_S':1.211}
         elif survey == 'SDSS':
             nspec = spectra.flux.shape[0]
             # Mandatory keys if zcatalog is set:
@@ -235,13 +242,12 @@ class ViewerCDS(object):
                 extinction = np.ones(len(flux))
                 if ('MW_TRANSMISSION_'+bandname) in spectra.fibermap.keys():
                     extinction = spectra.fibermap['MW_TRANSMISSION_'+bandname]
+                elif ('EBV' in spectra.fibermap.keys()) and (bandname.upper() in ['W1','W2','W3','W4']):
+                    extinction = 10**(- R_extinction[bandname.upper()] * spectra.fibermap['EBV'])
                 elif all(x in spectra.fibermap.keys() for x in ['EBV','PHOTSYS']) and (bandname.upper() in ['G','R','Z']):
-                    #- From desiutil.dust (don't use this module explicitly: handle case where PHOTSYS not in N or S)
-                    R = {"G_N":3.2140, "R_N":2.1650, "Z_N":1.2110,
-                         "G_S":3.2829, "R_S":2.1999, "Z_S":1.2150}
                     for photsys in ['N', 'S']:
                         wphot, = np.where(spectra.fibermap['PHOTSYS'] == photsys)
-                        a_band = R[bandname.upper()+"_"+photsys] * spectra.fibermap['EBV'][wphot]
+                        a_band = R_extinction[bandname.upper()+"_"+photsys] * spectra.fibermap['EBV'][wphot]
                         extinction[wphot] = 10**(-a_band / 2.5)
                 w, = np.where( (flux>0) & (extinction>0) )
                 mag[w] = -2.5*np.log10(flux[w]/extinction[w])+22.5
