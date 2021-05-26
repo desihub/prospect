@@ -227,7 +227,7 @@ def create_zcat_from_redrock_cat(redrock_cat, fit_num=0) :
 
     return zcat_out
 
-def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None, nights=None) :
+def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None, nights=None, cumulative=False) :
     '''
     Small homemade/hack utility (based on Anand's hack)
     Makes "mini-db" of targetids. It basically reads zbest, so it's reasonably fast
@@ -235,6 +235,10 @@ def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None, nig
     - tiles: optional list of tiles (all of them must exist in tiledir)
     - nights: optional list of nights
     '''
+
+    if ( ('cumulative' in tiledir) and not cumulative) or ( ('cumulative' not in tiledir) and cumulative):
+        print('Warning: cumulative option does not seem to fit tiledir=',tiledir)
+
     target_dict = {}
     if tiles is None :
         tiles = os.listdir(tiledir)
@@ -255,7 +259,8 @@ def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None, nig
             # targetid, fibres
             targetid,fiber,petal_list = [],[],[]
             for petal in petals:
-                pp = glob.glob(os.path.join(tiledir,tile,night,'zbest-'+petal+'-'+tile+'-'+night+'.fits'))
+                night_label = 'thru'+night if cumulative else night
+                pp = glob.glob(os.path.join(tiledir,tile,night,'zbest-'+petal+'-'+tile+'-'+night_label+'.fits'))
                 if len(pp)>0 :
                     fn        = pp[0]
                     fm = Table.read(fn, 'FIBERMAP')
@@ -271,7 +276,7 @@ def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None, nig
 
     return target_dict
 
-def load_spectra_zcat_from_targets(targets, tiledir, obs_db, with_redrock=False, with_redrock_version=True) :
+def load_spectra_zcat_from_targets(targets, tiledir, obs_db, with_redrock=False, with_redrock_version=True, cumulative=False) :
     '''
     Creates (spectra,zcat,[redrock_cat]) = (Spectra object, zcatalog Table, [redrock Table]) from a list of targetids
     - targets must be a list of int64
@@ -279,6 +284,9 @@ def load_spectra_zcat_from_targets(targets, tiledir, obs_db, with_redrock=False,
     - with_redrock: if True, also get redrock Table
     - with_redrock_version: if True, add a Column to zcat with RRVER from hdu0 in zbest files
     '''
+
+    if ( ('cumulative' in tiledir) and not cumulative) or ( ('cumulative' not in tiledir) and cumulative):
+        print('Warning: cumulative option does not seem to fit tiledir=',tiledir)
 
     targets = np.asarray(targets)
     if targets.dtype not in ['int64', 'i8', '>i8'] :
@@ -298,17 +306,20 @@ def load_spectra_zcat_from_targets(targets, tiledir, obs_db, with_redrock=False,
                 targets_subset.append(target)
             # Load spectra for that tile/night/petal only if there's a target from the list
             if len(targets_subset)>0 :
-                the_path = tile_night.replace("-","/")
-                the_spec = desispec.io.read_spectra(os.path.join(tiledir,the_path,"coadd-"+petal+"-"+tile_night+".fits"))
+                tile, night = tile_night.split('-')
+                the_path = os.path.join(tiledir, tile, night)
+                night_label = 'thru'+night if cumulative else night
+                file_label = '-'.join([petal, tile, night_label])
+                the_spec = desispec.io.read_spectra(os.path.join(the_path,"coadd-"+file_label+".fits"))
                 the_spec = myspecselect.myspecselect(the_spec, targets=targets_subset, remove_scores=True)
-                the_zcat = Table.read(os.path.join(tiledir,the_path,"zbest-"+petal+"-"+tile_night+".fits"),'ZBEST')
+                the_zcat = Table.read(os.path.join(the_path,"zbest-"+file_label+".fits"),'ZBEST')
                 if with_redrock_version:
-                    hdulist = astropy.io.fits.open(os.path.join(tiledir,the_path,"zbest-"+petal+"-"+tile_night+".fits"))
+                    hdulist = astropy.io.fits.open(os.path.join(the_path,"zbest-"+file_label+".fits"))
                     the_zcat['RRVER'] = hdulist[hdulist.index_of('PRIMARY')].header['RRVER']
                 the_zcat, dummy = match_zcat_to_spectra(the_zcat, the_spec)
                 ztables.append(the_zcat)
                 if with_redrock :
-                    rrfile = os.path.join(tiledir,the_path,"redrock-"+petal+"-"+tile_night+".h5")
+                    rrfile = os.path.join(the_path,"redrock-"+file_label+".h5")
                     the_rrcat = match_redrock_zfit_to_spectra(rrfile, the_spec, Nfit=None)
                     rrtables.append(the_rrcat)
                 if spectra is None : spectra = the_spec
