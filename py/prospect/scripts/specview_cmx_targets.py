@@ -18,7 +18,7 @@ from desiutil.log import get_logger
 
 from ..viewer import plotspectra
 from ..myspecselect import myspecselect
-from ..utilities import make_targetdict, load_spectra_zcat_from_targets  #, match_zcat_to_spectra
+from ..utilities import make_targetdict, load_spectra_zcat_from_targets
 
 def _parse():
 
@@ -83,10 +83,8 @@ def main():
         the_zcat = zcat[kept_ind]
         if not np.array_equal(the_zcat['TARGETID'], thespec.fibermap['TARGETID']) :
             raise RuntimeError("targetids do not match between spec and zcat")
-        #the_zcat, kk = match_zcat_to_spectra(zcat, thespec)
         if args.with_multiple_models :
             the_rrtable = rrtable[kept_ind]
-            #the_rrtable, kk = match_zcat_to_spectra(rrtable, thespec)
             num_approx_fits = 4 # TODO settle option
             with_full_2ndfit = True # TODO settle option
         else :

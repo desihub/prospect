@@ -23,7 +23,7 @@ import desispec.frame
 
 from ..myspecselect import myspecselect  # special (to be edited)
 from ..viewer import plotspectra
-from ..utilities import match_zcat_to_spectra
+from ..utilities import match_catalog_to_spectra
 
 def _parse():
     parser = argparse.ArgumentParser(description='Create html pages for the spectral viewer')
@@ -74,7 +74,7 @@ def main():
         for i_page in range(1,1+nbpages) :
             print("** Page "+str(i_page)+" / "+str(nbpages))
             thespec = myspecselect(spectra, fibers=fiberlist[(i_page-1)*args.nspecperfile:i_page*args.nspecperfile])
-            thezb = match_zbest_to_spectra(zbest,thespec)
+            thezb = match_catalog_to_spectra(zbest,thespec)
             titlepage = "specviewer_expo"+str(exposure)+"_fiberset"+str(i_page)
             savedir=args.webdir+"/exposures/expo"+str(exposure)
             if not os.path.exists(savedir) :

@@ -22,7 +22,7 @@ import desispec.frame
 from ..viewer import plotspectra
 from ..myspecselect import myspecselect
 from ..myspecupdate import myspecupdate
-from ..utilities import specviewer_selection, match_redrock_zfit_to_spectra, match_zcat_to_spectra
+from ..utilities import specviewer_selection, match_redrockfile_to_spectra, match_catalog_to_spectra
 
 # List of bad fibers in CMX data (see eg SB / KD emails 23-24/03/2020)
 _bad_fibers_cmx = [
@@ -118,7 +118,7 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
         # Hardcoded: display up to 4th best fit (=> need 5 best fits in redrock table)
         if with_multiple_models :
             fname = os.path.join(fdir,'redrock-'+petal_num+'-'+tile+'-'+night_label+".h5")
-            rr_table = match_redrock_zfit_to_spectra(fname, spectra)
+            rr_table = match_redrockfile_to_spectra(fname, spectra)
             rrtables.append(rr_table)
         # Merge
         if all_spectra is None :
@@ -172,9 +172,9 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
         log.info(" * Page "+str(i_page)+" / "+str(nbpages))
         the_indices = sort_indices[(i_page-1)*nspecperfile:i_page*nspecperfile]
         thespec = myspecselect(all_spectra, indices=the_indices, remove_scores=True)
-        the_zcat, kk = match_zcat_to_spectra(zcat, thespec)
+        the_zcat = match_catalog_to_spectra(zcat, thespec)
         if with_multiple_models :
-            the_rrtable, kk = match_zcat_to_spectra(rrtable, thespec)
+            the_rrtable = match_catalog_to_spectra(rrtable, thespec)
         else :
             the_rrtable = None
 

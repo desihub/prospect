@@ -41,7 +41,7 @@ try:
         'DESI_TARGET': desi_mask,
         'BGS_TARGET': bgs_mask,
         'MWS_TARGET': mws_mask,
-        'SECONDARY_TARGET': scnd_mask, # To confirm !
+        'SECONDARY_TARGET': scnd_mask,
         'CMX_TARGET': cmx_mask,
         'SV1_DESI_TARGET': sv1_desi_mask,
         'SV1_BGS_TARGET': sv1_bgs_mask,
@@ -59,7 +59,6 @@ except ImportError:
     _redrock_imported = False
 
 
-# from prospect import mycoaddcam  # Does not appear to be used in this module.
 from prospect import myspecselect, myspecupdate
 
 vi_flags = [
@@ -150,16 +149,27 @@ def get_resources(filetype):
     return _resource_cache[filetype]
 
 
-def match_zcat_to_spectra(zcat_in, spectra) :
-    '''
-    zcat_in : astropy Table from redshift fitter
-    - creates a new astropy Table whose rows match the targetids of input spectra
-    - also returns the corresponding list of indices
-    - for each targetid, a unique row in zcat_in must exist.
-    TODO : maybe rename this fct ? match_table_to_spectra ?
-    => it also works whatever kind of input zcat : just has to be a table with 'TARGETID' key
-    => in particular it's useful for "redrock_cat" tables
-    '''
+def match_catalog_to_spectra(zcat_in, spectra, return_indices=False):
+    """ Creates a subcatalog, matching a set of DESI spectra
+
+    Parameters
+    ----------
+    zcat_in : :class:`~astropy.table.Table`, with TARGETID keys
+    spectra : :class:`~desispec.spectra.Spectra`
+    return_indices : :class:`bool`, optional
+        If ``True``, returns the list of indices in zcat_in which match spectra
+
+    Returns
+    -------
+    :class:`~astropy.table.Table`
+        A subtable of zcat_in, with rows matching input spectra's TARGETIDs
+        If return_indices is ``True``, returns (subtable, list of indices)
+
+    Raises
+    ------
+    RuntimeError
+        If a unique row in zcat_in is not found matching each of spectra's TARGETIDs
+    """
 
     if zcat_in is None : return None
 
@@ -168,64 +178,94 @@ def match_zcat_to_spectra(zcat_in, spectra) :
     for i_spec in range(spectra.num_spectra()) :
         ww, = np.where((zcat_in['TARGETID'] == spectra.fibermap['TARGETID'][i_spec]))
         if len(ww)<1 :
-                raise RuntimeError("No zcat entry for target "+str(spectra.fibermap['TARGETID'][i_spec]))
-        if len(ww)>1 :
-            raise RuntimeError("Several zcat entries for target "+str(spectra.fibermap['TARGETID'][i_spec]))
+            raise RuntimeError("No entry in zcat_in for TARGETID "+str(spectra.fibermap['TARGETID'][i_spec]))
+        elif len(ww)>1 :
+            raise RuntimeError("Several entries in zcat_in for TARGETID "+str(spectra.fibermap['TARGETID'][i_spec]))
         zcat_out.add_row(zcat_in[ww[0]])
         index_list.append(ww[0])
-    return (zcat_out, index_list)
+    if return_indices:
+        return (zcat_out, index_list)
+    else:
+        return zcat_out
 
 
-def match_redrock_zfit_to_spectra(redrockfile, spectra, Nfit=None) :
-    '''
-    Read Redrock file, and return astropy Table of best fits matched to the targetids of input spectra
-    - for each target, store arrays chi2[Nfit], coeff[Nfit], z[Nfit], spectype[Nfit], subtype[Nfit]
-    - if Nfit is None: take all available fits
-    '''
+def match_redrockfile_to_spectra(redrockfile, spectra, Nfit=None):
+    """ Creates a Table from a Redrock output fit, matching a list of DESI spectra.
+
+    Parameters
+    ----------
+    redrockfile : :class:`str`, filename for the Redrock output file (.h5 file)
+    spectra : :class:`~desispec.spectra.Spectra`
+    Nfit : :class:`int`, optional
+        Number of best-fits to store in output Table. By default, store all fits available in Redrock file
+
+    Returns
+    -------
+    :class:`~astropy.table.Table`
+        Table with the following columns: TARGETID, CHI2, DELTACHI2, COEFF, Z, ZERR, ZWARN, SPECTYPE, SUBTYPE.
+        The rows are matched to spectra's TARGETIDs
+
+    Raises
+    ------
+    RuntimeError
+        If a set of Nfit rows in redrockfile is not found matching each of spectra's TARGETIDs
+    """
 
     dummy, rr_table = redrock.results.read_zscan(redrockfile)
     rr_targets = rr_table['targetid']
-    if Nfit is None :
+    if Nfit is None:
         ww, = np.where( (rr_targets == rr_targets[0]) )
         Nfit = len(ww)
-    matched_redrock_cat = Table(dtype=[('TARGETID', '<i8'), ('CHI2', '<f8', (Nfit,)), ('DELTACHI2', '<f8', (Nfit,)), ('COEFF', '<f8', (Nfit,10,)), ('Z', '<f8', (Nfit,)), ('ZERR', '<f8', (Nfit,)), ('ZWARN', '<i8', (Nfit,)), ('SPECTYPE', '<U6', (Nfit,)), ('SUBTYPE', '<U2', (Nfit,))])
+    matched_redrock_cat = Table(
+        dtype=[('TARGETID', '<i8'), ('CHI2', '<f8', (Nfit,)),
+               ('DELTACHI2', '<f8', (Nfit,)), ('COEFF', '<f8', (Nfit,10,)),
+               ('Z', '<f8', (Nfit,)), ('ZERR', '<f8', (Nfit,)),
+               ('ZWARN', '<i8', (Nfit,)), ('SPECTYPE', '<U6', (Nfit,)), ('SUBTYPE', '<U2', (Nfit,))])
 
-    for i_spec in range(spectra.num_spectra()) :
+    for i_spec in range(spectra.num_spectra()):
         ww, = np.where((rr_targets == spectra.fibermap['TARGETID'][i_spec]))
         if len(ww)<Nfit :
-            raise RuntimeError("redrock table cannot match spectra with "+str(Nfit)+" best fits")
-        ind = np.argsort(rr_table[ww]['chi2'])[0:Nfit]
+            raise RuntimeError("Redrock table cannot match spectra with "+str(Nfit)+" best fits")
+        ind = np.argsort(rr_table[ww]['chi2'])[0:Nfit] # Sort fit results by chi2 (independently of spectype)
         sub_table = rr_table[ww][ind]
         the_entry = [ spectra.fibermap['TARGETID'][i_spec] ]
-        the_entry.append(sub_table['chi2'])
-        the_entry.append(sub_table['deltachi2'])
-        the_entry.append(sub_table['coeff'])
-        the_entry.append(sub_table['z'])
-        the_entry.append(sub_table['zerr'])
-        the_entry.append(sub_table['zwarn'])
-        the_entry.append(sub_table['spectype'])
-        the_entry.append(sub_table['subtype'])
+        for redrock_key in ['chi2', 'deltachi2', 'coeff', 'z', 'zerr', 'zwarn', 'spectype', 'subtype']:
+            the_entry.append(sub_table[redrock_key])
         matched_redrock_cat.add_row(the_entry)
 
     return matched_redrock_cat
 
 
-def create_zcat_from_redrock_cat(redrock_cat, fit_num=0) :
-    '''
-    TODO change name zcat -> zbest_cat ?
-    Extract a z catalog from redrock catalog produced in match_redrock_zfit_to_spectra()
-    The z catalog has one fit per targetid, corresponding to the (fit_num)th best fit
-    '''
+def create_zcat_from_redrock_cat(redrock_cat, fit_num=0):
+    """ Extract a single fit catalog from a redrock catalog containing several fit results per TARGETID
+
+    Parameters
+    ----------
+    redrock_cat : :class:`~astropy.table.Table`
+        Catalog with rows as defined in `match_redrockfile_to_spectra()`
+    fit_num : :class:`int`, optional
+        The (fit_num)th best fit is extracted
+
+    Returns
+    -------
+    :class:`~astropy.table.Table`
+        Table with the following columns: TARGETID, CHI2, COEFF, Z, ZERR, ZWARN, SPECTYPE, SUBTYPE, DELTACHI2.
+        ie. identical to the 'ZBEST' table in Redrock's `zbest` files, a single fit per row.
+    """
 
     rr_cat_num_best_fits = redrock_cat['Z'].shape[1]
-    if (fit_num >= rr_cat_num_best_fits) : raise ValueError("fit_num too large wrt redrock_cat")
-    zcat_dtype=[('TARGETID', '<i8'), ('CHI2', '<f8'), ('COEFF', '<f8', (10,)), ('Z', '<f8'), ('ZERR', '<f8'), ('ZWARN', '<i8'), ('SPECTYPE', '<U6'), ('SUBTYPE', '<U2'), ('DELTACHI2', '<f8')]
+    if (fit_num >= rr_cat_num_best_fits):
+        raise ValueError("fit_num too large wrt redrock_cat")
+    zcat_dtype=[('TARGETID', '<i8'), ('CHI2', '<f8'), ('COEFF', '<f8', (10,)),
+                ('Z', '<f8'), ('ZERR', '<f8'), ('ZWARN', '<i8'),
+                ('SPECTYPE', '<U6'), ('SUBTYPE', '<U2'), ('DELTACHI2', '<f8')]
     zcat_out = Table( data=np.zeros(len(redrock_cat), dtype=zcat_dtype) )
     zcat_out['TARGETID'] = redrock_cat['TARGETID']
-    for key in [ 'CHI2', 'DELTACHI2', 'COEFF', 'SPECTYPE', 'SUBTYPE', 'Z', 'ZERR', 'ZWARN'] :
+    for key in ['CHI2', 'DELTACHI2', 'COEFF', 'SPECTYPE', 'SUBTYPE', 'Z', 'ZERR', 'ZWARN']:
         zcat_out[key] = redrock_cat[key][:,fit_num]
 
     return zcat_out
+
 
 def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None, nights=None, cumulative=False) :
     '''
@@ -316,7 +356,7 @@ def load_spectra_zcat_from_targets(targets, tiledir, obs_db, with_redrock=False,
                 if with_redrock_version:
                     hdulist = astropy.io.fits.open(os.path.join(the_path,"zbest-"+file_label+".fits"))
                     the_zcat['RRVER'] = hdulist[hdulist.index_of('PRIMARY')].header['RRVER']
-                the_zcat, dummy = match_zcat_to_spectra(the_zcat, the_spec)
+                the_zcat = match_catalog_to_spectra(the_zcat, the_spec)
                 ztables.append(the_zcat)
                 if with_redrock :
                     rrfile = os.path.join(the_path,"redrock-"+file_label+".h5")
