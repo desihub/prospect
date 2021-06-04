@@ -24,6 +24,7 @@ def _parse():
 
     parser = argparse.ArgumentParser(description='Create static html pages from a set of targets, using CMX tile-based coadds')
     parser.add_argument('--specprod_dir', help='Location of directory tree (data in specprod_dir/tiles/)', type=str)
+    parser.add_argument('--cumulative', help='Use data from specprod_dir/tiles/cumulative/', action='store_true')
     parser.add_argument('--target_list', help='ASCII or FITS file providing the list of targetids. FITS must contain a table with TARGETID column, and optionally TILEID. ASCII must be a simple list of TARGETIDs.', type=str)
     parser.add_argument('--tiles', help='Name of tile[s] to be processed (avoids to scan all tiles)', nargs='+', type=str, default=None)
     parser.add_argument('--nights', help='Name of night[s] to be processed (avoids to scan all nights)', nargs='+', type=str, default=None)
@@ -45,6 +46,8 @@ def main():
     log = get_logger()
 
     tile_dir = os.path.join(args.specprod_dir,'tiles')
+    if args.cumulative:
+        tile_dir = os.path.join(tile_dir, 'cumulative')
     tile_list = os.listdir(tile_dir)
     if args.tiles :
         tile_list = args.tiles
@@ -60,11 +63,11 @@ def main():
     log.info(str(len(targetids))+" targets provided.")
     log.info("Tiles: "+' '.join(tile_list))
 
-    obs_db = make_targetdict(tile_dir, tiles=tile_list, nights=args.nights)
+    obs_db = make_targetdict(tile_dir, tiles=tile_list, nights=args.nights, cumulative=args.cumulative)
     if args.with_multiple_models :
-        spectra, zcat, rrtable = load_spectra_zcat_from_targets(targetids, tile_dir, obs_db, with_redrock=True)
+        spectra, zcat, rrtable = load_spectra_zcat_from_targets(targetids, tile_dir, obs_db, with_redrock=True, cumulative=args.cumulative)
     else :
-        spectra, zcat = load_spectra_zcat_from_targets(targetids, tile_dir, obs_db, with_redrock=False)
+        spectra, zcat = load_spectra_zcat_from_targets(targetids, tile_dir, obs_db, with_redrock=False, cumulative=args.cumulative)
 
     # TODO? this may be put in a standalone fct, avoid code duplicate with other script
     # Create several html pages : sort by targetid
