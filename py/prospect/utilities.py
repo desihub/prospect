@@ -267,114 +267,147 @@ def create_zcat_from_redrock_cat(redrock_cat, fit_num=0):
     return zcat_out
 
 
-def make_targetdict(tiledir, petals=[str(i) for i in range(10)], tiles=None, nights=None, cumulative=False) :
-    '''
-    Small homemade/hack utility (based on Anand's hack)
-    Makes "mini-db" of targetids. It basically reads zbest, so it's reasonably fast
-    Adapted to the directory structure tiledir/{tile}/{night}/{cframe/zbest/...}
-    - tiles: optional list of tiles (all of them must exist in tiledir)
-    - nights: optional list of nights
-    '''
+def create_targetdb(basedir, dirtree_type='pernight', petals=[str(i) for i in range(10)], tiles=None, nights=None, expids=None):
+    """ Create a "mini-db" of DESI targetids.
+        To do so, `zbest` files are read (faster than reading spectra).
+        Tile-based directory trees for daily, andes, ... to denali are supported.
 
-    if ( ('cumulative' in tiledir) and not cumulative) or ( ('cumulative' not in tiledir) and cumulative):
-        print('Warning: cumulative option does not seem to fit tiledir=',tiledir)
+        Parameters
+        ----------
+        basedir : :class:`string`
+        dirtree_type : :class:`string`
+            The directory tree and file names must be the following:
+                dirtree_type='pernight': {basedir}/{tileid}/{night}/zbest-{petal}-{tile}-{night}.fits
+                dirtree_type='perexp': {basedir}/{tileid}/{expid}/zbest-{petal}-{tile}-exp{expid}.fits
+                dirtree_type='cumulative': {basedir}/{tileid}/{night}/zbest-{petal}-{tile}-thru{night}.fits
+            To use blanc/cascades 'all' (resp 'deep') coadds, use dirtree_type='pernight' and nights=['all'] (resp 'deep')
+        petals : :class:`list`, optional
+            Filter a set of petal numbers
+        tiles : :class:`list`, optional
+            Filter a set of tiles
+        nights : :class:`list`, optional
+            Filter a set of nights (only if dirtree_type='pernight')
+        expids : :class:`list`, optional
+            Filter a set of exposures (only if dirtree_type='perexp')
 
-    target_dict = {}
+        Returns
+        -------
+        :class:`dict`
+            Content of the "mini-db": { (tile, subset, petal): [list of TARGETIDs] } where subset is a night or expid.
+    """
+    # TODO support (everest) healpix-based directory trees
+
+    if dirtree_type not in ['pernight', 'perexp', 'cumulative']:
+        raise ValueError('Unrecognized value for dirtree_type')
+    if (nights is not None and dirtree_type!='pernight') or (expids is not None and dirtree_type!='perexp'):
+        raise ValueError('Incompatible options nights/expids and dirtree_type')
     if tiles is None :
-        tiles = os.listdir(tiledir)
+        tiles = os.listdir(basedir)
     else :
-        alltiles = os.listdir(tiledir)
-        assert all(x in alltiles for x in tiles)
+        alltiles = os.listdir(basedir)
+        if not all(x in alltiles for x in tiles):
+            raise RuntimeError('Some tile[s] were not found in directory tree.')
 
-    for tile in tiles :
-        the_nights = os.listdir(os.path.join(tiledir,tile))
-        if nights is not None :
-            the_nights = [ x for x in the_nights if x in nights ]
-        for night in the_nights :
-            target_dict[tile+"-"+night] = {}
-            # exposures (included in dict only if 'cframe-b' files are present - which is not the case for "deep" coadds in blanc)
-            fns = np.sort(glob.glob(os.path.join(tiledir,tile,night,'cframe-b'+petals[0]+'-????????.fits')))
-            if len(fns)>0 :
-                target_dict[tile+"-"+night]['exps'] = np.array([fn.replace('.','-').split('-')[-2] for fn in fns])
-            # targetid, fibres
-            targetid,fiber,petal_list = [],[],[]
+    targetdb = dict()
+    for tile in tiles:
+        tile_subsets = os.listdir(os.path.join(basedir,tile))
+        if nights is not None:
+            tile_subsets = [ x for x in tile_subsets if x in nights ]
+        elif expids is not None:
+            tile_subsets = [ x for x in tile_subsets if x in expids ]
+        else: # No subset selection, but we discard subdirs with non-decimal names
+            tile_subsets = [ x for x in tile_subsets if x.isdecimal() ]
+        for subset in tile_subsets:
             for petal in petals:
-                night_label = 'thru'+night if cumulative else night
-                pp = glob.glob(os.path.join(tiledir,tile,night,'zbest-'+petal+'-'+tile+'-'+night_label+'.fits'))
-                if len(pp)>0 :
-                    fn        = pp[0]
-                    fm = Table.read(fn, 'FIBERMAP')
-                    tid, keep = np.unique(fm['TARGETID'], return_index=True)
-                    data = fm[keep]
-                    #data      = astropy.io.fits.open(fn)['fibermap'].data # Not ok with andes
-                    targetid += data['TARGETID'].tolist()
-                    fiber    += data['FIBER'].tolist()
-                    petal_list    += [petal for i in range(len(data['TARGETID']))]
-            target_dict[tile+"-"+night]['targetid'] = np.array(targetid, dtype='int64')
-            target_dict[tile+"-"+night]['fiber']    = np.array(fiber)
-            target_dict[tile+"-"+night]['petal']    = np.array(petal_list)
+                subset_label = subset
+                if dirtree_type=='cumulative': subset_label = 'thru'+subset_label
+                if dirtree_type=='perexp': subset_label = 'exp'+subset_label
+                fname = os.path.join(basedir, tile, subset, 'zbest-'+petal+'-'+tile+'-'+subset_label+'.fits')
+                if os.path.isfile(fname):
+                    targetids = np.unique(Table.read(fname,'ZBEST')['TARGETID'])
+                    targetdb[tile, subset, petal] = np.array(targetids, dtype='int64')
 
-    return target_dict
+    return targetdb
 
-def load_spectra_zcat_from_targets(targets, tiledir, obs_db, with_redrock=False, with_redrock_version=True, cumulative=False) :
-    '''
-    Creates (spectra,zcat,[redrock_cat]) = (Spectra object, zcatalog Table, [redrock Table]) from a list of targetids
-    - targets must be a list of int64
-    - obs_db: "mini-db" produced by make_targetdict()
-    - with_redrock: if True, also get redrock Table
-    - with_redrock_version: if True, add a Column to zcat with RRVER from hdu0 in zbest files
-    '''
 
-    if ( ('cumulative' in tiledir) and not cumulative) or ( ('cumulative' not in tiledir) and cumulative):
-        print('Warning: cumulative option does not seem to fit tiledir=',tiledir)
+def load_spectra_zcat_from_targets(targetids, basedir, targetdb, dirtree_type='pernight', with_redrock=False, with_redrock_version=True):
+    """ Get spectra, 'ZBEST' catalog and optional full Redrock catalog matched to a set of DESI TARGETIDs.
 
-    targets = np.asarray(targets)
-    if targets.dtype not in ['int64', 'i8', '>i8'] :
-        raise TypeError('Targetids should be int64.')
+    This works using a "mini-db" of targetids, as returned by `create_targetdb`.
+    The outputs of this utility can be used directly by `viewer.plotspectra()`, to inspect a given list of targetids.
+
+    Parameters
+    ----------
+    targetids : :class:`list` or :class:`numpy.ndarray`
+        List of TARGETIDs, must be int64.
+    basedir : :class:`string`
+    dirtree_type : :class:`string`
+        The directory tree and file names must be the following, for "coadd", "zbest" and "redrock" files:
+            dirtree_type='pernight': {basedir}/{tileid}/{night}/zbest-{petal}-{tile}-{night}.fits
+            dirtree_type='perexp': {basedir}/{tileid}/{expid}/zbest-{petal}-{tile}-exp{expid}.fits
+            dirtree_type='cumulative': {basedir}/{tileid}/{night}/zbest-{petal}-{tile}-thru{night}.fits
+        To use blanc/cascades 'all' (resp 'deep') coadds, use dirtree_type='pernight' and nights=['all'] (resp 'deep')
+    targetdb : :class:`dict`
+        Content of the "mini-db": { (tile, subset, petal): [list of TARGETIDs] } where subset is a night or expid.
+    with_redrock : :class:`bool`, optional
+        If `True`, Redrock output files (.h5 files) are also read
+    with_redrock_version : :class:`bool`, optional
+        If `True`, a column 'RRVER' is appended to the output redshift catalog, as given by HDU0 in `ZBEST` files.
+        This is used by `viewer.plotspectra()` to track Redrock version in visual inspection files.
+
+    Returns
+    -------
+    :class:`set`
+        If with_redrock is `False` (default), returns (spectra, zcat), where spectra is `~desispec.spectra.Spectra`
+        and zcat is ~astropy.table.Table`.
+        If with_redrock is `True`, returns (spectra, zcat, redrockcat) where redrockcat is `~astropy.table.Table`.
+    """
+    # TODO Sort final result in the same order as the input list of TARGETIDs
+
+    targetids = np.asarray(targetids)
+    if targetids.dtype not in ['int64', 'i8', '>i8']:
+        raise TypeError('TARGETIDs should be int64')
     spectra = None
     ztables, rrtables = [], []
 
-    for tile_night in obs_db.keys() :
-        petals = np.unique(obs_db[tile_night]['petal'])
-        for petal in petals :
-            targets_subset = []
-            for target in targets :
-                w, = np.where( (obs_db[tile_night]['targetid']==target) & (obs_db[tile_night]['petal']==petal) )
-                if len(w) == 0 : continue
-                if len(w) > 1 :
-                    print("Warning ! Several entries in tile/night "+tile_night+" available for target "+str(target))
-                targets_subset.append(target)
-            # Load spectra for that tile/night/petal only if there's a target from the list
-            if len(targets_subset)>0 :
-                tile, night = tile_night.split('-')
-                the_path = os.path.join(tiledir, tile, night)
-                night_label = 'thru'+night if cumulative else night
-                file_label = '-'.join([petal, tile, night_label])
-                the_spec = desispec.io.read_spectra(os.path.join(the_path,"coadd-"+file_label+".fits"))
-                the_spec = myspecselect.myspecselect(the_spec, targets=targets_subset, remove_scores=True)
-                the_zcat = Table.read(os.path.join(the_path,"zbest-"+file_label+".fits"),'ZBEST')
-                if with_redrock_version:
-                    hdulist = astropy.io.fits.open(os.path.join(the_path,"zbest-"+file_label+".fits"))
-                    the_zcat['RRVER'] = hdulist[hdulist.index_of('PRIMARY')].header['RRVER']
-                the_zcat = match_catalog_to_spectra(the_zcat, the_spec)
-                ztables.append(the_zcat)
-                if with_redrock :
-                    rrfile = os.path.join(the_path,"redrock-"+file_label+".h5")
-                    the_rrcat = match_redrock_zfit_to_spectra(rrfile, the_spec, Nfit=None)
-                    rrtables.append(the_rrcat)
-                if spectra is None : spectra = the_spec
-                else : spectra = myspecupdate.myspecupdate(spectra,the_spec)
+    for tile, subset, petal in targetdb.keys():
+        targets_subset = set(targetdb[tile, subset, petal])
+        targets_subset = targets_subset.intersection(set(targetids))
+    
+        # Load spectra for that tile-subset-petal only if one or more target(s) are in the list
+        if len(targets_subset)>0 :
+            subset_label = subset
+            if dirtree_type=='cumulative': subset_label = 'thru'+subset_label
+            if dirtree_type=='perexp': subset_label = 'exp'+subset_label
+            file_label = '-'.join([petal, tile, subset_label])
+            the_path = os.path.join(basedir, tile, subset)
+            the_spec = desispec.io.read_spectra(os.path.join(the_path,"coadd-"+file_label+".fits"))
+            the_spec = myspecselect.myspecselect(the_spec, targets=sorted(targets_subset), remove_scores=True)
+            the_zcat = Table.read(os.path.join(the_path,"zbest-"+file_label+".fits"),'ZBEST')
+            if with_redrock_version:
+                hdulist = astropy.io.fits.open(os.path.join(the_path,"zbest-"+file_label+".fits"))
+                the_zcat['RRVER'] = hdulist[hdulist.index_of('PRIMARY')].header['RRVER']
+            the_zcat = match_catalog_to_spectra(the_zcat, the_spec)
+            ztables.append(the_zcat)
+            if with_redrock:
+                rrfile = os.path.join(the_path,"redrock-"+file_label+".h5")
+                the_rrcat = match_redrockfile_to_spectra(rrfile, the_spec, Nfit=None)
+                rrtables.append(the_rrcat)
+            if spectra is None:
+                spectra = the_spec
+            else:
+                spectra = myspecupdate.myspecupdate(spectra, the_spec)
 
     # Check if all targets were found in spectra
     tids_spectra = spectra.fibermap['TARGETID']
-    for target in targets :
-        if target not in tids_spectra : print("Warning! targetid not found: "+str(target))
+    for target in targetids:
+        if target not in tids_spectra: print("Warning! TARGETID not found:", target)
 
     zcat = vstack(ztables)
-    if with_redrock :
+    if with_redrock:
         rrcat = vstack(rrtables)
         return (spectra, zcat, rrcat)
-    else :
+    else:
         return (spectra,zcat)
 
 

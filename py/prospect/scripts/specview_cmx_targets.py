@@ -18,7 +18,7 @@ from desiutil.log import get_logger
 
 from ..viewer import plotspectra
 from ..myspecselect import myspecselect
-from ..utilities import make_targetdict, load_spectra_zcat_from_targets
+from ..utilities import create_targetdb, load_spectra_zcat_from_targets
 
 def _parse():
 
@@ -63,11 +63,12 @@ def main():
     log.info(str(len(targetids))+" targets provided.")
     log.info("Tiles: "+' '.join(tile_list))
 
-    obs_db = make_targetdict(tile_dir, tiles=tile_list, nights=args.nights, cumulative=args.cumulative)
+    dirtree_type = 'cumulative' if args.cumulative else 'pernight'
+    target_db = create_targetdb(tile_dir, dirtree_type=dirtree_type, tiles=tile_list, nights=args.nights)
     if args.with_multiple_models :
-        spectra, zcat, rrtable = load_spectra_zcat_from_targets(targetids, tile_dir, obs_db, with_redrock=True, cumulative=args.cumulative)
+        spectra, zcat, rrtable = load_spectra_zcat_from_targets(targetids, tile_dir, target_db, dirtree_type=dirtree_type, with_redrock=True)
     else :
-        spectra, zcat = load_spectra_zcat_from_targets(targetids, tile_dir, obs_db, with_redrock=False, cumulative=args.cumulative)
+        spectra, zcat = load_spectra_zcat_from_targets(targetids, tile_dir, target_db, dirtree_type=dirtree_type, with_redrock=False)
 
     # TODO? this may be put in a standalone fct, avoid code duplicate with other script
     # Create several html pages : sort by targetid
