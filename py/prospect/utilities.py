@@ -411,24 +411,25 @@ def load_spectra_zcat_from_targets(targetids, basedir, targetdb, dirtree_type='p
         return (spectra,zcat)
 
 
-def get_y_minmax(pmin, pmax, data, ispec) :
-    '''
-    Utility, from plotframe
-    '''
-    dx = np.sort(data[np.isfinite(data)])
-    if len(dx)==0 : return (0,0)
-    imin = int(np.floor(pmin*len(dx)))
-    imax = int(np.floor(pmax*len(dx)))
-    if (imax >= len(dx)) : imax = len(dx)-1
-    return (dx[imin],dx[imax])
-
-
-
 def frames2spectra(frames, nspec=None, startspec=None, with_scores=False, with_resolution_data=False):
-    '''Convert input list of Frames into Spectra object
-    with_score : if true, propagate scores
-    with_resolution_data: if true, propagate resolution
-    '''
+    """ Convert list of frames into DESI Spectra object
+
+    Parameters
+    ----------
+    frames : :class:`list`, a list of `~desispec.frame.Frame`
+    nspec : :class:`int`, optional
+    startspec : :class:`int`, optional
+        If nspec is set, only spectra in range [startspec:nspec+startspec] are kept
+    with_scores : :class:`bool`, optional
+        If `True`, include merged scores from input frames
+    with_resolution_data : :class:`bool`, optional
+        If `True`, include frames.resolution_data
+
+    Returns
+    -------
+    :class:`~desispec.spectra.Spectra`
+    """
+
     bands = list()
     wave = dict()
     flux = dict()
