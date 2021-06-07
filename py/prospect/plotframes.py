@@ -61,7 +61,7 @@ except ImportError:
 
 from .utilities import (get_resources, frames2spectra, create_zcat_from_redrock_cat, coadd_targets, match_vi_targets,
                         vi_flags, vi_file_fields, vi_spectypes, vi_std_comments)
-from .mycoaddcam import coaddcam_prospect
+from .coaddcam import coaddcam_prospect
 
 def load_redrock_templates(template_dir=None) :
     '''

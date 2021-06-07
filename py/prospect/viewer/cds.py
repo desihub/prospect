@@ -21,7 +21,7 @@ try:
 except ImportError:
     _specutils_imported = False
 
-from ..mycoaddcam import coaddcam_prospect
+from ..coaddcam import coaddcam_prospect
 from ..utilities import supported_desitarget_masks, vi_file_fields
 
 

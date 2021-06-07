@@ -8,7 +8,7 @@ prospect API
 .. automodule:: prospect.grid_thumbs
     :members:
 
-.. automodule:: prospect.mycoaddcam
+.. automodule:: prospect.coaddcam
     :members:
 
 .. automodule:: prospect.myspecselect

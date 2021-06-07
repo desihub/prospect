@@ -357,7 +357,7 @@ def load_spectra_zcat_from_targets(targetids, basedir, targetdb, dirtree_type='p
 
     Returns
     -------
-    :class:`set`
+    :func:`tuple`
         If with_redrock is `False` (default), returns (spectra, zcat), where spectra is `~desispec.spectra.Spectra`
         and zcat is ~astropy.table.Table`.
         If with_redrock is `True`, returns (spectra, zcat, redrockcat) where redrockcat is `~astropy.table.Table`.

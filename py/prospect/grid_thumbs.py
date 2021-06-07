@@ -15,7 +15,7 @@ import astropy.convolution
 import bokeh.plotting as bk
 import bokeh.layouts as bl
 
-from .mycoaddcam import coaddcam_prospect
+from .coaddcam import coaddcam_prospect
 
 # TODOS:
 # - structure: class??

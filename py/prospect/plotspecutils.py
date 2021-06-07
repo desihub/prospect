@@ -36,7 +36,7 @@ except ImportError:
     _desitarget_imported = False
 
 from .utilities import get_resources, create_zcat_from_redrock_cat, vi_flags, vi_file_fields, vi_spectypes, vi_std_comments
-from .mycoaddcam import coaddcam_prospect
+from .coaddcam import coaddcam_prospect
 from .plotframes import add_lines, _airtovac
 
 def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, template_dir=None):
@@ -362,7 +362,7 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
     if thumb_height is None : thumb_height = thumb_width//2
     if titles is not None : assert len(titles) == spectra.num_spectra()
     # thumb_wave, thumb_flux, dummy = mycoaddcam(spectra)
-    thumb_wave, thumb_flux, dummy = mycoaddcam.coaddcam_prospect(spectra)
+    thumb_wave, thumb_flux, dummy = coaddcam_prospect(spectra)
     kernel = astropy.convolution.Gaussian1DKernel(stddev=resamp_factor)
 
     thumb_plots = []
