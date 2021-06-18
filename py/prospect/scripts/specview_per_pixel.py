@@ -23,7 +23,6 @@ from desitarget.sv1.sv1_targetmask import desi_mask as sv1_desi_mask
 import desispec.spectra
 import desispec.frame
 
-from ..myspecselect import myspecselect  # special (to be edited)
 from ..viewer import plotspectra
 from ..utilities import coadd_targets, specviewer_selection, match_catalog_to_spectra
 
@@ -93,7 +92,7 @@ def main():
 
             log.info(" * Page "+str(i_page)+" / "+str(nbpages))
             the_indices = sort_indices[(i_page-1)*args.nspecperfile:i_page*args.nspecperfile]
-            thespec = myspecselect(spectra, indices=the_indices)
+            thespec = spectra[the_indices]
             thezb = match_catalog_to_spectra(zbest,thespec)
             titlepage = "pix"+pixel+"_"+str(i_page)
             if args.gcut is not None :

@@ -21,7 +21,6 @@ from desitarget.targetmask import desi_mask
 import desispec.spectra
 import desispec.frame
 
-from ..myspecselect import myspecselect  # special (to be edited)
 from ..viewer import plotspectra
 from ..utilities import match_catalog_to_spectra
 
@@ -62,7 +61,11 @@ def main():
             if ii==0 :
                 spectra = desispec.spectra.Spectra(meta=thespec.meta, extra=thespec.extra)
                 zbest = Table(dtype=thezb.dtype)
-            thespec = myspecselect(thespec, expids=[exposure])
+            try:
+                thespec = thespec.select(exposures=[exposure])
+            except RuntimeError as select_err:
+                print(select_err)
+                thespec = None
             spectra.update(thespec)
             for i_zb in range(len(thezb)) :
                 zbest.add_row(thezb[i_zb])
@@ -73,7 +76,11 @@ def main():
         if len(fiberlist)!=spectra.num_spectra() : print("!! Several times the same fiber in exposure ??")
         for i_page in range(1,1+nbpages) :
             print("** Page "+str(i_page)+" / "+str(nbpages))
-            thespec = myspecselect(spectra, fibers=fiberlist[(i_page-1)*args.nspecperfile:i_page*args.nspecperfile])
+            try:
+                thespec = spectra.select(fibers=fiberlist[(i_page-1)*args.nspecperfile:i_page*args.nspecperfile])
+            except RuntimeError as select_err:
+                print(select_err)
+                continue
             thezb = match_catalog_to_spectra(zbest,thespec)
             titlepage = "specviewer_expo"+str(exposure)+"_fiberset"+str(i_page)
             savedir=args.webdir+"/exposures/expo"+str(exposure)

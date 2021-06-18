@@ -17,7 +17,6 @@ import desispec.io
 from desiutil.log import get_logger
 
 from ..viewer import plotspectra
-from ..myspecselect import myspecselect
 from ..utilities import create_targetdb, load_spectra_zcat_from_targets
 
 def _parse():
@@ -80,12 +79,12 @@ def main():
 
         log.info(" * Page "+str(i_page)+" / "+str(nbpages))
         the_indices = sort_indices[(i_page-1)*args.nspecperfile:i_page*args.nspecperfile]
-        thespec, kept_ind = myspecselect(spectra, indices=the_indices, remove_scores=True, output_indices=True)
-        the_zcat = zcat[kept_ind]
+        thespec = spectra[the_indices]
+        the_zcat = zcat[the_indices]
         if not np.array_equal(the_zcat['TARGETID'], thespec.fibermap['TARGETID']) :
             raise RuntimeError("targetids do not match between spec and zcat")
         if args.with_multiple_models :
-            the_rrtable = rrtable[kept_ind]
+            the_rrtable = rrtable[the_indices]
             num_approx_fits = 4 # TODO settle option
             with_full_2ndfit = True # TODO settle option
         else :

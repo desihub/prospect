@@ -20,8 +20,6 @@ import desispec.spectra
 import desispec.frame
 
 from ..viewer import plotspectra
-from ..myspecselect import myspecselect
-from ..myspecupdate import myspecupdate
 from ..utilities import specviewer_selection, match_redrockfile_to_spectra, match_catalog_to_spectra
 
 # List of bad fibers in CMX data (see eg SB / KD emails 23-24/03/2020)
@@ -125,21 +123,23 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
             all_spectra = spectra
         else :
             # NB update() does not copy scores. Score-based filtering (SNR) was done before.
-            all_spectra = myspecupdate(all_spectra, spectra)
+            all_spectra.update(spectra)
 
     if all_spectra is None :
         log.info("Tile "+tile+" - night "+night+": no spectra.")
         return 0
     else :
-        clean_fiberstatus=True if 'FIBERSTATUS' in all_spectra.fibermap.keys() else False
-        fibers = None
         if clean_bad_fibers_cmx :
             fibers = np.arange(5000)
             for cut_fiber_range in _bad_fibers_cmx :
                 fibers = fibers[ ( (fibers < cut_fiber_range[0]) | (fibers > cut_fiber_range[1]) )]
-        all_spectra = myspecselect(all_spectra,
-                            clean_fiberstatus=clean_fiberstatus, fibers=fibers, remove_scores=True)
-        if all_spectra is None : return 0
+            try:
+                all_spectra = all_spectra.select(fibers=fibers)
+            except RuntimeError as select_err:
+                log.info(select_err)
+                return 0
+        if 'FIBERSTATUS' in all_spectra.fibermap.keys():
+                all_spectra = all_spectra[ (all_spectra.fibermap['FIBERSTATUS']==0) ]
 
     # zcatalog (adding redrock version)
     if with_zcatalog :
@@ -171,7 +171,7 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
 
         log.info(" * Page "+str(i_page)+" / "+str(nbpages))
         the_indices = sort_indices[(i_page-1)*nspecperfile:i_page*nspecperfile]
-        thespec = myspecselect(all_spectra, indices=the_indices, remove_scores=True)
+        thespec = all_spectra[the_indices]
         the_zcat = match_catalog_to_spectra(zcat, thespec)
         if with_multiple_models :
             the_rrtable = match_catalog_to_spectra(rrtable, thespec)

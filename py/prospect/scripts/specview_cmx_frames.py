@@ -22,8 +22,6 @@ import desispec.spectra
 import desispec.frame
 
 from ..viewer import plotspectra
-from ..myspecselect import myspecselect
-from ..myspecupdate import myspecupdate
 from ..utilities import frames2spectra, specviewer_selection, coadd_targets
 
 def _parse():
@@ -124,8 +122,8 @@ def page_subset_expo(fdir, exposure, frametype, petals, html_dir, titlepage_pref
         frames = [ desispec.io.read_frame(os.path.join(fdir,frametype+"-"+band+petal_num+"-"+exposure+".fits")) for band in ['b','r','z'] ]
         spectra = frames2spectra(frames, with_scores=True)
         if 'FIBERSTATUS' in spectra.fibermap.keys() :
-            spectra = myspecselect(spectra, clean_fiberstatus=True)
-            if spectra is None : return 0
+            spectra = spectra[ (spectra.fibermap['FIBERSTATUS']==0) ]
+            if spectra.num_spectra()==0 : return 0
 
         # Selection
         if (mask != None) or (snr_cut != None) :
@@ -142,7 +140,7 @@ def page_subset_expo(fdir, exposure, frametype, petals, html_dir, titlepage_pref
 
             log.info(" * Page "+str(i_page)+" / "+str(nbpages))
             the_indices = sort_indices[(i_page-1)*nspecperfile:i_page*nspecperfile]
-            thespec = myspecselect(spectra, indices=the_indices)
+            thespec = spectra[the_indices]
             titlepage = titlepage_prefix+"_petal"+petal_num+"_"+str(i_page)
             plotspectra(thespec, with_noise=True, with_coaddcam=True,
                         title=titlepage, html_dir=html_dir, mask_type='CMX_TARGET', with_thumb_only_page=True)
@@ -175,14 +173,14 @@ def page_subset_tile(fdir, tile_db_subset, frametype, html_dir, titlepage_prefix
             if all_spectra is None :
                 all_spectra = spectra
             else : # NB update() does not copy scores. Filtering was done before.
-                all_spectra = myspecupdate(all_spectra, spectra)
+                all_spectra.update(spectra)
 
     if all_spectra is None :
         log.info("Tile "+tile+" : no spectra !")
         return 0
     elif 'FIBERSTATUS' in all_spectra.fibermap.keys() :
-        all_spectra = myspecselect(all_spectra, clean_fiberstatus=True, remove_scores=True)
-        if all_spectra is None : return 0
+        all_spectra = all_spectra[ (all_spectra.fibermap['FIBERSTATUS']==0) ]
+        if all_spectra.num_spectra()==0 : return 0
 
     # Exposure-coadd
     all_spectra = coadd_targets(all_spectra)
@@ -203,7 +201,7 @@ def page_subset_tile(fdir, tile_db_subset, frametype, html_dir, titlepage_prefix
 
         log.info(" * Page "+str(i_page)+" / "+str(nbpages))
         the_indices = sort_indices[(i_page-1)*nspecperfile:i_page*nspecperfile]
-        thespec = myspecselect(all_spectra, indices=the_indices, remove_scores=True)
+        thespec = all_spectra[the_indices]
         titlepage = titlepage_prefix+"_"+str(i_page)
         plotspectra(thespec, with_noise=True, with_coaddcam=True, zcatalog=zcat,
                     title=titlepage, html_dir=html_dir, mask_type='CMX_TARGET', with_thumb_only_page=True)

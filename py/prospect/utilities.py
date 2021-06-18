@@ -58,9 +58,6 @@ try:
 except ImportError:
     _redrock_imported = False
 
-
-from prospect import myspecselect, myspecupdate
-
 vi_flags = [
     # Definition of VI flags
     # shortlabels for "issue" flags must be a unique single-letter identifier
@@ -382,7 +379,7 @@ def load_spectra_zcat_from_targets(targetids, basedir, targetdb, dirtree_type='p
             file_label = '-'.join([petal, tile, subset_label])
             the_path = os.path.join(basedir, tile, subset)
             the_spec = desispec.io.read_spectra(os.path.join(the_path,"coadd-"+file_label+".fits"))
-            the_spec = myspecselect.myspecselect(the_spec, targets=sorted(targets_subset), remove_scores=True)
+            the_spec = the_spec.select(targets=sorted(targets_subset), include_scores=False)
             the_zcat = Table.read(os.path.join(the_path,"zbest-"+file_label+".fits"),'ZBEST')
             if with_redrock_version:
                 hdulist = astropy.io.fits.open(os.path.join(the_path,"zbest-"+file_label+".fits"))
@@ -396,7 +393,7 @@ def load_spectra_zcat_from_targets(targetids, basedir, targetdb, dirtree_type='p
             if spectra is None:
                 spectra = the_spec
             else:
-                spectra = myspecupdate.myspecupdate(spectra, the_spec)
+                spectra.update(the_spec)
 
     # Check if all targets were found in spectra
     tids_spectra = spectra.fibermap['TARGETID']
@@ -475,6 +472,7 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
         Implemented cuts based on : target mask ; photo mag (g, r) ; chi2 from fit ; SNR (in spectra.scores, BRZ)
         - if chi2cut : a catalog zbest must be provided, with entries matching exactly those of spectra
     '''
+    # TODO: all selections use spectra.select(targets=..) => create single list of targetids and use spectra.select() only once
 
     # SNR selection
     if snr_cut is not None :
@@ -486,7 +484,11 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
                 return 0
             else :
                 targetids = spectra.fibermap['TARGETID'][w]
-                spectra = myspecselect.myspecselect(spectra, targets=targetids, remove_scores=remove_scores)
+                try:
+                    spectra = spectra.select(targets=targetids, include_scores=(not remove_scores))
+                except RuntimeError as select_err:
+                    if log is not None: log.info(select_err)
+                    return None
 
     # Target mask selection
     if mask is not None :
@@ -509,7 +511,11 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
             return 0
         else :
             targetids = spectra.fibermap['TARGETID'][w]
-            spectra = myspecselect.myspecselect(spectra, targets=targetids, remove_scores=remove_scores)
+            try:
+                spectra = spectra.select(targets=targetids, include_scores=(not remove_scores))
+            except RuntimeError as select_err:
+                if log is not None: log.info(select_err)
+                return None
 
     # Photometry selection
     if gmag_cut is not None :
@@ -523,7 +529,7 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
             return 0
         else :
             targetids = spectra.fibermap['TARGETID'][w]
-            spectra = myspecselect.myspecselect(spectra, targets=targetids)
+            spectra = spectra.select(targets=targetids)
     if rmag_cut is not None :
         assert len(rmag_cut)==2 # Require range [rmin, rmax]
         rmag = np.zeros(spectra.num_spectra())
@@ -535,7 +541,7 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
             return 0
         else :
             targetids = spectra.fibermap['TARGETID'][w]
-            spectra = myspecselect.myspecselect(spectra, targets=targetids, remove_scores=remove_scores)
+            spectra = spectra.select(targets=targetids, include_scores=(not remove_scores))
 
     # Chi2 selection
     if chi2cut is not None :
@@ -549,7 +555,7 @@ def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=
             return 0
         else :
             targetids = spectra.fibermap['TARGETID'][w]
-            spectra = myspecselect.myspecselect(spectra, targets=targetids, remove_scores=remove_scores)
+            spectra = spectra.select(targets=targetids, include_scores=(not remove_scores))
 
     return spectra
 
