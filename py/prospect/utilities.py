@@ -358,7 +358,7 @@ def load_spectra_zcat_from_targets(targetids, basedir, targetdb, dirtree_type='p
     -------
     :func:`tuple`
         If with_redrock is `False` (default), returns (spectra, zcat), where spectra is `~desispec.spectra.Spectra`
-        and zcat is ~astropy.table.Table`.
+        and zcat is `~astropy.table.Table`.
         If with_redrock is `True`, returns (spectra, zcat, redrockcat) where redrockcat is `~astropy.table.Table`.
     """
 
@@ -397,6 +397,7 @@ def load_spectra_zcat_from_targets(targetids, basedir, targetdb, dirtree_type='p
             if spectra is None:
                 spectra = the_spec
             else:
+                #- Still use update() instead of stack(), to handle case when fibermaps differ in different files.
                 spectra.update(the_spec)
 
     #- Sort according to input target list. Check if all targets were found in spectra
@@ -478,98 +479,120 @@ def frames2spectra(frames, nspec=None, startspec=None, with_scores=False, with_r
     return spectra
 
 
-def specviewer_selection(spectra, log=None, mask=None, mask_type=None, gmag_cut=None, rmag_cut=None, chi2cut=None, zbest=None, snr_cut=None, with_dirty_mask_merge=False, remove_scores=False) :
+def metadata_selection(spectra, mask=None, mask_type=None, gmag_cut=None, rmag_cut=None, chi2cut=None, snr_cut=None, with_dirty_mask_merge=False, zcat=None, log=None):
     '''
-    Simple sub-selection on spectra based on meta-data.
-        Implemented cuts based on : target mask ; photo mag (g, r) ; chi2 from fit ; SNR (in spectra.scores, BRZ)
-        - if chi2cut : a catalog zbest must be provided, with entries matching exactly those of spectra
+    Simple selection of DESI spectra based on various metadata.
+    Filtering based on the logical AND of requested selection criteria.
+
+    Parameters:
+    -----------
+    spectra: DESI Spectra object
+    mask (string): DESI targeting mask to select, eg 'ELG'. Requires to set mask_type.
+    mask_type (string): DESI targeting mask category, currently supported: 'DESI_TARGET', 'BGS_TARGET',
+        'MWS_TARGET', 'SECONDARY_TARGET', 'CMX_TARGET', 'SV1_DESI_TARGET', 'SV1_BGS_TARGET',
+        'SV1_MWS_TARGET', 'SV1_SCND_TARGET'.
+    with_dirty_mask_merge (bool): option for specific targeting mask selection in CMX data, see code...
+    gmag_cut (list): g magnitude range to select, gmag_cut = [gmag_min, gmag_max]
+    rmag_cut (list): r magnitude range to select, rmag_cut = [rmag_min, rmag_max]
+    snr_cut (list): SNR range to select, snr_cut = [snr_min, snr_max].
+                    This cut applies on all B, R and Z bands, from scores.MEDIAN_CALIB_SNR_band.
+    chi2cut (list): chi2 range to select, chi2cut = [chi2_min, chi2_max]. Requires to set zcat.
+    zcat (:class:`~astropy.table.Table`): catalog with chi2 information, must be matched to spectra.
+    log: optional log.
+
+    Returns:
+    --------
+    :class:`~desispec.spectra.Spectra`
     '''
-    # TODO: all selections use spectra.select(targets=..) => create single list of targetids and use spectra.select() only once
+    keep = np.ones(len(spectra.fibermap))
 
     # SNR selection
     if snr_cut is not None :
-        assert ( (len(snr_cut)==2) and (spectra.scores is not None) )
+        if spectra.scores is None:
+            raise RuntimeError('No scores in spectra: cannot select on SNR')
         for band in ['B','R','Z'] :
-            w, = np.where( (spectra.scores['MEDIAN_CALIB_SNR_'+band]>snr_cut[0]) & (spectra.scores['MEDIAN_CALIB_SNR_'+band]<snr_cut[1]) )
-            if len(w) == 0 :
-                if log is not None : log.info(" * No spectra with MEDIAN_CALIB_SNR_"+band+" in requested range")
-                return 0
+            keep_snr = (spectra.scores['MEDIAN_CALIB_SNR_'+band]>snr_cut[0]) &
+                       (spectra.scores['MEDIAN_CALIB_SNR_'+band]<snr_cut[1])
+            if np.all(~keep_snr):
+                if log is not None :
+                    log.info(" * No spectra with MEDIAN_CALIB_SNR_"+band+" in requested range")
+                return None
             else :
-                targetids = spectra.fibermap['TARGETID'][w]
-                try:
-                    spectra = spectra.select(targets=targetids, include_scores=(not remove_scores))
-                except RuntimeError as select_err:
-                    if log is not None: log.info(select_err)
-                    return None
+                keep = keep & keep_snr
 
     # Target mask selection
     if mask is not None :
-        assert _desitarget_imported
+        if not _desitarget_imported:
+            raise RuntimeError('desitarget not imported: cannot select on targeting mask')
         if mask_type not in spectra.fibermap.keys():
             raise ValueError("mask_type is not in spectra.fibermap: "+mask_type)
         mask_used = supported_desitarget_masks[mask_type]
-        assert ( mask in mask_used.names() )
-        w, = np.where( (spectra.fibermap[mask_type] & mask_used[mask]) )
-        if mask_type == 'CMX_TARGET' and with_dirty_mask_merge: # Self-explanatory... only for fast VI of minisv
+        if mask not in mask_used.names():
+            raise ValueError("requested mask "+mask+" does not match mask_type "+mask_type)
+        keep_mask = (spectra.fibermap[mask_type] & mask_used[mask])
+        if mask_type == 'CMX_TARGET' and with_dirty_mask_merge:
+            #- Self-explanatory... only for fast VI of minisv
             mask2 = None
             if mask in ['SV0_QSO', 'SV0_ELG', 'SV0_LRG']: mask2 = mask.replace('SV0','MINI_SV')
             if mask == 'SV0_BGS': mask2 = 'MINI_SV_BGS_BRIGHT'
             if mask in ['SV0_STD_FAINT', 'SV0_STD_BRIGHT']: mask2 = mask.replace('SV0_','')
             if mask2 is not None:
-                w, = np.where( (spectra.fibermap[mask_type] & mask_used[mask]) |
-                             (spectra.fibermap[mask_type] & mask_used[mask2]) )
-        if len(w) == 0 :
+                keep_mask = (spectra.fibermap[mask_type] & mask_used[mask]) |
+                            (spectra.fibermap[mask_type] & mask_used[mask2])
+        if np.all(~keep_mask):
             if log is not None : log.info(" * No spectra with mask "+mask)
-            return 0
+            return None
         else :
-            targetids = spectra.fibermap['TARGETID'][w]
-            try:
-                spectra = spectra.select(targets=targetids, include_scores=(not remove_scores))
-            except RuntimeError as select_err:
-                if log is not None: log.info(select_err)
-                return None
+            keep = keep & keep_mask
 
     # Photometry selection
     if gmag_cut is not None :
-        assert len(gmag_cut)==2 # Require range [gmin, gmax]
+        if len(gmag_cut)!=2 or gmag_cut[1]<gmag_cut[0]:
+            raise ValueError("Wrong input gmag_cut")
         gmag = np.zeros(spectra.num_spectra())
-        w, = np.where( (spectra.fibermap['FLUX_G']>0) & (spectra.fibermap['MW_TRANSMISSION_G']>0) )
-        gmag[w] = -2.5*np.log10(spectra.fibermap['FLUX_G'][w]/spectra.fibermap['MW_TRANSMISSION_G'][w])+22.5
-        w, = np.where( (gmag>gmag_cut[0]) & (gmag<gmag_cut[1]) )
-        if len(w) == 0 :
+        w, = np.where( (spectra.fibermap['FLUX_G']>0) )
+        gmag[w] = -2.5*np.log10(spectra.fibermap['FLUX_G'][w])+22.5
+        if 'MW_TRANSMISSION_G' in spectra.fibermap.keys():
+            w, = np.where( (spectra.fibermap['FLUX_G']>0) & (spectra.fibermap['MW_TRANSMISSION_G']>0) )
+            gmag[w] = -2.5*np.log10(spectra.fibermap['FLUX_G'][w]/spectra.fibermap['MW_TRANSMISSION_G'][w])+22.5
+        keep_gmag = (gmag>gmag_cut[0]) & (gmag<gmag_cut[1])
+        if np.all(~keep_gmag):
             if log is not None : log.info(" * No spectra with g_mag in requested range")
-            return 0
+            return None
         else :
-            targetids = spectra.fibermap['TARGETID'][w]
-            spectra = spectra.select(targets=targetids)
+            keep = keep & keep_gmag
+
     if rmag_cut is not None :
-        assert len(rmag_cut)==2 # Require range [rmin, rmax]
+        if len(rmag_cut)!=2 or rmag_cut[1]<rmag_cut[0]:
+            raise ValueError("Wrong input rmag_cut")
         rmag = np.zeros(spectra.num_spectra())
-        w, = np.where( (spectra.fibermap['FLUX_R']>0) & (spectra.fibermap['MW_TRANSMISSION_R']>0) )
-        rmag[w] = -2.5*np.log10(spectra.fibermap['FLUX_R'][w]/spectra.fibermap['MW_TRANSMISSION_R'][w])+22.5
-        w, = np.where( (rmag>rmag_cut[0]) & (rmag<rmag_cut[1]) )
-        if len(w) == 0 :
+        w, = np.where( (spectra.fibermap['FLUX_R']>0) )
+        rmag[w] = -2.5*np.log10(spectra.fibermap['FLUX_R'][w])+22.5
+        if 'MW_TRANSMISSION_R' in spectra.fibermap.keys():
+            w, = np.where( (spectra.fibermap['FLUX_R']>0) & (spectra.fibermap['MW_TRANSMISSION_R']>0) )
+            rmag[w] = -2.5*np.log10(spectra.fibermap['FLUX_R'][w]/spectra.fibermap['MW_TRANSMISSION_R'][w])+22.5
+        keep_rmag = (rmag>rmag_cut[0]) & (rmag<rmag_cut[1])
+        if np.all(~keep_rmag):
             if log is not None : log.info(" * No spectra with r_mag in requested range")
-            return 0
+            return None
         else :
-            targetids = spectra.fibermap['TARGETID'][w]
-            spectra = spectra.select(targets=targetids, include_scores=(not remove_scores))
+            keep = keep & keep_rmag
 
     # Chi2 selection
     if chi2cut is not None :
-        assert len(chi2cut)==2 # Require range [chi2min, chi2max]
-        if np.any(zbest['TARGETID'] != spectra.fibermap['TARGETID']) :
-            raise RuntimeError('specviewer_selection : zbest and spectra do not match (different targetids)')
+        if len(chi2cut)!=2 or chi2cut[1]<chi2cut[0]:
+            raise ValueError("Wrong input chi2cut")
+        if np.any(zcat['TARGETID'] != spectra.fibermap['TARGETID']) :
+            raise RuntimeError('zcat and spectra do not match (different targetids)')
 
-        w, = np.where( (zbest['DELTACHI2']>chi2cut[0]) & (zbest['DELTACHI2']<chi2cut[1]) )
-        if len(w) == 0 :
+        keep_chi2 = (zcat['DELTACHI2']>chi2cut[0]) & (zcat['DELTACHI2']<chi2cut[1])
+        if np.all(~keep_chi2):
             if log is not None : log.info(" * No target in this pixel with DeltaChi2 in requested range")
-            return 0
+            return None
         else :
-            targetids = spectra.fibermap['TARGETID'][w]
-            spectra = spectra.select(targets=targetids, include_scores=(not remove_scores))
+            keep = keep & keep_chi2
 
-    return spectra
+    return spectra[keep]
 
 
 def _coadd(wave, flux, ivar, rdat):

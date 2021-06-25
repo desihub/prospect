@@ -22,7 +22,7 @@ import desispec.spectra
 import desispec.frame
 
 from ..viewer import plotspectra
-from ..utilities import frames2spectra, specviewer_selection, coadd_targets
+from ..utilities import frames2spectra, metadata_selection, coadd_targets
 
 def _parse():
 
@@ -127,9 +127,9 @@ def page_subset_expo(fdir, exposure, frametype, petals, html_dir, titlepage_pref
 
         # Selection
         if (mask != None) or (snr_cut != None) :
-            spectra = specviewer_selection(spectra, log=log,
+            spectra = metadata_selection(spectra, log=log,
                         mask=mask, mask_type='CMX_TARGET', snr_cut=snr_cut, with_dirty_mask_merge=True)
-            if spectra == 0 : continue
+            if spectra is None : continue
 
         # Handle several html pages per exposure - sort by fiberid
         nspec_expo = spectra.num_spectra()
@@ -166,9 +166,9 @@ def page_subset_tile(fdir, tile_db_subset, frametype, html_dir, titlepage_prefix
             spectra = frames2spectra(frames, with_scores=True, with_resolution_data=True)
             # Filtering
             if (mask != None) or (snr_cut != None) :
-                spectra = specviewer_selection(spectra, log=log,
+                spectra = metadata_selection(spectra, log=log,
                             mask=mask, mask_type='CMX_TARGET', snr_cut=snr_cut, with_dirty_mask_merge=True)
-                if spectra == 0 : continue
+                if spectra is None : continue
             # Merge
             if all_spectra is None :
                 all_spectra = spectra

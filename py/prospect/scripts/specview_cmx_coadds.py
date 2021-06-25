@@ -20,7 +20,7 @@ import desispec.spectra
 import desispec.frame
 
 from ..viewer import plotspectra
-from ..utilities import specviewer_selection, match_redrockfile_to_spectra, match_catalog_to_spectra
+from ..utilities import metadata_selection, match_redrockfile_to_spectra, match_catalog_to_spectra
 
 # List of bad fibers in CMX data (see eg SB / KD emails 23-24/03/2020)
 _bad_fibers_cmx = [
@@ -109,9 +109,9 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
         spectra = desispec.io.read_spectra(fname)
         # Filtering
         if (mask != None) or (snr_cut != None) :
-            spectra = specviewer_selection(spectra, log=log,
+            spectra = metadata_selection(spectra, log=log,
                         mask=mask, mask_type=mask_type, snr_cut=snr_cut, with_dirty_mask_merge=True)
-            if spectra == 0 : continue
+            if spectra is None : continue
         # Display multiple models: requires redrock catalog
         # Hardcoded: display up to 4th best fit (=> need 5 best fits in redrock table)
         if with_multiple_models :

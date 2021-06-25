@@ -24,7 +24,7 @@ import desispec.spectra
 import desispec.frame
 
 from ..viewer import plotspectra
-from ..utilities import coadd_targets, specviewer_selection, match_catalog_to_spectra
+from ..utilities import coadd_targets, metadata_selection, match_catalog_to_spectra
 
 
 def _parse():
@@ -78,10 +78,10 @@ def main():
             log.info("No associated zbest file found : skipping pixel")
             continue
 
-        spectra = specviewer_selection(spectra, log=log,
+        spectra = metadata_selection(spectra, log=log,
                         mask=args.mask, mask_type=args.mask_type, gmag_cut=args.gcut, rmag_cut=args.rcut,
-                        chi2cut=args.chi2cut, zbest=zbest)
-        if spectra == 0 : continue
+                        chi2cut=args.chi2cut, zcat=zbest)
+        if spectra is None : continue
 
         # Handle several html pages per pixel : sort by TARGETID
         # TODO - Find a more useful sort ?
