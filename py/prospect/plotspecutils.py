@@ -361,7 +361,6 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
 
     if thumb_height is None : thumb_height = thumb_width//2
     if titles is not None : assert len(titles) == spectra.num_spectra()
-    # thumb_wave, thumb_flux, dummy = mycoaddcam(spectra)
     thumb_wave, thumb_flux, dummy = coaddcam_prospect(spectra)
     kernel = astropy.convolution.Gaussian1DKernel(stddev=resamp_factor)
 

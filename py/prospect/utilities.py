@@ -146,21 +146,21 @@ def get_resources(filetype):
     return _resource_cache[filetype]
 
 
-def match_catalog_to_spectra(zcat_in, spectra, return_indices=False):
+def match_catalog_to_spectra(zcat_in, spectra, return_index=False):
     """ Creates a subcatalog, matching a set of DESI spectra
 
     Parameters
     ----------
     zcat_in : :class:`~astropy.table.Table`, with TARGETID keys
     spectra : :class:`~desispec.spectra.Spectra`
-    return_indices : :class:`bool`, optional
+    return_index : :class:`bool`, optional
         If ``True``, returns the list of indices in zcat_in which match spectra
 
     Returns
     -------
     :class:`~astropy.table.Table`
         A subtable of zcat_in, with rows matching input spectra's TARGETIDs
-        If return_indices is ``True``, returns (subtable, list of indices)
+        If return_index is ``True``, returns (subtable, list of indices)
 
     Raises
     ------
@@ -180,7 +180,7 @@ def match_catalog_to_spectra(zcat_in, spectra, return_indices=False):
             raise RuntimeError("Several entries in zcat_in for TARGETID "+str(spectra.fibermap['TARGETID'][i_spec]))
         zcat_out.add_row(zcat_in[ww[0]])
         index_list.append(ww[0])
-    if return_indices:
+    if return_index:
         return (zcat_out, index_list)
     else:
         return zcat_out
@@ -241,7 +241,7 @@ def create_zcat_from_redrock_cat(redrock_cat, fit_num=0):
     redrock_cat : :class:`~astropy.table.Table`
         Catalog with rows as defined in `match_redrockfile_to_spectra()`
     fit_num : :class:`int`, optional
-        The (fit_num)th best fit is extracted
+        The (fit_num)th fit in redrock_cat is extracted (default: 0 ie. redrock's best fit)
 
     Returns
     -------
@@ -332,6 +332,8 @@ def load_spectra_zcat_from_targets(targetids, basedir, targetdb, dirtree_type='p
 
     This works using a "mini-db" of targetids, as returned by `create_targetdb`.
     The outputs of this utility can be used directly by `viewer.plotspectra()`, to inspect a given list of targetids.
+    Output spectra/catalog(s) are sorted according to the input target list.
+        When several spectra are available for a given TARGETID, they are all included in the output, in random order.
 
     Parameters
     ----------
@@ -359,7 +361,6 @@ def load_spectra_zcat_from_targets(targetids, basedir, targetdb, dirtree_type='p
         and zcat is ~astropy.table.Table`.
         If with_redrock is `True`, returns (spectra, zcat, redrockcat) where redrockcat is `~astropy.table.Table`.
     """
-    # TODO Sort final result in the same order as the input list of TARGETIDs
 
     targetids = np.asarray(targetids)
     if targetids.dtype not in ['int64', 'i8', '>i8']:
@@ -373,21 +374,24 @@ def load_spectra_zcat_from_targets(targetids, basedir, targetdb, dirtree_type='p
     
         # Load spectra for that tile-subset-petal only if one or more target(s) are in the list
         if len(targets_subset)>0 :
-            subset_label = subset
-            if dirtree_type=='cumulative': subset_label = 'thru'+subset_label
-            if dirtree_type=='perexp': subset_label = 'exp'+subset_label
+            if dirtree_type=='cumulative':
+                subset_label = 'thru'+subset
+            elif dirtree_type=='perexp':
+                subset_label = 'exp'+subset
+            else:
+                subset_label = subset
             file_label = '-'.join([petal, tile, subset_label])
             the_path = os.path.join(basedir, tile, subset)
-            the_spec = desispec.io.read_spectra(os.path.join(the_path,"coadd-"+file_label+".fits"))
-            the_spec = the_spec.select(targets=sorted(targets_subset), include_scores=False)
-            the_zcat = Table.read(os.path.join(the_path,"zbest-"+file_label+".fits"),'ZBEST')
+            the_spec = desispec.io.read_spectra(os.path.join(the_path, "coadd-"+file_label+".fits"))
+            the_spec = the_spec.select(targets=sorted(targets_subset))
+            the_zcat = Table.read(os.path.join(the_path, "zbest-"+file_label+".fits"), 'ZBEST')
             if with_redrock_version:
-                hdulist = astropy.io.fits.open(os.path.join(the_path,"zbest-"+file_label+".fits"))
+                hdulist = astropy.io.fits.open(os.path.join(the_path, "zbest-"+file_label+".fits"))
                 the_zcat['RRVER'] = hdulist[hdulist.index_of('PRIMARY')].header['RRVER']
             the_zcat = match_catalog_to_spectra(the_zcat, the_spec)
             ztables.append(the_zcat)
             if with_redrock:
-                rrfile = os.path.join(the_path,"redrock-"+file_label+".h5")
+                rrfile = os.path.join(the_path, "redrock-"+file_label+".h5")
                 the_rrcat = match_redrockfile_to_spectra(rrfile, the_spec, Nfit=None)
                 rrtables.append(the_rrcat)
             if spectra is None:
@@ -395,17 +399,25 @@ def load_spectra_zcat_from_targets(targetids, basedir, targetdb, dirtree_type='p
             else:
                 spectra.update(the_spec)
 
-    # Check if all targets were found in spectra
+    #- Sort according to input target list. Check if all targets were found in spectra
     tids_spectra = spectra.fibermap['TARGETID']
+    sorted_indices = []
     for target in targetids:
-        if target not in tids_spectra: print("Warning! TARGETID not found:", target)
+        w, = np.where(tids_spectra == target)
+        sorted_indices.extend(w)
+        if len(w)==0:
+            print("Warning! TARGETID not found:", target)
+    assert(len(tids_spectra)==len(sorted_indices)) # check, should always be true
+    spectra = spectra[ sorted_indices ]
 
     zcat = vstack(ztables)
+    zcat = zcat[ sorted_indices ]
     if with_redrock:
         rrcat = vstack(rrtables)
+        rrcat = rrcat[ sorted_indices ]
         return (spectra, zcat, rrcat)
     else:
-        return (spectra,zcat)
+        return (spectra, zcat)
 
 
 def frames2spectra(frames, nspec=None, startspec=None, with_scores=False, with_resolution_data=False):
