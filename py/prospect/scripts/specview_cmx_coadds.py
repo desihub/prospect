@@ -20,7 +20,7 @@ import desispec.spectra
 import desispec.frame
 
 from ..viewer import plotspectra
-from ..utilities import metadata_selection, match_redrockfile_to_spectra, match_catalog_to_spectra
+from ..utilities import metadata_selection, match_redrockfile_to_spectra, match_catalog_to_spectra, create_subsetdb
 
 # List of bad fibers in CMX data (see eg SB / KD emails 23-24/03/2020)
 _bad_fibers_cmx = [
@@ -55,48 +55,13 @@ def _parse():
     return args
 
 
-def tile_db(specprod_dir, tile_subset=None, night_subset=None, petals=None, with_zcatalog=False, cumulative=False) :
-    '''
-    Returns [ {tile, night, petals} for all tile/night available in specprod_dir/tiles tree ],
-        with b,r,z frames whose name matches frametype
-        tile_subset : list; if None, all available tiles will be included in the list
-        night_subset : list; if not None, only coadds from these nights are included
-        petals (list of strings) : select only data from a set of petals
-        with_zcatalog : select only petals with a zbest file
-    '''
-
-    if petals is None : petals = [str(i) for i in range(10)]
-    tiles_db = list()
-    basedir = os.path.join(specprod_dir,'tiles')
-    if cumulative: basedir = os.path.join(basedir,'cumulative')
-    for tile in os.listdir(basedir) :
-        if tile_subset is not None and tile not in tile_subset : continue
-        for night in os.listdir( os.path.join(basedir,tile) ) :
-            if night_subset is not None and night not in night_subset : continue
-            petals_avail = []
-            for petal_num in petals :
-                add_petal = True
-                night_label = 'thru'+night if cumulative else night
-                filename = "coadd-"+petal_num+"-"+tile+"-"+night_label+".fits"
-                if not os.path.isfile( os.path.join(basedir,tile,night,filename) ) : add_petal=False
-                if with_zcatalog :
-                    filename = "zbest-"+petal_num+"-"+tile+"-"+night_label+".fits"
-                    if not os.path.isfile( os.path.join(basedir,tile,night,filename) ) : add_petal=False
-                if add_petal :
-                    petals_avail.append(petal_num)
-            if len(petals_avail) > 0 :
-                tiles_db.append( { 'tile':tile, 'night':night, 'petals':petals_avail} )
-
-    return tiles_db
-
-
 def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log, nspecperfile, snr_cut, with_zcatalog=False, template_dir=None, clean_bad_fibers_cmx=False, with_multiple_models=False, mask_type='CMX_TARGET', top_metadata=None) :
     '''
     Running prospect from coadds.
     '''
 
     tile = tile_db_subset['tile']
-    night = tile_db_subset['night']
+    night = tile_db_subset['subset']
     night_label = 'thru'+night if 'cumulative' in fdir else night
     nspec_done = 0
     all_spectra = None
@@ -138,6 +103,7 @@ def page_subset_tile(fdir, tile_db_subset, html_dir, titlepage_prefix, mask, log
             except RuntimeError as select_err:
                 log.info(select_err)
                 return 0
+        #- Remove bad fibers (maybe this should just be an option?)
         if 'FIBERSTATUS' in all_spectra.fibermap.keys():
                 all_spectra = all_spectra[ (all_spectra.fibermap['FIBERSTATUS']==0) ]
 
@@ -210,8 +176,14 @@ def main():
     elif args.night_list is not None :
         night_subset = np.loadtxt(args.night_list, dtype=str, comments='#')
     else : night_subset = None
-    subset_db = tile_db(args.specprod_dir, tile_subset=tile_subset, night_subset=night_subset,
-                        petals=args.petals, with_zcatalog=args.with_zcatalog, cumulative=args.cumulative)
+    ## NB: the following is not adapted to data productions >= denali
+    dirtree_type = 'pernight'
+    basedir = os.path.join(specprod_dir,'tiles')
+    if args.cumulative:
+        dirtree_type = 'cumulative'
+        basedir = os.path.join(specprod_dir,'tiles','cumulative')
+    subset_db = create_subsetdb(basedir, dirtree_type=dirtree_type, tiles=tile_subset,
+                               nights=night_subset, petals=args.petals, with_zcat=args.with_zcatalog)
     tmplist = [ x['tile'] for x in subset_db ]
     missing_tiles = [ x for x in tile_subset if x not in tmplist ]
     for x in missing_tiles : log.info("Missing tile, cannot be processed: "+x)
@@ -221,15 +193,15 @@ def main():
     nspec_done = 0
     for the_subset in subset_db :
 
-        log.info("Working on tile "+the_subset['tile']+" - night "+the_subset['night'])
+        log.info("Working on tile "+the_subset['tile']+" - night "+the_subset['subset'])
         if args.cumulative:
-            fdir = os.path.join( args.specprod_dir, 'tiles', 'cumulative', the_subset['tile'], the_subset['night'] )
+            fdir = os.path.join( args.specprod_dir, 'tiles', 'cumulative', the_subset['tile'], the_subset['subset'] )
         else:
-            fdir = os.path.join( args.specprod_dir, 'tiles', the_subset['tile'], the_subset['night'] )
-        html_dir = os.path.join(webdir,"tiles",the_subset['tile'],the_subset['night'])
-        titlepage_prefix = "tile"+the_subset['tile']+"_night"+the_subset['night']
+            fdir = os.path.join( args.specprod_dir, 'tiles', the_subset['tile'], the_subset['subset'] )
+        html_dir = os.path.join(webdir,"tiles",the_subset['tile'],the_subset['subset'])
+        titlepage_prefix = "tile"+the_subset['tile']+"_night"+the_subset['subset']
         if args.mask != None :
-            html_dir = os.path.join(webdir, "tiles_"+args.mask, the_subset['tile'],the_subset['night'])
+            html_dir = os.path.join(webdir, "tiles_"+args.mask, the_subset['tile'],the_subset['subset'])
             titlepage_prefix = args.mask+"_"+titlepage_prefix
         if not os.path.exists(html_dir) :
             os.makedirs(html_dir)

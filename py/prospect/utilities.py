@@ -264,40 +264,53 @@ def create_zcat_from_redrock_cat(redrock_cat, fit_num=0):
     return zcat_out
 
 
-def create_targetdb(basedir, dirtree_type='pernight', petals=[str(i) for i in range(10)], tiles=None, nights=None, expids=None):
-    """ Create a "mini-db" of DESI targetids.
-        To do so, `zbest` files are read (faster than reading spectra).
-        Tile-based directory trees for daily, andes, ... to denali are supported.
+def _subset_label(subset, dirtree_type):
+    if dirtree_type=='cumulative':
+        label = 'thru'+subset
+    elif dirtree_type=='perexp':
+        label = 'exp'+subset
+    elif dirtree_type=='pernight':
+        label = subset
+    else:
+        raise ValueError("Unrecognized value for dirtree_type.")
+    return label
+
+def create_subsetdb(basedir, dirtree_type=None, spectra_type='coadd', tiles=None, nights=None, expids=None, petals=[str(i) for i in range(10)], with_zcat=False):
+        """ Create a "mini-db" of DESI spectra files, in a given directory tree.
+        Supports tile-based directory trees for daily, andes, ... to denali.
+        This routine does not open files, it just checks they exist.
 
         Parameters
         ----------
         basedir : :class:`string`
+        spectra_type : :class:`string`, optional
         dirtree_type : :class:`string`
             The directory tree and file names must be the following:
-                dirtree_type='pernight': {basedir}/{tileid}/{night}/zbest-{petal}-{tile}-{night}.fits
-                dirtree_type='perexp': {basedir}/{tileid}/{expid}/zbest-{petal}-{tile}-exp{expid}.fits
-                dirtree_type='cumulative': {basedir}/{tileid}/{night}/zbest-{petal}-{tile}-thru{night}.fits
-            To use blanc/cascades 'all' (resp 'deep') coadds, use dirtree_type='pernight' and nights=['all'] (resp 'deep')
+                dirtree_type='pernight': {basedir}/{tileid}/{night}/{spectra_type}-{petal}-{tile}-{night}.fits
+                dirtree_type='perexp': {basedir}/{tileid}/{expid}/{spectra_type}-{petal}-{tile}-exp{expid}.fits
+                dirtree_type='cumulative': {basedir}/{tileid}/{night}/{spectra_type}-{petal}-{tile}-thru{night}.fits
+            To use blanc/cascades 'all' (resp 'deep') coadds, use dirtree_type='pernight' and nights=['all'] (resp ['deep']).
         petals : :class:`list`, optional
-            Filter a set of petal numbers
+            Filter a set of petal numbers.
         tiles : :class:`list`, optional
-            Filter a set of tiles
+            Filter a list of tiles.
         nights : :class:`list`, optional
-            Filter a set of nights (only if dirtree_type='pernight')
+            Filter a list of nights (only if dirtree_type='pernight').
         expids : :class:`list`, optional
-            Filter a set of exposures (only if dirtree_type='perexp')
+            Filter a list of exposures (only if dirtree_type='perexp').
+        with_zcat : :class:`bool`, optional
+            Filter spectra for which a 'zbest' file exists at the same location.
 
         Returns
         -------
         :class:`dict`
-            Content of the "mini-db": { (tile, subset, petal): [list of TARGETIDs] } where subset is a night or expid.
+            Content of the "mini-db": [ {'tile':tile, 'subset':subset, 'petals':[list of petals]}]
+            where subset is an expid (dirtree_type='perexp') or a night (others).
     """
     # TODO support (everest) healpix-based directory trees
 
-    if dirtree_type not in ['pernight', 'perexp', 'cumulative']:
-        raise ValueError('Unrecognized value for dirtree_type')
     if (nights is not None and dirtree_type!='pernight') or (expids is not None and dirtree_type!='perexp'):
-        raise ValueError('Incompatible options nights/expids and dirtree_type')
+        raise ValueError('Nights/expids option is incompatible with dirtree_type.')
     if tiles is None :
         tiles = os.listdir(basedir)
     else :
@@ -305,24 +318,57 @@ def create_targetdb(basedir, dirtree_type='pernight', petals=[str(i) for i in ra
         if not all(x in alltiles for x in tiles):
             raise RuntimeError('Some tile[s] were not found in directory tree.')
 
-    targetdb = dict()
+    subsetdb = list()
     for tile in tiles:
         tile_subsets = os.listdir(os.path.join(basedir,tile))
         if nights is not None:
             tile_subsets = [ x for x in tile_subsets if x in nights ]
         elif expids is not None:
             tile_subsets = [ x for x in tile_subsets if x in expids ]
-        else: # No subset selection, but we discard subdirs with non-decimal names
+        else:
+            #- No subset selection, but we discard subdirectories with non-decimal names
             tile_subsets = [ x for x in tile_subsets if x.isdecimal() ]
         for subset in tile_subsets:
+            existing_petals = []
             for petal in petals:
-                subset_label = subset
-                if dirtree_type=='cumulative': subset_label = 'thru'+subset_label
-                if dirtree_type=='perexp': subset_label = 'exp'+subset_label
-                fname = os.path.join(basedir, tile, subset, 'zbest-'+petal+'-'+tile+'-'+subset_label+'.fits')
-                if os.path.isfile(fname):
-                    targetids = np.unique(Table.read(fname,'ZBEST')['TARGETID'])
-                    targetdb[tile, subset, petal] = np.array(targetids, dtype='int64')
+                subset_label = _subset_label(subset, dirtree_type)
+                spectra_fname = os.path.join(basedir, tile, subset, spectra_type+'-'+petal+'-'+tile+'-'+subset_label+'.fits')
+                zcat_fname = os.path.join(basedir, tile, subset, 'zbest-'+petal+'-'+tile+'-'+subset_label+'.fits')
+                if os.path.isfile(spectra_fname) and ( (not with_zcat) or os.path.isfile(zcat_fname) ):
+                    existing_petals.append(petal)
+            if len(existing_petals)>0:
+                subsetdb.append( {'tile':tile, 'subset':subset,'petals':existing_petals})
+
+    return subsetdb
+
+def create_targetdb(basedir, subsetdb, dirtree_type=None):
+    """ Create a "mini-db" of DESI targetids.
+        To do so, `zbest` files are read (faster than reading spectra).
+        Makes use of a DESI spectra file "mini-db" produced by create_subsetdb().
+
+        Parameters
+        ----------
+        basedir : :class:`string`
+        subsetdb: :class:`list`
+            List of spectra subsets, as produced by create_subsetdb().
+            Format: [ {'tile':tile, 'subset':subset, 'petal':petal}]
+        dirtree_type : :class:`string`
+            See documentation in create_subsetdb().
+            Tile-based directory trees for daily, andes, ... to denali are supported.
+
+        Returns
+        -------
+        :class:`dict`
+            Content of the "mini-db": { (tile, subset, petal): [list of TARGETIDs] } where subset is a night or expid.
+    """
+    targetdb = dict()
+    for the_entry in subsetdb:
+        subset_label = _subset_label(the_entry['subset'], dirtree_type)
+        for petal in the_entry['petals']:
+            fname = os.path.join(basedir, the_entry['tile'], the_entry['subset'],
+                                 'zbest-'+petal+'-'+the_entry['tile']+'-'+subset_label+'.fits')
+            targetids = np.unique(Table.read(fname,'ZBEST')['TARGETID'])
+            targetdb[ tuple(the_entry.values()) ] = np.array(targetids, dtype='int64')
 
     return targetdb
 
@@ -330,7 +376,7 @@ def create_targetdb(basedir, dirtree_type='pernight', petals=[str(i) for i in ra
 def load_spectra_zcat_from_targets(targetids, basedir, targetdb, dirtree_type='pernight', with_redrock=False, with_redrock_version=True):
     """ Get spectra, 'ZBEST' catalog and optional full Redrock catalog matched to a set of DESI TARGETIDs.
 
-    This works using a "mini-db" of targetids, as returned by `create_targetdb`.
+    This works using a "mini-db" of targetids, as returned by `create_targetdb()`.
     The outputs of this utility can be used directly by `viewer.plotspectra()`, to inspect a given list of targetids.
     Output spectra/catalog(s) are sorted according to the input target list.
         When several spectra are available for a given TARGETID, they are all included in the output, in random order.

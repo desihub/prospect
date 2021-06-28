@@ -17,7 +17,7 @@ import desispec.io
 from desiutil.log import get_logger
 
 from ..viewer import plotspectra
-from ..utilities import create_targetdb, load_spectra_zcat_from_targets
+from ..utilities import create_targetdb, create_subsetdb, load_spectra_zcat_from_targets
 
 def _parse():
 
@@ -63,7 +63,8 @@ def main():
     log.info("Tiles: "+' '.join(tile_list))
 
     dirtree_type = 'cumulative' if args.cumulative else 'pernight'
-    target_db = create_targetdb(tile_dir, dirtree_type=dirtree_type, tiles=tile_list, nights=args.nights)
+    subset_db = create_subsetdb(tile_dir, dirtree_type=dirtree_type, tiles=tile_list, nights=args.nights)
+    target_db = create_targetdb(tile_dir, subset_db, dirtree_type=dirtree_type)
     if args.with_multiple_models :
         spectra, zcat, rrtable = load_spectra_zcat_from_targets(targetids, tile_dir, target_db, dirtree_type=dirtree_type, with_redrock=True)
     else :
