@@ -37,6 +37,14 @@ try:
     from desitarget.sv1.sv1_targetmask import bgs_mask as sv1_bgs_mask
     from desitarget.sv1.sv1_targetmask import mws_mask as sv1_mws_mask
     from desitarget.sv1.sv1_targetmask import scnd_mask as sv1_scnd_mask
+    from desitarget.sv2.sv2_targetmask import desi_mask as sv2_desi_mask
+    from desitarget.sv2.sv2_targetmask import bgs_mask as sv2_bgs_mask
+    from desitarget.sv2.sv2_targetmask import mws_mask as sv2_mws_mask
+    from desitarget.sv2.sv2_targetmask import scnd_mask as sv2_scnd_mask
+    from desitarget.sv3.sv3_targetmask import desi_mask as sv3_desi_mask
+    from desitarget.sv3.sv3_targetmask import bgs_mask as sv3_bgs_mask
+    from desitarget.sv3.sv3_targetmask import mws_mask as sv3_mws_mask
+    from desitarget.sv3.sv3_targetmask import scnd_mask as sv3_scnd_mask
     supported_desitarget_masks = {
         'DESI_TARGET': desi_mask,
         'BGS_TARGET': bgs_mask,
@@ -47,6 +55,14 @@ try:
         'SV1_BGS_TARGET': sv1_bgs_mask,
         'SV1_MWS_TARGET': sv1_mws_mask,
         'SV1_SCND_TARGET': sv1_scnd_mask,
+        'SV2_DESI_TARGET': sv2_desi_mask,
+        'SV2_BGS_TARGET': sv2_bgs_mask,
+        'SV2_MWS_TARGET': sv2_mws_mask,
+        'SV2_SCND_TARGET': sv2_scnd_mask,
+        'SV3_DESI_TARGET': sv3_desi_mask,
+        'SV3_BGS_TARGET': sv3_bgs_mask,
+        'SV3_MWS_TARGET': sv3_mws_mask,
+        'SV3_SCND_TARGET': sv3_scnd_mask,
         }
 except ImportError:
     _desitarget_imported = False
@@ -264,7 +280,7 @@ def create_zcat_from_redrock_cat(redrock_cat, fit_num=0):
     return zcat_out
 
 
-def _subset_label(subset, dirtree_type):
+def get_subset_label(subset, dirtree_type):
     if dirtree_type=='cumulative':
         label = 'thru'+subset
     elif dirtree_type=='perexp':
@@ -275,52 +291,54 @@ def _subset_label(subset, dirtree_type):
         raise ValueError("Unrecognized value for dirtree_type.")
     return label
 
-def create_subsetdb(basedir, dirtree_type=None, spectra_type='coadd', tiles=None, nights=None, expids=None, petals=[str(i) for i in range(10)], with_zcat=False):
-        """ Create a "mini-db" of DESI spectra files, in a given directory tree.
-        Supports tile-based directory trees for daily, andes, ... to denali.
-        This routine does not open files, it just checks they exist.
+def create_subsetdb(datadir, dirtree_type=None, spectra_type='coadd', tiles=None, nights=None, expids=None, petals=None, with_zcat=True):
+    """ Create a 'mini-db' of DESI spectra files, in a given directory tree.
+    Supports tile-based directory trees for daily, andes, ... to denali.
+    This routine does not open files, it just checks they exist.
 
-        Parameters
-        ----------
-        basedir : :class:`string`
-        spectra_type : :class:`string`, optional
-        dirtree_type : :class:`string`
-            The directory tree and file names must be the following:
-                dirtree_type='pernight': {basedir}/{tileid}/{night}/{spectra_type}-{petal}-{tile}-{night}.fits
-                dirtree_type='perexp': {basedir}/{tileid}/{expid}/{spectra_type}-{petal}-{tile}-exp{expid}.fits
-                dirtree_type='cumulative': {basedir}/{tileid}/{night}/{spectra_type}-{petal}-{tile}-thru{night}.fits
-            To use blanc/cascades 'all' (resp 'deep') coadds, use dirtree_type='pernight' and nights=['all'] (resp ['deep']).
-        petals : :class:`list`, optional
-            Filter a set of petal numbers.
-        tiles : :class:`list`, optional
-            Filter a list of tiles.
-        nights : :class:`list`, optional
-            Filter a list of nights (only if dirtree_type='pernight').
-        expids : :class:`list`, optional
-            Filter a list of exposures (only if dirtree_type='perexp').
-        with_zcat : :class:`bool`, optional
-            Filter spectra for which a 'zbest' file exists at the same location.
+    Parameters
+    ----------
+    datadir : :class:`string`
+    spectra_type : :class:`string`, optional
+    dirtree_type : :class:`string`
+        The directory tree and file names must be the following:
+            dirtree_type='pernight': {datadir}/{tileid}/{night}/{spectra_type}-{petal}-{tile}-{night}.fits
+            dirtree_type='perexp': {datadir}/{tileid}/{expid}/{spectra_type}-{petal}-{tile}-exp{expid}.fits
+            dirtree_type='cumulative': {datadir}/{tileid}/{night}/{spectra_type}-{petal}-{tile}-thru{night}.fits
+        To use blanc/cascades 'all' (resp 'deep') coadds, use dirtree_type='pernight' and nights=['all'] (resp ['deep']).
+    petals : :class:`list`, optional
+        Filter a set of petal numbers.
+    tiles : :class:`list`, optional
+        Filter a list of tiles.
+    nights : :class:`list`, optional
+        Filter a list of nights (only if dirtree_type='pernight').
+    expids : :class:`list`, optional
+        Filter a list of exposures (only if dirtree_type='perexp').
+    with_zcat : :class:`bool`, optional
+        If True, filter spectra for which a 'zbest' file exists at the same location.
 
-        Returns
-        -------
-        :class:`dict`
-            Content of the "mini-db": [ {'tile':tile, 'subset':subset, 'petals':[list of petals]}]
-            where subset is an expid (dirtree_type='perexp') or a night (others).
+    Returns
+    -------
+    :class:`dict`
+        Content of the 'mini-db': [ {'tile':tile, 'subset':subset, 'petals':[list of petals]}]
+        where subset is an expid (dirtree_type='perexp') or a night (others).
     """
     # TODO support (everest) healpix-based directory trees
 
     if (nights is not None and dirtree_type!='pernight') or (expids is not None and dirtree_type!='perexp'):
         raise ValueError('Nights/expids option is incompatible with dirtree_type.')
-    if tiles is None :
-        tiles = os.listdir(basedir)
+    if petals is None:
+        petals = [str(i) for i in range(10)]
+    if tiles is None:
+        tiles = os.listdir(datadir)
     else :
-        alltiles = os.listdir(basedir)
+        alltiles = os.listdir(datadir)
         if not all(x in alltiles for x in tiles):
             raise RuntimeError('Some tile[s] were not found in directory tree.')
 
     subsetdb = list()
     for tile in tiles:
-        tile_subsets = os.listdir(os.path.join(basedir,tile))
+        tile_subsets = os.listdir(os.path.join(datadir,tile))
         if nights is not None:
             tile_subsets = [ x for x in tile_subsets if x in nights ]
         elif expids is not None:
@@ -331,9 +349,9 @@ def create_subsetdb(basedir, dirtree_type=None, spectra_type='coadd', tiles=None
         for subset in tile_subsets:
             existing_petals = []
             for petal in petals:
-                subset_label = _subset_label(subset, dirtree_type)
-                spectra_fname = os.path.join(basedir, tile, subset, spectra_type+'-'+petal+'-'+tile+'-'+subset_label+'.fits')
-                zcat_fname = os.path.join(basedir, tile, subset, 'zbest-'+petal+'-'+tile+'-'+subset_label+'.fits')
+                subset_label = get_subset_label(subset, dirtree_type)
+                spectra_fname = os.path.join(datadir, tile, subset, spectra_type+'-'+petal+'-'+tile+'-'+subset_label+'.fits')
+                zcat_fname = os.path.join(datadir, tile, subset, 'zbest-'+petal+'-'+tile+'-'+subset_label+'.fits')
                 if os.path.isfile(spectra_fname) and ( (not with_zcat) or os.path.isfile(zcat_fname) ):
                     existing_petals.append(petal)
             if len(existing_petals)>0:
@@ -341,14 +359,14 @@ def create_subsetdb(basedir, dirtree_type=None, spectra_type='coadd', tiles=None
 
     return subsetdb
 
-def create_targetdb(basedir, subsetdb, dirtree_type=None):
+def create_targetdb(datadir, subsetdb, dirtree_type=None):
     """ Create a "mini-db" of DESI targetids.
         To do so, `zbest` files are read (faster than reading spectra).
         Makes use of a DESI spectra file "mini-db" produced by create_subsetdb().
 
         Parameters
         ----------
-        basedir : :class:`string`
+        datadir : :class:`string`
         subsetdb: :class:`list`
             List of spectra subsets, as produced by create_subsetdb().
             Format: [ {'tile':tile, 'subset':subset, 'petal':petal}]
@@ -363,9 +381,9 @@ def create_targetdb(basedir, subsetdb, dirtree_type=None):
     """
     targetdb = dict()
     for the_entry in subsetdb:
-        subset_label = _subset_label(the_entry['subset'], dirtree_type)
+        subset_label = get_subset_label(the_entry['subset'], dirtree_type)
         for petal in the_entry['petals']:
-            fname = os.path.join(basedir, the_entry['tile'], the_entry['subset'],
+            fname = os.path.join(datadir, the_entry['tile'], the_entry['subset'],
                                  'zbest-'+petal+'-'+the_entry['tile']+'-'+subset_label+'.fits')
             targetids = np.unique(Table.read(fname,'ZBEST')['TARGETID'])
             targetdb[ tuple(the_entry.values()) ] = np.array(targetids, dtype='int64')
@@ -373,7 +391,7 @@ def create_targetdb(basedir, subsetdb, dirtree_type=None):
     return targetdb
 
 
-def load_spectra_zcat_from_targets(targetids, basedir, targetdb, dirtree_type='pernight', with_redrock=False, with_redrock_version=True):
+def load_spectra_zcat_from_targets(targetids, datadir, targetdb, dirtree_type='pernight', with_redrock=False, with_redrock_version=True):
     """ Get spectra, 'ZBEST' catalog and optional full Redrock catalog matched to a set of DESI TARGETIDs.
 
     This works using a "mini-db" of targetids, as returned by `create_targetdb()`.
@@ -385,12 +403,12 @@ def load_spectra_zcat_from_targets(targetids, basedir, targetdb, dirtree_type='p
     ----------
     targetids : :class:`list` or :class:`numpy.ndarray`
         List of TARGETIDs, must be int64.
-    basedir : :class:`string`
+    datadir : :class:`string`
     dirtree_type : :class:`string`
         The directory tree and file names must be the following, for "coadd", "zbest" and "redrock" files:
-            dirtree_type='pernight': {basedir}/{tileid}/{night}/zbest-{petal}-{tile}-{night}.fits
-            dirtree_type='perexp': {basedir}/{tileid}/{expid}/zbest-{petal}-{tile}-exp{expid}.fits
-            dirtree_type='cumulative': {basedir}/{tileid}/{night}/zbest-{petal}-{tile}-thru{night}.fits
+            dirtree_type='pernight': {datadir}/{tileid}/{night}/zbest-{petal}-{tile}-{night}.fits
+            dirtree_type='perexp': {datadir}/{tileid}/{expid}/zbest-{petal}-{tile}-exp{expid}.fits
+            dirtree_type='cumulative': {datadir}/{tileid}/{night}/zbest-{petal}-{tile}-thru{night}.fits
         To use blanc/cascades 'all' (resp 'deep') coadds, use dirtree_type='pernight' and nights=['all'] (resp 'deep')
     targetdb : :class:`dict`
         Content of the "mini-db": { (tile, subset, petal): [list of TARGETIDs] } where subset is a night or expid.
@@ -420,14 +438,9 @@ def load_spectra_zcat_from_targets(targetids, basedir, targetdb, dirtree_type='p
     
         # Load spectra for that tile-subset-petal only if one or more target(s) are in the list
         if len(targets_subset)>0 :
-            if dirtree_type=='cumulative':
-                subset_label = 'thru'+subset
-            elif dirtree_type=='perexp':
-                subset_label = 'exp'+subset
-            else:
-                subset_label = subset
+            subset_label = get_subset_label(subset, dirtree_type)
             file_label = '-'.join([petal, tile, subset_label])
-            the_path = os.path.join(basedir, tile, subset)
+            the_path = os.path.join(datadir, tile, subset)
             the_spec = desispec.io.read_spectra(os.path.join(the_path, "coadd-"+file_label+".fits"))
             the_spec = the_spec.select(targets=sorted(targets_subset))
             the_zcat = Table.read(os.path.join(the_path, "zbest-"+file_label+".fits"), 'ZBEST')
@@ -525,7 +538,7 @@ def frames2spectra(frames, nspec=None, startspec=None, with_scores=False, with_r
     return spectra
 
 
-def metadata_selection(spectra, mask=None, mask_type=None, gmag_cut=None, rmag_cut=None, chi2cut=None, snr_cut=None, with_dirty_mask_merge=False, zcat=None, log=None):
+def metadata_selection(spectra, mask=None, mask_type=None, gmag_cut=None, rmag_cut=None, chi2cut=None, snr_cut=None, clean_fiberstatus=False, with_dirty_mask_merge=False, zcat=None, log=None):
     '''
     Simple selection of DESI spectra based on various metadata.
     Filtering based on the logical AND of requested selection criteria.
@@ -543,6 +556,7 @@ def metadata_selection(spectra, mask=None, mask_type=None, gmag_cut=None, rmag_c
     snr_cut (list): SNR range to select, snr_cut = [snr_min, snr_max].
                     This cut applies on all B, R and Z bands, from scores.MEDIAN_CALIB_SNR_band.
     chi2cut (list): chi2 range to select, chi2cut = [chi2_min, chi2_max]. Requires to set zcat.
+    clean_fiberstatus (bool): if True, remove spectra with FIBERSTATUS!=0
     zcat (:class:`~astropy.table.Table`): catalog with chi2 information, must be matched to spectra.
     log: optional log.
 
@@ -550,23 +564,23 @@ def metadata_selection(spectra, mask=None, mask_type=None, gmag_cut=None, rmag_c
     --------
     :class:`~desispec.spectra.Spectra`
     '''
-    keep = np.ones(len(spectra.fibermap))
+    keep = np.ones(len(spectra.fibermap), bool)
 
-    # SNR selection
+    #- SNR selection
     if snr_cut is not None :
         if spectra.scores is None:
             raise RuntimeError('No scores in spectra: cannot select on SNR')
         for band in ['B','R','Z'] :
-            keep_snr = (spectra.scores['MEDIAN_CALIB_SNR_'+band]>snr_cut[0]) &
-                       (spectra.scores['MEDIAN_CALIB_SNR_'+band]<snr_cut[1])
+            keep_snr = ( (spectra.scores['MEDIAN_CALIB_SNR_'+band]>snr_cut[0]) &
+                       (spectra.scores['MEDIAN_CALIB_SNR_'+band]<snr_cut[1]) )
             if np.all(~keep_snr):
                 if log is not None :
                     log.info(" * No spectra with MEDIAN_CALIB_SNR_"+band+" in requested range")
                 return None
             else :
-                keep = keep & keep_snr
+                keep = ( keep & keep_snr )
 
-    # Target mask selection
+    #- Target mask selection
     if mask is not None :
         if not _desitarget_imported:
             raise RuntimeError('desitarget not imported: cannot select on targeting mask')
@@ -583,15 +597,15 @@ def metadata_selection(spectra, mask=None, mask_type=None, gmag_cut=None, rmag_c
             if mask == 'SV0_BGS': mask2 = 'MINI_SV_BGS_BRIGHT'
             if mask in ['SV0_STD_FAINT', 'SV0_STD_BRIGHT']: mask2 = mask.replace('SV0_','')
             if mask2 is not None:
-                keep_mask = (spectra.fibermap[mask_type] & mask_used[mask]) |
-                            (spectra.fibermap[mask_type] & mask_used[mask2])
+                keep_mask = ( (spectra.fibermap[mask_type] & mask_used[mask]) |
+                            (spectra.fibermap[mask_type] & mask_used[mask2]) )
         if np.all(~keep_mask):
             if log is not None : log.info(" * No spectra with mask "+mask)
             return None
         else :
-            keep = keep & keep_mask
+            keep = ( keep & keep_mask )
 
-    # Photometry selection
+    #- Photometry selection
     if gmag_cut is not None :
         if len(gmag_cut)!=2 or gmag_cut[1]<gmag_cut[0]:
             raise ValueError("Wrong input gmag_cut")
@@ -601,12 +615,12 @@ def metadata_selection(spectra, mask=None, mask_type=None, gmag_cut=None, rmag_c
         if 'MW_TRANSMISSION_G' in spectra.fibermap.keys():
             w, = np.where( (spectra.fibermap['FLUX_G']>0) & (spectra.fibermap['MW_TRANSMISSION_G']>0) )
             gmag[w] = -2.5*np.log10(spectra.fibermap['FLUX_G'][w]/spectra.fibermap['MW_TRANSMISSION_G'][w])+22.5
-        keep_gmag = (gmag>gmag_cut[0]) & (gmag<gmag_cut[1])
+        keep_gmag = ( (gmag>gmag_cut[0]) & (gmag<gmag_cut[1]) )
         if np.all(~keep_gmag):
             if log is not None : log.info(" * No spectra with g_mag in requested range")
             return None
         else :
-            keep = keep & keep_gmag
+            keep = ( keep & keep_gmag )
 
     if rmag_cut is not None :
         if len(rmag_cut)!=2 or rmag_cut[1]<rmag_cut[0]:
@@ -617,26 +631,30 @@ def metadata_selection(spectra, mask=None, mask_type=None, gmag_cut=None, rmag_c
         if 'MW_TRANSMISSION_R' in spectra.fibermap.keys():
             w, = np.where( (spectra.fibermap['FLUX_R']>0) & (spectra.fibermap['MW_TRANSMISSION_R']>0) )
             rmag[w] = -2.5*np.log10(spectra.fibermap['FLUX_R'][w]/spectra.fibermap['MW_TRANSMISSION_R'][w])+22.5
-        keep_rmag = (rmag>rmag_cut[0]) & (rmag<rmag_cut[1])
+        keep_rmag = ( (rmag>rmag_cut[0]) & (rmag<rmag_cut[1]) )
         if np.all(~keep_rmag):
             if log is not None : log.info(" * No spectra with r_mag in requested range")
             return None
         else :
-            keep = keep & keep_rmag
+            keep = ( keep & keep_rmag )
 
-    # Chi2 selection
+    #- Chi2 selection
     if chi2cut is not None :
         if len(chi2cut)!=2 or chi2cut[1]<chi2cut[0]:
             raise ValueError("Wrong input chi2cut")
         if np.any(zcat['TARGETID'] != spectra.fibermap['TARGETID']) :
             raise RuntimeError('zcat and spectra do not match (different targetids)')
 
-        keep_chi2 = (zcat['DELTACHI2']>chi2cut[0]) & (zcat['DELTACHI2']<chi2cut[1])
+        keep_chi2 = ( (zcat['DELTACHI2']>chi2cut[0]) & (zcat['DELTACHI2']<chi2cut[1]) )
         if np.all(~keep_chi2):
             if log is not None : log.info(" * No target in this pixel with DeltaChi2 in requested range")
             return None
         else :
-            keep = keep & keep_chi2
+            keep = ( keep & keep_chi2 )
+
+    #- Fiberstatus selection
+    if clean_fiberstatus and ('FIBERSTATUS' in spectra.fibermap.keys()):
+        keep = ( keep & (spectra.fibermap['FIBERSTATUS']==0) )
 
     return spectra[keep]
 

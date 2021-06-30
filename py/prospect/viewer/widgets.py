@@ -15,7 +15,7 @@ import numpy as np
 from bokeh.models import CustomJS, ColumnDataSource
 from bokeh.models.widgets import (
     Slider, Button, TextInput, RadioButtonGroup, TableColumn,
-    DataTable, CheckboxButtonGroup, CheckboxGroup, Select)
+    DataTable, CheckboxButtonGroup, CheckboxGroup, Select, Div)
 
 from ..utilities import get_resources
 
@@ -195,14 +195,17 @@ class ViewerWidgets(object):
         self.z_minus_button.js_on_event('button_click', self.z_minus_callback)
         self.z_plus_button.js_on_event('button_click', self.z_plus_callback)
 
-        self.zreset_button = Button(label='Reset to z_pipe')
-        self.zreset_callback = CustomJS(
-            args=dict(z_input=self.z_input, metadata=viewer_cds.cds_metadata, ispectrumslider=self.ispectrumslider),
-            code="""
-                var z = metadata.data['Z'][ispectrumslider.value]
-                z_input.value = z.toFixed(4)
-            """)
-        self.zreset_button.js_on_event('button_click', self.zreset_callback)
+        if 'Z' in viewer_cds.cds_metadata.data.keys():
+            self.zreset_button = Button(label='Reset to z_pipe')
+            self.zreset_callback = CustomJS(
+                args=dict(z_input=self.z_input, metadata=viewer_cds.cds_metadata, ispectrumslider=self.ispectrumslider),
+                code="""
+                    var z = metadata.data['Z'][ispectrumslider.value]
+                    z_input.value = z.toFixed(4)
+                """)
+            self.zreset_button.js_on_event('button_click', self.zreset_callback)
+        else:
+            self.zreset_button = Div(text="(z_pipe not available)")
 
         z_input_args = dict(spectra = viewer_cds.cds_spectra,
             coaddcam_spec = viewer_cds.cds_coaddcam_spec,
@@ -350,7 +353,7 @@ class ViewerWidgets(object):
                                                                  shortcds_name='shortcds_table_d', selectable=False)
 
         #- Table z: redshift fitting information
-        if show_zcat is not None :
+        if show_zcat:
             if template_dicts is not None : # Add other best fits
                 fit_results = template_dicts[1]
                 # Case of DeltaChi2 : compute it from Chi2s

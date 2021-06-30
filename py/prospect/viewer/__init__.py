@@ -247,8 +247,8 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     with_coaddcam : :class:`bool`, optional
         Include camera-coaddition, only relevant for DESI.
     mask_type : :class:`str`, optional (default: DESI_TARGET)
-        Bitmask type to identify target categories in the spectra. For DESI
-        these could be: DESI_TARGET, SV1_DESI_TARGET, SV1_BGS_TARGET, CMX_TARGET.
+        Bitmask type to identify target categories in the spectra.
+        Supported types are in `..utilities.supported_desitarget_masks`
     model_from_zcat : :class:`bool`, optional
         If ``True``, model spectra will be computed from the input `zcatalog`.
     model : :func:`tuple`, optional

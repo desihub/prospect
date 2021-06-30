@@ -257,7 +257,8 @@ class ViewerCDS(object):
         if mask_type is not None:
             if survey == 'DESI':
                 if mask_type not in spectra.fibermap.keys():
-                    raise ValueError("mask_type is not in spectra.fibermap: "+mask_type)
+                    mask_candidates = [x for x in spectra.fibermap.keys() if '_TARGET' in x]
+                    raise ValueError(mask_type+" is not in spectra.fibermap.\n Hints of available masks: "+(' '.join(mask_candidates)))
                 mask_used = supported_masks[mask_type]
                 target_bits = spectra.fibermap[mask_type]
                 target_info = [ ' '.join(mask_used.names(x)) for x in target_bits ]
