@@ -308,7 +308,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
         if len(spectra.bands)==1 : with_coaddcam = False
     
     if title is None:
-        title = "specviewer"
+        title = "prospect"
 
     #- Input zcatalog / model
     if zcatalog is not None:
@@ -451,7 +451,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
         bk.show(bokeh_layout.full_viewer)
     else:
         if html_dir is None : raise RuntimeError("Need html_dir")
-        html_page = os.path.join(html_dir, "specviewer_"+title+".html")
+        html_page = os.path.join(html_dir, title+".html")
         bk.output_file(html_page, title='DESI spectral viewer')
         bk.save(bokeh_layout.full_viewer)
 
@@ -459,7 +459,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     #- "Light" Bokeh layout including only the thumbnail gallery
     if with_thumb_only_page :
         assert not notebook
-        thumb_page = os.path.join(html_dir, "thumbs_specviewer_"+title+".html")
+        thumb_page = os.path.join(html_dir, "thumbs_"+title+".html")
         bk.output_file(thumb_page, title='DESI spectral viewer - thumbnail gallery')
         thumb_grid = StandaloneThumbLayout(spectra, viewer_plots, title)
         bk.save(thumb_grid.thumb_viewer)

@@ -41,7 +41,7 @@ def _metadata_table(table_keys, viewer_cds, table_width=500, shortcds_name='shor
             cell_title = special_cell_title[key]
         else:
             cell_title = key
-        if 'mag_' in key:
+        if ('mag_' in key) or ('EXPTIME' in key):
             cdsdata[key] = [ "{:.2f}".format(viewer_cds.cds_metadata.data[key][0]) ]
         elif 'CHI2' in key:
             cdsdata[key] = [ "{:.1f}".format(viewer_cds.cds_metadata.data[key][0]) ]
