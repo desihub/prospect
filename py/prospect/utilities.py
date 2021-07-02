@@ -423,11 +423,10 @@ def create_targetdb(datadir, subsetdb, dirtree_type=None):
 
 def load_spectra_zcat_from_targets(targetids, datadir, targetdb, dirtree_type='pernight', with_redrock=False, with_redrock_version=True):
     """ Get spectra, 'ZBEST' catalog and optional full Redrock catalog matched to a set of DESI TARGETIDs.
-
     This works using a "mini-db" of targetids, as returned by `create_targetdb()`.
     The outputs of this utility can be used directly by `viewer.plotspectra()`, to inspect a given list of targetids.
     Output spectra/catalog(s) are sorted according to the input target list.
-        When several spectra are available for a given TARGETID, they are all included in the output, in random order.
+    When several spectra are available for a given TARGETID, they are all included in the output, in random order.
 
     Parameters
     ----------
@@ -569,34 +568,42 @@ def frames2spectra(frames, nspec=None, startspec=None, with_scores=False, with_r
 
 
 def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag_range=None, chi2_range=None, snr_range=None, clean_fiberstatus=False, with_dirty_mask_merge=False, zcat=None, log=None):
-    '''
-    Simple selection of DESI spectra based on various metadata.
+    """ Simple selection of DESI spectra based on various metadata.
     Filtering based on the logical AND of requested selection criteria.
+    Note: use X_range=[min, None] to filter X > min, X_range=[None, max] to filter X < max
 
     Parameters:
     -----------
-    spectra: DESI Spectra object
-    mask (string): DESI targeting mask to select, eg 'ELG'. Requires to set mask_type.
-    mask_type (string): DESI targeting mask category, currently supported: 'DESI_TARGET', 'BGS_TARGET',
-        'MWS_TARGET', 'SECONDARY_TARGET', 'CMX_TARGET', 'SV1_DESI_TARGET', 'SV1_BGS_TARGET',
-        'SV1_MWS_TARGET', 'SV1_SCND_TARGET'.
-    with_dirty_mask_merge (bool): option for specific targeting mask selection in CMX data, see code...
-    gmag_range (list): g magnitude range to select, gmag_range = [gmag_min, gmag_max]
-    rmag_range (list): r magnitude range to select, rmag_range = [rmag_min, rmag_max]
-    snr_range (list): SNR range to select, snr_range = [snr_min, snr_max].
-                    This filter applies on all B, R and Z bands, from scores.MEDIAN_COADD_SNR_band, or
-                    scores.MEDIAN_CALIB_SNR_band if the former is not found.
-    chi2_range (list): chi2 range to select, chi2_range = [chi2_min, chi2_max]. Requires to set zcat.
-    clean_fiberstatus (bool): if True, remove spectra with FIBERSTATUS!=0
-    zcat (:class:`~astropy.table.Table`): catalog with chi2 information, must be matched to spectra.
-    log: optional log.
+    spectra : :class:`~desispec.spectra.Spectra`
+    mask : :class:`string`, optional
+        DESI targeting mask to select, eg 'ELG'. Requires to set mask_type.
+    mask_type : :class:`string`, optional
+        DESI targeting mask category, currently supported: 'DESI_TARGET', 'BGS_TARGET',
+        'MWS_TARGET', 'SECONDARY_TARGET', 'CMX_TARGET', 'SV[1/2/3]_DESI_TARGET', 'SV[1/2/3]_BGS_TARGET',
+        'SV[1/2/3]_MWS_TARGET', 'SV[1/2/3]_SCND_TARGET'.
+    with_dirty_mask_merge : :class:`bool`, optional
+        Option for specific targeting mask selection in early CMX data, see code...
+    gmag_range : :class:`list`
+        g magnitude range to select, gmag_range = [gmag_min, gmag_max]
+    rmag_range : :class:`list`
+        r magnitude range to select, rmag_range = [rmag_min, rmag_max]
+    snr_range : :class:`list`
+        SNR range to select, snr_range = [snr_min, snr_max].
+        This filter applies on all B, R and Z bands, from scores.MEDIAN_COADD_SNR_band, or
+        scores.MEDIAN_CALIB_SNR_band if the former is not found.
+    chi2_range : :class:`list`
+        chi2 range to select, chi2_range = [chi2_min, chi2_max]. Requires to set zcat.
+    clean_fiberstatus : :class:`bool`
+        if True, remove spectra with FIBERSTATUS!=0
+    zcat : :class:`~astropy.table.Table`
+        catalog with chi2 information, must be matched to spectra (needed for chi2_range filter).
+    log : optional log.
 
-    NB: use X_range=[min, None] to filter X > min, or X_range=[None, max] to filter X<max
 
     Returns:
     --------
     :class:`~desispec.spectra.Spectra`
-    '''
+    """
     keep = np.ones(len(spectra.fibermap), bool)
 
     #- SNR selection

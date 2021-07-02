@@ -20,25 +20,7 @@ prospect API
 .. automodule:: prospect.scripts
     :members:
 
-.. automodule:: prospect.scripts.prepare_cmx_htmlfiles
-    :members:
-
-.. automodule:: prospect.scripts.prepare_htmlfiles
-    :members:
-
-.. automodule:: prospect.scripts.specview_cmx_coadds
-    :members:
-
-.. automodule:: prospect.scripts.specview_cmx_frames
-    :members:
-
-.. automodule:: prospect.scripts.specview_cmx_targets
-    :members:
-
-.. automodule:: prospect.scripts.specview_per_expo
-    :members:
-
-.. automodule:: prospect.scripts.specview_per_night
+.. automodule:: prospect.scripts.prospect_pages
     :members:
 
 .. automodule:: prospect.scripts.specview_per_pixel
