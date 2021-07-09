@@ -294,21 +294,17 @@ def get_subset_label(subset, dirtree_type):
     return label
 
 def create_subsetdb(datadir, dirtree_type=None, spectra_type='coadd', tiles=None, nights=None, expids=None, petals=None, with_zcat=True):
-    """ Create a 'mini-db' of DESI spectra files, in a given directory tree.
+    """Create a 'mini-db' of DESI spectra files, in a given directory tree.
+
     Supports tile-based and exposure-based directory trees for daily, andes, ... to denali.
     This routine does not open any file, it just checks they exist.
 
     Parameters
     ----------
     datadir : :class:`string`
+        No description provided.
     dirtree_type : :class:`string`
-        The directory tree and file names must be among the following:
-            dirtree_type='pernight': {datadir}/{tileid}/{night}/{spectra_type}-{petal}-{tile}-{night}.fits
-            dirtree_type='perexp': {datadir}/{tileid}/{expid}/{spectra_type}-{petal}-{tile}-exp{expid}.fits
-            dirtree_type='cumulative': {datadir}/{tileid}/{night}/{spectra_type}-{petal}-{tile}-thru{night}.fits
-            dirtree_type='exposures': {datadir}/{night}/{expid}/{spectra_type}-{band}{petal}-{expid}.fits
-        Note that 'perexp' and 'exposures' are different.
-        To use blanc/cascades 'all' (resp 'deep') coadds, use dirtree_type='pernight' and nights=['all'] (resp ['deep']).
+        The directory tree and file names must match the types listed in the notes below.
     spectra_type : :class:`string`, optional
         [c/s]frames are only supported when dirtree_type='exposures'
     petals : :class:`list`, optional
@@ -326,9 +322,22 @@ def create_subsetdb(datadir, dirtree_type=None, spectra_type='coadd', tiles=None
     -------
     :class:`dict`
         Content of the 'mini-db':
+        
         - if dirtree_type='exposures': [ {'dataset':night, 'subset':expid, 'petals':[list of petals]}]
         - if dirtree_type='perexp':    [ {'dataset':tile, 'subset':expid, 'petals':[list of petals]}]
         - else:                        [ {'dataset':tile, 'subset':night, 'petals':[list of petals]}]
+
+    Notes
+    -----
+    * `dirtree_type` must be one of the following:
+
+       - ``dirtree_type='pernight'``: ``{datadir}/{tileid}/{night}/{spectra_type}-{petal}-{tile}-{night}.fits``
+       - ``dirtree_type='perexp'``: ``{datadir}/{tileid}/{expid}/{spectra_type}-{petal}-{tile}-exp{expid}.fits``
+       - ``dirtree_type='cumulative'``: ``{datadir}/{tileid}/{night}/{spectra_type}-{petal}-{tile}-thru{night}.fits``
+       - ``dirtree_type='exposures'``: ``{datadir}/{night}/{expid}/{spectra_type}-{band}{petal}-{expid}.fits``
+       - Note that 'perexp' and 'exposures' are different.
+       - To use blanc/cascades 'all' (resp 'deep') coadds, use dirtree_type='pernight' and nights=['all'] (resp ['deep']).
+
     """
     # TODO support (everest) healpix-based directory trees
 
@@ -464,7 +473,7 @@ def load_spectra_zcat_from_targets(targetids, datadir, targetdb, dirtree_type='p
     for tile, subset, petal in targetdb.keys():
         targets_subset = set(targetdb[tile, subset, petal])
         targets_subset = targets_subset.intersection(set(targetids))
-    
+
         # Load spectra for that tile-subset-petal only if one or more target(s) are in the list
         if len(targets_subset)>0 :
             subset_label = get_subset_label(subset, dirtree_type)
