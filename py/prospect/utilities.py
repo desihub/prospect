@@ -322,7 +322,7 @@ def create_subsetdb(datadir, dirtree_type=None, spectra_type='coadd', tiles=None
     -------
     :class:`dict`
         Content of the 'mini-db':
-        
+
         - if dirtree_type='exposures': [ {'dataset':night, 'subset':expid, 'petals':[list of petals]}]
         - if dirtree_type='perexp':    [ {'dataset':tile, 'subset':expid, 'petals':[list of petals]}]
         - else:                        [ {'dataset':tile, 'subset':night, 'petals':[list of petals]}]
@@ -397,15 +397,17 @@ def create_subsetdb(datadir, dirtree_type=None, spectra_type='coadd', tiles=None
     return subsetdb
 
 def create_targetdb(datadir, subsetdb, dirtree_type=None):
-    """ Create a "mini-db" of DESI targetids.
+    """Create a "mini-db" of DESI targetids.
+
         To do so, `zbest` files are read (faster than reading spectra).
 
         Parameters
         ----------
         datadir : :class:`string`
+            No description provided.
         subsetdb: :class:`list`
             List of spectra subsets, as produced by `create_subsetdb`.
-            Format: [ {'tile':tile, 'subset':subset, 'petal':petal}]
+            Format: [ {'tile':tile, 'subset':subset, 'petal':petal} ]
         dirtree_type : :class:`string`
             See documentation in `create_subsetdb`.
             dirtree_type='exposures' is not supported here (no zbest file available in that case).
@@ -431,7 +433,8 @@ def create_targetdb(datadir, subsetdb, dirtree_type=None):
 
 
 def load_spectra_zcat_from_targets(targetids, datadir, targetdb, dirtree_type='pernight', with_redrock=False, with_redrock_version=True):
-    """ Get spectra, 'ZBEST' catalog and optional full Redrock catalog matched to a set of DESI TARGETIDs.
+    """Get spectra, 'ZBEST' catalog and optional full Redrock catalog matched to a set of DESI TARGETIDs.
+
     This works using a "mini-db" of targetids, as returned by `create_targetdb()`.
     The outputs of this utility can be used directly by `viewer.plotspectra()`, to inspect a given list of targetids.
     Output spectra/catalog(s) are sorted according to the input target list.
@@ -442,12 +445,9 @@ def load_spectra_zcat_from_targets(targetids, datadir, targetdb, dirtree_type='p
     targetids : :class:`list` or :class:`numpy.ndarray`
         List of TARGETIDs, must be int64.
     datadir : :class:`string`
+        No description provided.
     dirtree_type : :class:`string`
-        The directory tree and file names must be the following, for "coadd", "zbest" and "redrock" files:
-            dirtree_type='pernight': {datadir}/{tileid}/{night}/zbest-{petal}-{tile}-{night}.fits
-            dirtree_type='perexp': {datadir}/{tileid}/{expid}/zbest-{petal}-{tile}-exp{expid}.fits
-            dirtree_type='cumulative': {datadir}/{tileid}/{night}/zbest-{petal}-{tile}-thru{night}.fits
-        To use blanc/cascades 'all' (resp 'deep') coadds, use dirtree_type='pernight' and nights=['all'] (resp 'deep')
+        The directory tree and file names must match the types listed in the notes below.
     targetdb : :class:`dict`
         Content of the "mini-db": { (tile, subset, petal): [list of TARGETIDs] } where subset is a night or expid.
     with_redrock : :class:`bool`, optional
@@ -462,6 +462,16 @@ def load_spectra_zcat_from_targets(targetids, datadir, targetdb, dirtree_type='p
         If with_redrock is `False` (default), returns (spectra, zcat), where spectra is `~desispec.spectra.Spectra`
         and zcat is `~astropy.table.Table`.
         If with_redrock is `True`, returns (spectra, zcat, redrockcat) where redrockcat is `~astropy.table.Table`.
+
+    Notes
+    -----
+    * The directory tree and file names must match the types listed in the notes below.
+        The directory tree and file names must be the following, for "coadd", "zbest" and "redrock" files:
+            dirtree_type='pernight': {datadir}/{tileid}/{night}/zbest-{petal}-{tile}-{night}.fits
+            dirtree_type='perexp': {datadir}/{tileid}/{expid}/zbest-{petal}-{tile}-exp{expid}.fits
+            dirtree_type='cumulative': {datadir}/{tileid}/{night}/zbest-{petal}-{tile}-thru{night}.fits
+        To use blanc/cascades 'all' (resp 'deep') coadds, use dirtree_type='pernight' and nights=['all'] (resp 'deep')
+
     """
 
     targetids = np.asarray(targetids)
@@ -519,12 +529,14 @@ def load_spectra_zcat_from_targets(targetids, datadir, targetdb, dirtree_type='p
 
 
 def frames2spectra(frames, nspec=None, startspec=None, with_scores=False, with_resolution_data=False):
-    """ Convert list of frames into DESI Spectra object
+    """Convert list of frames into DESI Spectra object
 
     Parameters
     ----------
-    frames : :class:`list`, a list of `~desispec.frame.Frame`
+    frames : :class:`list`
+        A list of :class:`~desispec.frame.Frame`.
     nspec : :class:`int`, optional
+        No description provided.
     startspec : :class:`int`, optional
         If nspec is set, only spectra in range [startspec:nspec+startspec] are kept
     with_scores : :class:`bool`, optional
@@ -535,6 +547,7 @@ def frames2spectra(frames, nspec=None, startspec=None, with_scores=False, with_r
     Returns
     -------
     :class:`~desispec.spectra.Spectra`
+        No description provided.
     """
 
     bands = list()
@@ -577,13 +590,15 @@ def frames2spectra(frames, nspec=None, startspec=None, with_scores=False, with_r
 
 
 def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag_range=None, chi2_range=None, snr_range=None, clean_fiberstatus=False, with_dirty_mask_merge=False, zcat=None, log=None):
-    """ Simple selection of DESI spectra based on various metadata.
+    """Simple selection of DESI spectra based on various metadata.
+
     Filtering based on the logical AND of requested selection criteria.
     Note: use X_range=[min, None] to filter X > min, X_range=[None, max] to filter X < max
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     spectra : :class:`~desispec.spectra.Spectra`
+        No description provided.
     mask : :class:`string`, optional
         DESI targeting mask to select, eg 'ELG'. Requires to set mask_type.
     mask_type : :class:`string`, optional
@@ -609,9 +624,10 @@ def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag
     log : optional log.
 
 
-    Returns:
-    --------
+    Returns
+    -------
     :class:`~desispec.spectra.Spectra`
+        No description provided.
     """
     keep = np.ones(len(spectra.fibermap), bool)
 
@@ -731,19 +747,23 @@ def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag
 
 
 def _coadd(wave, flux, ivar, rdat):
-    '''
-    Return weighted coadd of spectra
+    '''Return weighted coadd of spectra
 
     Parameters
     ----------
-    wave : 1D[nwave] array of wavelengths
-    flux : 2D[nspec, nwave] array of flux densities
-    ivar : 2D[nspec, nwave] array of inverse variances of `flux`
-    rdat : 3D[nspec, ndiag, nwave] sparse diagonals of resolution matrix
+    wave : array-like
+        1D[nwave] array of wavelengths.
+    flux : array-like
+        2D[nspec, nwave] array of flux densities.
+    ivar : array-like
+        2D[nspec, nwave] array of inverse variances of `flux`.
+    rdat : array-like
+        3D[nspec, ndiag, nwave] sparse diagonals of resolution matrix.
 
     Returns
     -------
-        coadded spectrum (wave, outflux, outivar, outrdat)
+    :class:`tuple`
+        The coadded spectrum (wave, outflux, outivar, outrdat).
     '''
     nspec, nwave = flux.shape
     unweightedflux = np.zeros(nwave, dtype=flux.dtype)
@@ -772,15 +792,18 @@ def coadd_targets(spectra, targetids=None):
     Parameters
     ----------
     spectra : :class:`desispec.spectra.Spectra`
-    targetids : (optional) array-like subset of target IDs to keep
+    targetids : array-like, optional
+        Subset of target IDs to keep.
 
     Returns
     -------
-    coadded_spectra : :class:`desispec.spectra.Spectra` where individual
-        spectra of each target have been combined into a single spectrum
-        per camera.
+    :class:`desispec.spectra.Spectra`
+        Where individual spectra of each target have been combined into a
+        single spectrumper camera.
 
-    Note: coadds per camera but not across cameras.
+    Notes
+    -----
+    Coadds per camera but not across cameras.
     '''
     if targetids is None:
         targetids = spectra.target_ids()
