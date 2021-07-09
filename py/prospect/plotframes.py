@@ -59,7 +59,7 @@ try:
 except ImportError:
     _redrock_imported = False
 
-from .utilities import (get_resources, frames2spectra, create_zcat_from_redrock_cat, coadd_targets, match_vi_targets,
+from .utilities import (get_resources, frames2spectra, create_zcat_from_redrock_cat, coadd_targets,
                         vi_flags, vi_file_fields, vi_spectypes, vi_std_comments)
 from .coaddcam import coaddcam_prospect
 
