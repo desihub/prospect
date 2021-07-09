@@ -465,12 +465,12 @@ def load_spectra_zcat_from_targets(targetids, datadir, targetdb, dirtree_type='p
 
     Notes
     -----
-    * The directory tree and file names must match the types listed in the notes below.
-        The directory tree and file names must be the following, for "coadd", "zbest" and "redrock" files:
-            dirtree_type='pernight': {datadir}/{tileid}/{night}/zbest-{petal}-{tile}-{night}.fits
-            dirtree_type='perexp': {datadir}/{tileid}/{expid}/zbest-{petal}-{tile}-exp{expid}.fits
-            dirtree_type='cumulative': {datadir}/{tileid}/{night}/zbest-{petal}-{tile}-thru{night}.fits
-        To use blanc/cascades 'all' (resp 'deep') coadds, use dirtree_type='pernight' and nights=['all'] (resp 'deep')
+    * `dirtree_type` must be one of the following, for "coadd", "zbest" and "redrock" files:
+
+      - ``dirtree_type='pernight'``: ``{datadir}/{tileid}/{night}/zbest-{petal}-{tile}-{night}.fits``
+      - ``dirtree_type='perexp'``: ``{datadir}/{tileid}/{expid}/zbest-{petal}-{tile}-exp{expid}.fits``
+      - ``dirtree_type='cumulative'``: ``{datadir}/{tileid}/{night}/zbest-{petal}-{tile}-thru{night}.fits``
+      - To use blanc/cascades 'all' (resp 'deep') coadds, use dirtree_type='pernight' and nights=['all'] (resp 'deep')
 
     """
 
