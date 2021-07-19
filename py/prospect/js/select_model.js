@@ -100,7 +100,7 @@ if (model_select.value == 'Best fit') {
     cds_othermodel.data['plotflux'] = model_flux.slice()
 }
 
-var zref_vect = (cds_othermodel.data['plotwave']).slice() // trick to keep track of spec_z (see plotframes.py)
+var zref_vect = (cds_othermodel.data['plotwave']).slice() // trick to keep track of spec_z (see change_redshift.js)
 for (var j=0; j<zref_vect.length; j++) zref_vect[j] = spec_z
 cds_othermodel.data['zref'] = zref_vect.slice()
 

@@ -11,12 +11,6 @@ prospect API
 .. automodule:: prospect.coaddcam
     :members:
 
-.. automodule:: prospect.plotframes
-    :members:
-
-.. automodule:: prospect.plotspecutils
-    :members:
-
 .. automodule:: prospect.scripts
     :members:
 
