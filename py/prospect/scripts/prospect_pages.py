@@ -19,7 +19,7 @@ import desispec.spectra
 from desiutil.log import get_logger
 
 from ..viewer import plotspectra
-from ..utilities import (create_targetdb, create_subsetdb, match_catalog_to_spectra, match_redrockfile_to_spectra,
+from ..utilities import (create_targetdb, create_subsetdb, match_catalog_to_spectra, match_rrdetails_to_spectra,
                         load_spectra_zcat_from_targets, metadata_selection, get_subset_label, frames2spectra)
 
 def _parse():
@@ -29,8 +29,8 @@ def _parse():
     
     #- Single file input
     parser.add_argument('--spectra_files', help='[Mode: Explicit input files] Absolute path of file(s) with DESI spectra. All input spectra files must have exactly the same format (fibermap, extra, scores...). Frames are not supported.', nargs='+', type=str, default=None)
-    parser.add_argument('--zcat_files', help='[Mode: Explicit input files] Absolute path of "zbest" file(s) with redshifts, matched one-by-one to spectra_files', nargs='+', type=str, default=None)
-    parser.add_argument('--redrock_files', help='[Mode: Explicit input files] Absolute path of redrock file(s) (.h5), matched one-by-one to spectra_files', nargs='+', type=str, default=None)
+    parser.add_argument('--zcat_files', help='[Mode: Explicit input files] Absolute path of redshift catalog fits file(s), matched one-by-one to spectra_files', nargs='+', type=str, default=None)
+    parser.add_argument('--redrock_details_files', help='[Mode: Explicit input files] Absolute path of detailed redrock file(s) (.h5), matched one-by-one to spectra_files', nargs='+', type=str, default=None)
     
     #- "Multi" file input (can select some data subsets based on tiles, expids...)
     parser.add_argument('--datadir', help='[Mode: Scan directory tree] Location of input directory tree', type=str, default=None)
@@ -52,8 +52,8 @@ def _parse():
     parser_expids.add_argument('--expids', help='[Mode: Scan directory tree] Filter over exposure[s]', nargs='+', type=str, default=None)
     parser_expids.add_argument('--expid_list', help='[Mode: Scan directory tree] Filter over exposure[s]: ASCII file with list of exposure, one per row', type=str, default=None)
     parser.add_argument('--petals', help='[Mode: Scan directory tree] Filter over petal[s], labelled 0 to 9', nargs='+', type=str, default=None)
-    parser.add_argument('--with_zcatalog', help='[Mode: Scan directory tree] Include redshift fit result (from "zbest" files)', action='store_true')
-    parser.add_argument('--with_multiple_models', help='[Mode: Scan directory tree] Display several models, using redrock files (.h5)', action='store_true')
+    parser.add_argument('--with_zcatalog', help='[Mode: Scan directory tree] Include redshift fit result (from "redrock"/"zbest" fits files)', action='store_true')
+    parser.add_argument('--with_multiple_models', help='[Mode: Scan directory tree] Display several models, using detailed redrock files (.h5)', action='store_true')
     parser.add_argument('--nmax_spectra', help='[Mode: Scan directory tree] Stop creating html pages once nmax_spectra are done', type=int, default=None)
 
     #- Generic parameters. The only mandatory one is outputdir
@@ -79,7 +79,7 @@ def _parse():
     parser.add_argument('--gmag_max', type=float, default=None)
     parser.add_argument('--rmag_min', help='Filter objects with [dereddened] r-mag in range [min, max]', type=float, default=None)
     parser.add_argument('--rmag_max', type=float, default=None)
-    parser.add_argument('--chi2_min', help='Filter objects with Delta_chi2 (from zbest file) in range [min, max]', type=float, default=None)
+    parser.add_argument('--chi2_min', help='Filter objects with Delta_chi2 (from redshift catalog file) in range [min, max]', type=float, default=None)
     parser.add_argument('--chi2_max', type=float, default=None)
     parse_target = parser.add_mutually_exclusive_group()
     parse_target.add_argument('--targets', help='Filter over TARGETID', nargs='+', type=int, default=None)
@@ -145,9 +145,17 @@ def load_spectra_zcat_from_dbentry(db_entry, args, log, with_redrock_version=Tru
             file_label = '-'.join([petal, db_entry['dataset'], subset_label])
             the_spec = desispec.io.read_spectra(os.path.join(the_dir, args.spectra_type+"-"+file_label+".fits"))
         if args.with_zcatalog:
-            the_zcat = Table.read(os.path.join(the_dir, "zbest-"+file_label+".fits"), 'ZBEST')
+            if os.path.isfile(os.path.join(the_dir, "redrock-"+file_label+".fits")):
+                redrock_is_pre_everest = False
+                the_zcat = Table.read(os.path.join(the_dir, "redrock-"+file_label+".fits"), 'REDSHIFTS')
+            else: # pre-everest Redrock file nomenclature
+                redrock_is_pre_everest = True
+                the_zcat = Table.read(os.path.join(the_dir, "zbest-"+file_label+".fits"), 'ZBEST')
             if with_redrock_version:
-                hdulist = astropy.io.fits.open(os.path.join(the_dir, "zbest-"+file_label+".fits"))
+                if redrock_is_pre_everest:
+                    hdulist = astropy.io.fits.open(os.path.join(the_dir, "zbest-"+file_label+".fits"))
+                else:
+                    hdulist = astropy.io.fits.open(os.path.join(the_dir, "redrock-"+file_label+".fits"))
                 the_zcat['RRVER'] = hdulist[hdulist.index_of('PRIMARY')].header['RRVER']
         else:
             the_zcat = None
@@ -172,8 +180,11 @@ def load_spectra_zcat_from_dbentry(db_entry, args, log, with_redrock_version=Tru
             the_zcat = match_catalog_to_spectra(the_zcat, the_spec)
             ztables.append(the_zcat)
         if args.with_multiple_models:
-            rrfile = os.path.join(the_dir, "redrock-"+file_label+".h5")
-            the_rrcat = match_redrockfile_to_spectra(rrfile, the_spec, Nfit=None) # TODO Nfit?
+            if redrock_is_pre_everest:
+                rrfile = os.path.join(the_dir, "redrock-"+file_label+".h5")
+            else:
+                rrfile = os.path.join(the_dir, "rrdetails-"+file_label+".h5")
+            the_rrcat = match_rrdetails_to_spectra(rrfile, the_spec, Nfit=None) # TODO Nfit?
             rrtables.append(the_rrcat)
         if spectra is None:
             spectra = the_spec
@@ -264,17 +275,17 @@ def main():
                         'nights', 'night_list', 'expids', 'expid_list', 'petals', 'nmax_spectra']:
             if vars(args)[the_arg] is not None:
                 raise ValueError('Argument not allowed in mode "Explicit input files": '+the_arg)
-        if (args.redrock_files is not None) and (args.zcat_files is None):
-            raise ValueError('Argument `zcat_files` is needed if `redrock_files` is set')
+        if (args.redrock_details_files is not None) and (args.zcat_files is None):
+            raise ValueError('Argument `zcat_files` is needed if `redrock_details_files` is set')
         n_specfiles = len(args.spectra_files)
         if args.zcat_files is not None :
             if len(args.zcat_files)!=n_specfiles:
                 raise ValueError('Number of zcat_files does not match number of input spectra_files')
-        if args.redrock_files is not None :
+        if args.redrock_details_files is not None :
             viewer_params['num_approx_fits'] = 4 # TODO un-hardcode ?
             viewer_params['with_full_2ndfit'] = True # TODO un-hardcode ?
-            if len(args.redrock_files)!=n_specfiles:
-                raise ValueError('Number of redrock_files does not match number of input spectra_files')
+            if len(args.redrock_details_files)!=n_specfiles:
+                raise ValueError('Number of redrock_details_files does not match number of input spectra_files')
  
         log.info('Prospect_pages: start reading data [mode: Explicit input files]')
         #- Read input file(s)
@@ -283,20 +294,23 @@ def main():
             spectra = desispec.io.read_spectra(args.spectra_files[i_file])
             spectra_list.append(spectra)
             if args.zcat_files is not None:
-                zcat = Table.read(args.zcat_files[i_file],'ZBEST')
+                try:
+                    zcat = Table.read(args.zcat_files[i_file],'REDSHIFTS')
+                except KeyError: # pre-everest Redrock file nomenclature
+                    zcat = Table.read(args.zcat_files[i_file],'ZBEST')
                 #- Add redrock version to zcat
                 hdulist = astropy.io.fits.open(args.zcat_files[i_file])
                 zcat['RRVER'] = hdulist[hdulist.index_of('PRIMARY')].header['RRVER']
                 zcat_list.append(zcat)
-            if args.redrock_files is not None:
-                redrock_cat = match_redrockfile_to_spectra(args.redrock_files[i_file], spectra)
+            if args.redrock_details_files is not None:
+                redrock_cat = match_rrdetails_to_spectra(args.redrock_details_files[i_file], spectra)
                 redrock_list.append(redrock_cat)
         spectra = desispec.spectra.stack(spectra_list)
         if args.zcat_files is not None:
             zcat = vstack(zcat_list)
         else:
             zcat = None
-        if args.redrock_files is not None:
+        if args.redrock_details_files is not None:
             redrock_cat = vstack(redrock_list)
         else:
             redrock_cat = None
@@ -321,8 +335,8 @@ def main():
     #- Mode: Scan directory tree
     ############################
     if input_mode == 'scan-dirtree':
-        if any([ x is not None for x in [args.spectra_files, args.zcat_files, args.redrock_files] ]):
-            raise ValueError('Argument not allowed in "Scan directory tree" mode: spectra/zcat/redrock_files')
+        if any([ x is not None for x in [args.spectra_files, args.zcat_files, args.redrock_details_files] ]):
+            raise ValueError('Argument not allowed in "Scan directory tree" mode: spectra/zcat/redrock_details_files')
         if any([ x is None for x in [args.datadir, args.dirtree_type] ]):
             raise ValueError('Missing parameter in "Scan directory tree" mode: datadir/dirtree_type')
         if args.with_multiple_models and not args.with_zcatalog:
@@ -352,12 +366,12 @@ def main():
             targetids = _filter_list(args, 'target')
             if args.with_multiple_models:
                 spectra, zcat, redrock_cat = load_spectra_zcat_from_targets(targetids, args.datadir, target_db,
-                                                    dirtree_type=args.dirtree_type, with_redrock=True)
+                                                    dirtree_type=args.dirtree_type, with_redrock_details=True)
                 viewer_params['num_approx_fits'] = 4 # TODO un-hardcode ?
                 viewer_params['with_full_2ndfit'] = True # TODO un-hardcode ?
             else:
                 spectra, zcat = load_spectra_zcat_from_targets(targetids, args.datadir, target_db,
-                                                    dirtree_type=args.dirtree_type, with_redrock=False)
+                                                    dirtree_type=args.dirtree_type, with_redrock_details=False)
                 redrock_cat = None
             log.info('Prospect_pages: start creating html page(s)')
             n_done = page_subset(spectra, args.nspecperfile, args.titlepage_prefix, viewer_params, log, zcat=zcat, redrock_cat=redrock_cat)

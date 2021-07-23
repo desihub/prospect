@@ -80,17 +80,17 @@ def load_redrock_templates(template_dir=None) :
     return templates
 
 
-def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, template_dir=None):
+def create_model(spectra, zcat, archetype_fit=False, archetypes_dir=None, template_dir=None):
     '''
-    Returns model_wave[nwave], model_flux[nspec, nwave], row matched to zbest,
+    Returns model_wave[nwave], model_flux[nspec, nwave], row matched to zcat,
     which can be in a different order than spectra.
-    - zbest must be entry-matched to spectra.
+    - zcat must be entry-matched to spectra.
     '''
 
     assert _redrock_imported
     assert _desispec_imported  # for resample_flux
 
-    if np.any(zbest['TARGETID'] != spectra.fibermap['TARGETID']) :
+    if np.any(zcat['TARGETID'] != spectra.fibermap['TARGETID']) :
         raise ValueError('zcatalog and spectra do not match (different targetids)')
 
     if archetype_fit:
@@ -103,8 +103,8 @@ def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, templ
     for band in spectra.bands:
         model_flux[band] = np.zeros(spectra.flux[band].shape)
 
-    for i in range(len(zbest)):
-        zb = zbest[i]
+    for i in range(len(zcat)):
+        zb = zcat[i]
 
         if archetype_fit:
             archetype  = archetypes[zb['SPECTYPE']]

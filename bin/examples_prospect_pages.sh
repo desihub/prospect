@@ -34,7 +34,7 @@ if [[ $1 == 2 ]] || [[ $1 == '' ]]; then
     mkdir ${OUTPUTDIR}
     prospect_pages --spectra_files ${DATAPATH}/coadd-5-81067-thru20210327.fits \
                    --zcat_files ${DATAPATH}/zbest-5-81067-thru20210327.fits \
-                   --redrock_files ${DATAPATH}/redrock-5-81067-thru20210327.h5 \
+                   --redrock_details_files ${DATAPATH}/redrock-5-81067-thru20210327.h5 \
                    --outputdir ${OUTPUTDIR}
 fi
 
@@ -86,8 +86,8 @@ if [[ $1 == 5 ]] || [[ $1 == '' ]]; then
                                    ${DATAPATH}/coadd-7-81067-thru20210327.fits \
                    --zcat_files ${DATAPATH}/zbest-5-81067-thru20210327.fits \
                                 ${DATAPATH}/zbest-7-81067-thru20210327.fits \
-                   --redrock_files ${DATAPATH}/redrock-5-81067-thru20210327.h5 \
-                                   ${DATAPATH}/redrock-7-81067-thru20210327.h5 \
+                   --redrock_details_files ${DATAPATH}/redrock-5-81067-thru20210327.h5 \
+                                           ${DATAPATH}/redrock-7-81067-thru20210327.h5 \
                    -o ${OUTPUTDIR} \
                    --titlepage prospect_example_5 \
                    --mask_type SV2_DESI_TARGET \

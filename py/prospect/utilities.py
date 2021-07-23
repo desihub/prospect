@@ -202,15 +202,15 @@ def match_catalog_to_spectra(zcat_in, spectra, return_index=False):
         return zcat_out
 
 
-def match_redrockfile_to_spectra(redrockfile, spectra, Nfit=None):
-    """ Creates a Table from a Redrock output fit, matching a list of DESI spectra.
+def match_rrdetails_to_spectra(redrockfile, spectra, Nfit=None):
+    """ Creates a Table from a detailed Redrock output fit, matching a list of DESI spectra.
 
     Parameters
     ----------
-    redrockfile : :class:`str`, filename for the Redrock output file (.h5 file)
+    redrockfile : :class:`str`, filename for the detailed Redrock output file (.h5 file)
     spectra : :class:`~desispec.spectra.Spectra`
     Nfit : :class:`int`, optional
-        Number of best-fits to store in output Table. By default, store all fits available in Redrock file
+        Number of best-fits to store in output Table. By default, store all fits available in the detailed Redrock file
 
     Returns
     -------
@@ -250,12 +250,12 @@ def match_redrockfile_to_spectra(redrockfile, spectra, Nfit=None):
 
 
 def create_zcat_from_redrock_cat(redrock_cat, fit_num=0):
-    """ Extract a single fit catalog from a redrock catalog containing several fit results per TARGETID
+    """ Extract a catalog with unique redshift fits from a redrock catalog containing several fit results per TARGETID
 
     Parameters
     ----------
     redrock_cat : :class:`~astropy.table.Table`
-        Catalog with rows as defined in `match_redrockfile_to_spectra()`
+        Catalog with rows as defined in `match_rrdetails_to_spectra()`
     fit_num : :class:`int`, optional
         The (fit_num)th fit in redrock_cat is extracted (default: 0 ie. redrock's best fit)
 
@@ -263,7 +263,6 @@ def create_zcat_from_redrock_cat(redrock_cat, fit_num=0):
     -------
     :class:`~astropy.table.Table`
         Table with the following columns: TARGETID, CHI2, COEFF, Z, ZERR, ZWARN, SPECTYPE, SUBTYPE, DELTACHI2.
-        ie. identical to the 'ZBEST' table in Redrock's `zbest` files, a single fit per row.
     """
 
     rr_cat_num_best_fits = redrock_cat['Z'].shape[1]
@@ -316,7 +315,7 @@ def create_subsetdb(datadir, dirtree_type=None, spectra_type='coadd', tiles=None
     expids : :class:`list`, optional
         Filter a list of exposures (only if dirtree_type='perexp' or 'exposures').
     with_zcat : :class:`bool`, optional
-        If True, filter spectra for which a 'zbest' file exists at the same location.
+        If True, filter spectra for which a 'redrock' (or 'zbest') fits file exists at the same location.
 
     Returns
     -------
@@ -348,7 +347,7 @@ def create_subsetdb(datadir, dirtree_type=None, spectra_type='coadd', tiles=None
         if spectra_type not in ['frame', 'cframe', 'sframe']:
             raise ValueError('Unsupported spectra_type: '+spectra_type)
         if with_zcat:
-            raise ValueError('Cannot filter zbest files when dirtree_type=exposures')
+            raise ValueError('Cannot filter redrock/zbest files when dirtree_type=exposures')
     else:
         if spectra_type not in ['coadd', 'spectra']:
             raise ValueError('Unsupported spectra_type: '+spectra_type)
@@ -388,8 +387,9 @@ def create_subsetdb(datadir, dirtree_type=None, spectra_type='coadd', tiles=None
                 else:
                     file_label = '-'.join([petal, dataset, subset_label])
                     spectra_fname = os.path.join(datadir, dataset, subset, spectra_type+'-'+file_label+'.fits')
-                    zcat_fname = os.path.join(datadir, dataset, subset, 'zbest-'+file_label+'.fits')
-                    if os.path.isfile(spectra_fname) and ( (not with_zcat) or os.path.isfile(zcat_fname) ):
+                    redrock_fname = os.path.join(datadir, dataset, subset, 'redrock-'+file_label+'.fits')
+                    zbest_fname = os.path.join(datadir, dataset, subset, 'zbest-'+file_label+'.fits') # pre-everest nomenclature
+                    if os.path.isfile(spectra_fname) and ( (not with_zcat) or os.path.isfile(zbest_fname) or os.path.isfile(redrock_fname)):
                         existing_petals.append(petal)
             if len(existing_petals)>0:
                 subsetdb.append( {'dataset':dataset, 'subset':subset, 'petals':existing_petals} )
@@ -399,7 +399,7 @@ def create_subsetdb(datadir, dirtree_type=None, spectra_type='coadd', tiles=None
 def create_targetdb(datadir, subsetdb, dirtree_type=None):
     """Create a "mini-db" of DESI targetids.
 
-        To do so, `zbest` files are read (faster than reading spectra).
+        To do so, `redrock` (or `zbest`) fits files are read (faster than reading spectra).
 
         Parameters
         ----------
@@ -410,14 +410,14 @@ def create_targetdb(datadir, subsetdb, dirtree_type=None):
             Format: [ {'tile':tile, 'subset':subset, 'petal':petal} ]
         dirtree_type : :class:`string`
             See documentation in `create_subsetdb`.
-            dirtree_type='exposures' is not supported here (no zbest file available in that case).
+            dirtree_type='exposures' is not supported here (no redrock file available in that case).
             Tile-based directory trees for daily, andes, ... to denali are supported.
 
         Returns
         -------
         :class:`dict`
             Content of the "mini-db": { (tile, subset, petal): [list of TARGETIDs] } where subset is a night or expid.
-    """
+    """`
     if dirtree_type=='exposures':
         raise ValueError("dirtree_type='exposures' is not supported in `create_targetdb`")
     targetdb = dict()
@@ -425,15 +425,20 @@ def create_targetdb(datadir, subsetdb, dirtree_type=None):
         subset_label = get_subset_label(the_entry['subset'], dirtree_type)
         for petal in the_entry['petals']:
             fname = os.path.join(datadir, the_entry['dataset'], the_entry['subset'],
-                                 'zbest-'+petal+'-'+the_entry['dataset']+'-'+subset_label+'.fits')
-            targetids = np.unique(Table.read(fname,'ZBEST')['TARGETID'])
+                                 'redrock-'+petal+'-'+the_entry['dataset']+'-'+subset_label+'.fits')
+            hduname = 'REDSHIFTS'
+            if not os.path.isfile(fname): # pre-everest Redrock file nomenclature
+                fname = os.path.join(datadir, the_entry['dataset'], the_entry['subset'],
+                                     'zbest-'+petal+'-'+the_entry['dataset']+'-'+subset_label+'.fits')
+                hduname = 'ZBEST'
+            targetids = np.unique(Table.read(fname, hduname)['TARGETID'])
             targetdb[ (the_entry['dataset'], the_entry['subset'], petal) ] = np.array(targetids, dtype='int64')
 
     return targetdb
 
 
-def load_spectra_zcat_from_targets(targetids, datadir, targetdb, dirtree_type='pernight', with_redrock=False, with_redrock_version=True):
-    """Get spectra, 'ZBEST' catalog and optional full Redrock catalog matched to a set of DESI TARGETIDs.
+def load_spectra_zcat_from_targets(targetids, datadir, targetdb, dirtree_type='pernight', with_redrock_details=False, with_redrock_version=True):
+    """Get spectra, redshift catalog and optional detailed Redrock catalog matched to a set of DESI TARGETIDs.
 
     This works using a "mini-db" of targetids, as returned by `create_targetdb()`.
     The outputs of this utility can be used directly by `viewer.plotspectra()`, to inspect a given list of targetids.
@@ -450,26 +455,26 @@ def load_spectra_zcat_from_targets(targetids, datadir, targetdb, dirtree_type='p
         The directory tree and file names must match the types listed in the notes below.
     targetdb : :class:`dict`
         Content of the "mini-db": { (tile, subset, petal): [list of TARGETIDs] } where subset is a night or expid.
-    with_redrock : :class:`bool`, optional
-        If `True`, Redrock output files (.h5 files) are also read
+    with_redrock_details : :class:`bool`, optional
+        If `True`, detailed Redrock output files (.h5 files) are also read
     with_redrock_version : :class:`bool`, optional
-        If `True`, a column 'RRVER' is appended to the output redshift catalog, as given by HDU0 in `ZBEST` files.
+        If `True`, a column 'RRVER' is appended to the output redshift catalog, as given by HDU0 in `redrock`/`zbest` files.
         This is used by `viewer.plotspectra()` to track Redrock version in visual inspection files.
 
     Returns
     -------
     :func:`tuple`
-        If with_redrock is `False` (default), returns (spectra, zcat), where spectra is `~desispec.spectra.Spectra`
+        If with_redrock_details is `False` (default), returns (spectra, zcat), where spectra is `~desispec.spectra.Spectra`
         and zcat is `~astropy.table.Table`.
-        If with_redrock is `True`, returns (spectra, zcat, redrockcat) where redrockcat is `~astropy.table.Table`.
+        If with_redrock_details is `True`, returns (spectra, zcat, redrockcat) where redrockcat is `~astropy.table.Table`.
 
     Notes
     -----
-    * `dirtree_type` must be one of the following, for "coadd", "zbest" and "redrock" files:
+    * `dirtree_type` must be one of the following, for "coadd", "redrock"/"zbest" (.fits), and "rrdetails"/"redrock" (.h5) files:
 
-      - ``dirtree_type='pernight'``: ``{datadir}/{tileid}/{night}/zbest-{petal}-{tile}-{night}.fits``
-      - ``dirtree_type='perexp'``: ``{datadir}/{tileid}/{expid}/zbest-{petal}-{tile}-exp{expid}.fits``
-      - ``dirtree_type='cumulative'``: ``{datadir}/{tileid}/{night}/zbest-{petal}-{tile}-thru{night}.fits``
+      - ``dirtree_type='pernight'``: ``{datadir}/{tileid}/{night}/redrock-{petal}-{tile}-{night}.fits``
+      - ``dirtree_type='perexp'``: ``{datadir}/{tileid}/{expid}/redrock-{petal}-{tile}-exp{expid}.fits``
+      - ``dirtree_type='cumulative'``: ``{datadir}/{tileid}/{night}/redrock-{petal}-{tile}-thru{night}.fits``
       - To use blanc/cascades 'all' (resp 'deep') coadds, use dirtree_type='pernight' and nights=['all'] (resp 'deep')
 
     """
@@ -491,15 +496,26 @@ def load_spectra_zcat_from_targets(targetids, datadir, targetdb, dirtree_type='p
             the_path = os.path.join(datadir, tile, subset)
             the_spec = desispec.io.read_spectra(os.path.join(the_path, "coadd-"+file_label+".fits"))
             the_spec = the_spec.select(targets=sorted(targets_subset))
-            the_zcat = Table.read(os.path.join(the_path, "zbest-"+file_label+".fits"), 'ZBEST')
+            if os.path.isfile(os.path.join(the_path, "redrock-"+file_label+".fits")):
+                redrock_is_pre_everest = False
+                the_zcat = Table.read(os.path.join(the_path, "redrock-"+file_label+".fits"), 'REDSHIFTS')
+            else: # pre-everest Redrock file nomenclature
+                redrock_is_pre_everest = True
+                the_zcat = Table.read(os.path.join(the_path, "zbest-"+file_label+".fits"), 'ZBEST')
             if with_redrock_version:
-                hdulist = astropy.io.fits.open(os.path.join(the_path, "zbest-"+file_label+".fits"))
+                if redrock_is_pre_everest:
+                    hdulist = astropy.io.fits.open(os.path.join(the_path, "zbest-"+file_label+".fits"))
+                else:
+                    hdulist = astropy.io.fits.open(os.path.join(the_path, "redrock-"+file_label+".fits"))
                 the_zcat['RRVER'] = hdulist[hdulist.index_of('PRIMARY')].header['RRVER']
             the_zcat = match_catalog_to_spectra(the_zcat, the_spec)
             ztables.append(the_zcat)
-            if with_redrock:
-                rrfile = os.path.join(the_path, "redrock-"+file_label+".h5")
-                the_rrcat = match_redrockfile_to_spectra(rrfile, the_spec, Nfit=None)
+            if with_redrock_details:
+                if redrock_is_pre_everest:
+                    rrfile = os.path.join(the_path, "redrock-"+file_label+".h5")
+                else:
+                    rrfile = os.path.join(the_path, "rrdetails-"+file_label+".h5")
+                the_rrcat = match_rrdetails_to_spectra(rrfile, the_spec, Nfit=None)
                 rrtables.append(the_rrcat)
             if spectra is None:
                 spectra = the_spec
@@ -520,7 +536,7 @@ def load_spectra_zcat_from_targets(targetids, datadir, targetdb, dirtree_type='p
 
     zcat = vstack(ztables)
     zcat = zcat[ sorted_indices ]
-    if with_redrock:
+    if with_redrock_details:
         rrcat = vstack(rrtables)
         rrcat = rrcat[ sorted_indices ]
         return (spectra, zcat, rrcat)
