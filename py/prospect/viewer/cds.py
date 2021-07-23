@@ -173,7 +173,9 @@ class ViewerCDS(object):
         if survey == 'DESI':
             nspec = spectra.num_spectra()
             # Optional metadata:
-            fibermap_keys = ['HPXPIXEL', 'MORPHTYPE', 'CAMERA', 'COADD_NUMEXP', 'COADD_EXPTIME']
+            fibermap_keys = ['HPXPIXEL', 'MORPHTYPE', 'CAMERA',
+                             'COADD_NUMEXP', 'COADD_EXPTIME',
+                             'COADD_NUMNIGHT', 'COADD_NUMTILE']
             # Optional metadata, will check matching FIRST/LAST/NUM keys in fibermap:
             special_fm_keys = ['FIBER', 'NIGHT', 'EXPID', 'TILEID']
             # Mandatory keys if zcatalog is set:
@@ -224,6 +226,10 @@ class ViewerCDS(object):
             for fm_key in fibermap_keys:
                 # Arbitrary choice:
                 if fm_key == 'COADD_NUMEXP' and 'NUM_EXPID' in self.cds_metadata.data.keys():
+                    continue
+                if fm_key == 'COADD_NUMNIGHT' and 'NUM_NIGHT' in self.cds_metadata.data.keys():
+                    continue
+                if fm_key == 'COADD_NUMTILE' and 'NUM_TILEID' in self.cds_metadata.data.keys():
                     continue
                 if fm_key in spectra.fibermap.keys():
                     if not (np.all(spectra.fibermap[fm_key]==0) or np.all(spectra.fibermap[fm_key]==-1)):

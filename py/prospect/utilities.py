@@ -618,7 +618,7 @@ def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag
     chi2_range : :class:`list`
         chi2 range to select, chi2_range = [chi2_min, chi2_max]. Requires to set zcat.
     clean_fiberstatus : :class:`bool`
-        if True, remove spectra with FIBERSTATUS!=0
+        if True, remove spectra with FIBERSTATUS!=0 or COADD_FIBERSTATUS!=0
     zcat : :class:`~astropy.table.Table`
         catalog with chi2 information, must be matched to spectra (needed for chi2_range filter).
     log : optional log.
@@ -740,8 +740,11 @@ def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag
             keep = ( keep & keep_chi2 )
 
     #- Fiberstatus selection
-    if clean_fiberstatus and ('FIBERSTATUS' in spectra.fibermap.keys()):
-        keep = ( keep & (spectra.fibermap['FIBERSTATUS']==0) )
+    if clean_fiberstatus:
+        if 'FIBERSTATUS' in spectra.fibermap.keys():
+            keep = ( keep & (spectra.fibermap['FIBERSTATUS']==0) )
+        elif 'COADD_FIBERSTATUS' in spectra.fibermap.keys():
+            keep = ( keep & (spectra.fibermap['COADD_FIBERSTATUS']==0) )
 
     return spectra[keep]
 

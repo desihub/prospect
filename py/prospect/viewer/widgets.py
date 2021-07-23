@@ -307,7 +307,7 @@ class ViewerWidgets(object):
     
     
     def add_metadata_tables(self, viewer_cds, show_zcat=True, template_dicts=None,
-                           top_metadata=['TARGETID', 'EXPID']):
+                           top_metadata=['TARGETID', 'EXPID', 'COADD_NUMEXP', 'COADD_EXPTIME']):
         """ Display object-related informations
                 top_metadata: metadata to be highlighted in table_a
             
@@ -316,8 +316,8 @@ class ViewerWidgets(object):
         """
 
         #- Sorted list of potential metadata:
-        metadata_to_check = ['TARGETID', 'HPXPIXEL', 'TILEID', 'COADD_NUMEXP', 'COADD_EXPTIME', 
-                             'NIGHT', 'EXPID', 'FIBER', 'CAMERA', 'MORPHTYPE']
+        metadata_to_check = ['TARGETID', 'HPXPIXEL', 'TILEID', 'COADD_NUMEXP', 'COADD_EXPTIME', 'COADD_NUMNIGHT',
+                             'COADD_NUMTILE', 'NIGHT', 'EXPID', 'FIBER', 'CAMERA', 'MORPHTYPE']
         metadata_to_check += [ ('mag_'+x) for x in viewer_cds.phot_bands ]
         table_keys = []
         for key in metadata_to_check:
