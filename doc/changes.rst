@@ -21,7 +21,7 @@ prospect's Change Log
 .. _`#55`: https://github.com/desihub/prospect/issues/55
 .. _`#69`: https://github.com/desihub/prospect/issues/69
 .. _`#61`: https://github.com/desihub/prospect/issues/61
-.. _`#61`: https://github.com/desihub/prospect/issues/63
+.. _`#63`: https://github.com/desihub/prospect/issues/63
 .. _`#44`: https://github.com/desihub/prospect/issues/44
 
 
