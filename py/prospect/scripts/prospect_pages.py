@@ -16,6 +16,7 @@ import astropy.io.fits
 
 import desispec.io
 import desispec.spectra
+from desispec.io.util import healpix_subdirectory
 from desiutil.log import get_logger
 
 from ..viewer import plotspectra
@@ -35,6 +36,7 @@ def _parse():
     #- "Multi" file input (can select some data subsets based on tiles, expids...)
     parser.add_argument('--datadir', help='[Mode: Scan directory tree] Location of input directory tree', type=str, default=None)
     parser.add_argument('--dirtree_type', help='''[Mode: Scan directory tree] The following directory tree categories are supported:
+                dirtree_type='healpix': {datadir}/{survey}/{program}/{pixel//100}/{pixel}/{spectra_type}-{survey}-{program}-{pixel}.fits ;
                 dirtree_type='pernight': {datadir}/{tileid}/{night}/{spectra_type}-{petal}-{tile}-{night}.fits ;
                 dirtree_type='perexp': {datadir}/{tileid}/{expid}/{spectra_type}-{petal}-{tile}-exp{expid}.fits ;
                 dirtree_type='cumulative': {datadir}/{tileid}/{night}/{spectra_type}-{petal}-{tile}-thru{night}.fits ;
@@ -42,6 +44,10 @@ def _parse():
             Note that 'perexp' and 'exposures' are different.
             To use blanc/cascades 'all' (resp 'deep') coadds, use dirtree_type='pernight' and nights=['all'] (resp ['deep'])''', type=str, default=None)
     parser.add_argument('--spectra_type', help='[Mode: Scan directory tree] Prefix of spectra files: frame, cframe, sframe, coadd, spectra. [c/s]frames are needed when dirtree_type=exposures.', type=str, default='coadd')
+    parser.add_argument('--survey_program', help='[Mode: Scan directory tree] Set survey and program (eg. --survey_program sv3 dark) when dirtree_type=healpix', nargs='+', type=str, default=None)
+    parser_pixels = parser.add_mutually_exclusive_group()
+    parser_pixels.add_argument('--pixels', help='[Mode: Scan directory tree] Filter over pixel[s]', nargs='+', type=str, default=None)
+    parser_pixels.add_argument('--pixel_list', help='[Mode: Scan directory tree] Filter over pixel[s]: ASCII file with list of pixels, one per row', type=str, default=None)
     parser_tiles = parser.add_mutually_exclusive_group()
     parser_tiles.add_argument('--tiles', help='[Mode: Scan directory tree] Filter over tile[s]', nargs='+', type=str, default=None)
     parser_tiles.add_argument('--tile_list', help='[Mode: Scan directory tree] Filter over tile[s]: ASCII file with list of tiles, one per row', type=str, default=None)
@@ -133,16 +139,24 @@ def load_spectra_zcat_from_dbentry(db_entry, args, log, with_redrock_version=Tru
     subset_label = get_subset_label(db_entry['subset'], args.dirtree_type)
 
     for petal in db_entry['petals']:
-        the_dir = os.path.join(args.datadir, db_entry['dataset'], db_entry['subset'])
+        if args.dirtree_type == 'healpix':
+            nside = 64 # dummy, currently
+            the_dir = os.path.join(args.datadir, db_entry['dataset'][0], db_entry['dataset'][1],
+                                   healpix_subdirectory(nside, int(db_entry['subset'])))
+            file_label = '-'.join([db_entry['dataset'][0], db_entry['dataset'][1], subset_label])
+        else:
+            the_dir = os.path.join(args.datadir, db_entry['dataset'], db_entry['subset'])
+            if args.dirtree_type == 'exposures':
+                file_label = [ band+petal+'-'+db_entry['subset'] for band in ['b','r','z'] ]
+            else:
+                file_label = '-'.join([petal, db_entry['dataset'], subset_label])
         if args.dirtree_type == 'exposures':
             #- Read frames and convert to Spectra
-            file_labels = [ band+petal+'-'+db_entry['subset'] for band in ['b','r','z'] ]
-            fnames = [ os.path.join(the_dir, args.spectra_type+"-"+label+".fits") for label in file_labels ]
+            fnames = [ os.path.join(the_dir, args.spectra_type+"-"+label+".fits") for label in file_label ]
             frames = [ desispec.io.read_frame(fname) for fname in fnames ]
             the_spec = frames2spectra(frames, with_scores=True)
         else:
             #- Read a single Spectra file directly
-            file_label = '-'.join([petal, db_entry['dataset'], subset_label])
             the_spec = desispec.io.read_spectra(os.path.join(the_dir, args.spectra_type+"-"+file_label+".fits"))
         if args.with_zcatalog:
             if os.path.isfile(os.path.join(the_dir, "redrock-"+file_label+".fits")):
@@ -355,9 +369,10 @@ def main():
         tiles = _filter_list(args, 'tile')
         nights = _filter_list(args, 'night')
         expids = _filter_list(args, 'expid')
+        pixels = _filter_list(args, 'pixel')
         subset_db = create_subsetdb(args.datadir, dirtree_type=args.dirtree_type, spectra_type=args.spectra_type,
-                                   tiles=tiles, nights=nights, expids=expids, petals=args.petals,
-                                   with_zcat=args.with_zcatalog)
+                                   tiles=tiles, nights=nights, expids=expids, pixels=pixels, petals=args.petals,
+                                   survey_program=args.survey_program, with_zcat=args.with_zcatalog)
 
         #- Spectra from a list of TARGETIDs
         if target_filter:
@@ -381,7 +396,11 @@ def main():
             log.info('Prospect_pages: start reading data [mode: Scan directory tree]')
             n_done = 0
             for db_entry in subset_db:
-                log.info("Tile "+db_entry['dataset']+" - subset "+db_entry['subset'])
+                if args.dirtree_type == 'healpix':
+                    dataset = '-'.join(db_entry['dataset'])
+                else:
+                    dataset = db_entry['dataset']
+                log.info("Dataset "+dataset+" - subset "+db_entry['subset'])
                 spectra, zcat, redrock_cat = load_spectra_zcat_from_dbentry(db_entry, args, log)
                 if spectra is None:
                     log.info('No spectra found for this subset')
@@ -390,7 +409,7 @@ def main():
                     viewer_params['num_approx_fits'] = 4 # TODO un-hardcode ?
                     viewer_params['with_full_2ndfit'] = True # TODO un-hardcode ?
                 #- Associate a subdirectory for each individual subset:
-                html_subdir = db_entry['dataset']+'-'+get_subset_label(db_entry['subset'], args.dirtree_type)
+                html_subdir = dataset+'-'+get_subset_label(db_entry['subset'], args.dirtree_type)
                 viewer_params['html_dir'] = os.path.join(args.outputdir, html_subdir)
                 os.makedirs(viewer_params['html_dir'], exist_ok=True)
                 titlepage_prefix = args.titlepage_prefix + '_' + html_subdir
