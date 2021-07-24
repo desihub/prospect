@@ -17,9 +17,6 @@ prospect API
 .. automodule:: prospect.scripts.prospect_pages
     :members:
 
-.. automodule:: prospect.scripts.specview_per_pixel
-    :members:
-
 .. automodule:: prospect.specutils
     :members:
 
