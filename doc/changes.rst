@@ -8,7 +8,7 @@ prospect's Change Log
 * Make specutils_ imports optional, for DESI-only users.
 * Improved metadata internal handling and display in VI pages, including FIRST/LAST/NUM_EXPID/TILEID/NIGHT/FIBER, MORPHTYPE, redrock version, and support all current DESI targeting masks (Issues `#21`_, `#51`_ and `#55`_).
 * List of "major" spectral lines updated (Issue `#69`_).
-* Tuned widget layout (Issue `#61`_), added "Redrock_deltachi2" in VI outputs.
+* Tuned widget layout, move legend location (Issues `#61`_ and `#63`_), added "Redrock_deltachi2" in VI outputs.
 * Various bug fixes, in particular handling z_input / rest-frame issues (Issue `#44`_)
 * Code cleaning.
 * Now a single script to create static html pages for DESI: ``prospect_pages.py``.
@@ -21,6 +21,7 @@ prospect's Change Log
 .. _`#55`: https://github.com/desihub/prospect/issues/55
 .. _`#69`: https://github.com/desihub/prospect/issues/69
 .. _`#61`: https://github.com/desihub/prospect/issues/61
+.. _`#61`: https://github.com/desihub/prospect/issues/63
 .. _`#44`: https://github.com/desihub/prospect/issues/44
 
 
