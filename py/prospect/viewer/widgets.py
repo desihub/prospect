@@ -316,9 +316,9 @@ class ViewerWidgets(object):
         """
 
         #- Sorted list of potential metadata:
-        metadata_to_check = ['TARGETID', 'HPXPIXEL', 'TILEID', 'COADD_NUMEXP', 'COADD_EXPTIME', 'COADD_NUMNIGHT',
-                             'COADD_NUMTILE', 'NIGHT', 'EXPID', 'FIBER', 'CAMERA', 'MORPHTYPE']
-        metadata_to_check += [ ('mag_'+x) for x in viewer_cds.phot_bands ]
+        metadata_to_check = [ ('mag_'+x) for x in viewer_cds.phot_bands ]
+        metadata_to_check += ['MORPHTYPE', 'TARGETID', 'HPXPIXEL', 'TILEID', 'COADD_NUMEXP', 'COADD_EXPTIME', 'COADD_NUMNIGHT',
+                             'COADD_NUMTILE', 'NIGHT', 'EXPID', 'FIBER', 'CAMERA']
         table_keys = []
         for key in metadata_to_check:
             if key in viewer_cds.cds_metadata.data.keys():

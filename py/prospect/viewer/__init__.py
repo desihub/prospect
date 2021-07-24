@@ -237,7 +237,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
         you do not intend to record VI files.
     top_metadata : :class:`list`, optional
         List of metadata to be highlighted in the top (most visible) table.
-        Default values ['TARGETID', 'EXPID']
+        Default values ['TARGETID', 'EXPID', 'COADD_NUMEXP', 'COADD_EXPTIME']
     vi_countdown : :class:`int`, optional
         If ``>0``, add a countdown widget in the VI panel, with a value in minutes given
         by `vi_countdown``.
@@ -405,7 +405,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     if zcatalog is not None :
         show_zcat = True
     else : show_zcat = False
-    if top_metadata is None: top_metadata = ['TARGETID', 'EXPID']
+    if top_metadata is None: top_metadata = ['TARGETID', 'EXPID', 'COADD_NUMEXP', 'COADD_EXPTIME']
     viewer_widgets.add_metadata_tables(viewer_cds, top_metadata=top_metadata,
                                        show_zcat=show_zcat, template_dicts=template_dicts)
     viewer_widgets.add_specline_toggles(viewer_cds, viewer_plots)

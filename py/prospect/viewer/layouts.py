@@ -117,7 +117,7 @@ class ViewerLayout(object):
             )
         )
         if widgets.table_d is not None:
-            self.plot_widget_set.children.insert(-2, bl.column(widgets.table_d, width=widgets.plot_widget_width))
+            self.plot_widget_set.children.insert(-1, bl.column(widgets.table_d, width=widgets.plot_widget_width))
         if widgets.coaddcam_buttons is not None :
             waveframe_block = bl.row(
                                 bl.column(widgets.coaddcam_buttons, width=200),

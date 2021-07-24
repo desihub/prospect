@@ -9,6 +9,7 @@
 #  ./examples_prospect_pages     => run all examples/tests
 #  ./examples_prospect_pages N   => run example/test N only
 
+OUTPUT_ROOT=${DESI_ROOT}/spectro/prospect/tests
 
 # --------------------------
 # Mode: Explicit input files
@@ -20,7 +21,7 @@
 if [[ $1 == 1 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 1 ------"
     DATAPATH=${DESI_SPECTRO_REDUX}/denali/tiles/cumulative/81067/20210327
-    OUTPUTDIR=${DESI_ROOT}/spectro/prospect/tests/1
+    OUTPUTDIR=${OUTPUT_ROOT}/1
     mkdir ${OUTPUTDIR}
     prospect_pages --spectra_files ${DATAPATH}/coadd-5-81067-thru20210327.fits \
                    -o ${OUTPUTDIR}
@@ -30,7 +31,7 @@ fi
 if [[ $1 == 2 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 2 ------"
     DATAPATH=${DESI_SPECTRO_REDUX}/denali/tiles/cumulative/81067/20210327
-    OUTPUTDIR=${DESI_ROOT}/spectro/prospect/tests/2
+    OUTPUTDIR=${OUTPUT_ROOT}/2
     mkdir ${OUTPUTDIR}
     prospect_pages --spectra_files ${DATAPATH}/coadd-5-81067-thru20210327.fits \
                    --zcat_files ${DATAPATH}/zbest-5-81067-thru20210327.fits \
@@ -45,7 +46,7 @@ fi
 if [[ $1 == 3 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 3 ------"
     DATAPATH=${DESI_SPECTRO_REDUX}/denali/tiles/cumulative/81067/20210327
-    OUTPUTDIR=${DESI_ROOT}/spectro/prospect/tests/3
+    OUTPUTDIR=${OUTPUT_ROOT}/3
     mkdir ${OUTPUTDIR}
     prospect_pages --spectra_files ${DATAPATH}/coadd-5-81067-thru20210327.fits \
                    --zcat_files ${DATAPATH}/zbest-5-81067-thru20210327.fits \
@@ -64,7 +65,7 @@ fi
 if [[ $1 == 4 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 4 ------"
     DATAPATH=${DESI_SPECTRO_REDUX}/denali/tiles/cumulative/81067/20210327
-    OUTPUTDIR=${DESI_ROOT}/spectro/prospect/tests/4
+    OUTPUTDIR=${OUTPUT_ROOT}/4
     mkdir ${OUTPUTDIR}
     prospect_pages --spectra_files ${DATAPATH}/coadd-5-81067-thru20210327.fits \
                    --zcat_files ${DATAPATH}/zbest-5-81067-thru20210327.fits \
@@ -80,7 +81,7 @@ fi
 if [[ $1 == 5 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 5 ------"
     DATAPATH=${DESI_SPECTRO_REDUX}/denali/tiles/cumulative/81067/20210327
-    OUTPUTDIR=${DESI_ROOT}/spectro/prospect/tests/5
+    OUTPUTDIR=${OUTPUT_ROOT}/5
     mkdir ${OUTPUTDIR}
     prospect_pages --spectra_files ${DATAPATH}/coadd-5-81067-thru20210327.fits \
                                    ${DATAPATH}/coadd-7-81067-thru20210327.fits \
@@ -101,7 +102,7 @@ fi
 if [[ $1 == 6 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 6 ------"
     DATAPATH=${DESI_SPECTRO_REDUX}/denali/tiles/cumulative/81067/20210327
-    OUTPUTDIR=${DESI_ROOT}/spectro/prospect/tests/6
+    OUTPUTDIR=${OUTPUT_ROOT}/6
     mkdir ${OUTPUTDIR}
     prospect_pages --spectra_files ${DATAPATH}/coadd-5-81067-thru20210327.fits \
                    --zcat_files ${DATAPATH}/zbest-5-81067-thru20210327.fits \
@@ -122,7 +123,7 @@ fi
 if [[ $1 == 7 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 7 ------"
     DATADIR=${DESI_SPECTRO_REDUX}/andes/tiles
-    OUTPUTDIR=${DESI_ROOT}/spectro/prospect/tests/7
+    OUTPUTDIR=${OUTPUT_ROOT}/7
     mkdir ${OUTPUTDIR}
     prospect_pages --datadir ${DATADIR} \
                    --dirtree_type pernight \
@@ -138,7 +139,7 @@ fi
 if [[ $1 == 8 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 8 ------"
     DATADIR=${DESI_SPECTRO_REDUX}/blanc/tiles
-    OUTPUTDIR=${DESI_ROOT}/spectro/prospect/tests/8
+    OUTPUTDIR=${OUTPUT_ROOT}/8
     mkdir ${OUTPUTDIR}
     prospect_pages --datadir ${DATADIR} \
                    --dirtree_type pernight \
@@ -155,7 +156,7 @@ fi
 if [[ $1 == 9 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 9 ------"
     DATADIR=${DESI_SPECTRO_REDUX}/denali/tiles/perexp
-    OUTPUTDIR=${DESI_ROOT}/spectro/prospect/tests/9
+    OUTPUTDIR=${OUTPUT_ROOT}/9
     mkdir ${OUTPUTDIR}
     TILE_LIST_FILE=tmp_tile_list.txt
     echo -e ' 81058 \n 81059 \n 81060' > ${TILE_LIST_FILE}
@@ -170,13 +171,13 @@ if [[ $1 == 9 ]] || [[ $1 == '' ]]; then
     rm -f ${TILE_LIST_FILE}
 fi
 
-#- 10) Inspect "cumulative" data in denali release
+#- 10) Inspect "cumulative" data in everest release
 #      Input target list from file (target order is kept in html pages)
 #      Display multiple models (=> read readrock .h5 files), customize displayed metadata
 if [[ $1 == 10 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 10 ------"
-    DATADIR=${DESI_SPECTRO_REDUX}/denali/tiles/cumulative
-    OUTPUTDIR=${DESI_ROOT}/spectro/prospect/tests/10
+    DATADIR=${DESI_SPECTRO_REDUX}/everest/tiles/cumulative
+    OUTPUTDIR=${OUTPUT_ROOT}/10
     mkdir ${OUTPUTDIR}
     TARGET_LIST_FILE=tmp_target_list.txt
     echo -e ' 616094114412233066 \n 39632930179383639 \n 39632930179384420 \n 39632930179384518 \n 616094111199396534 \n 616094114420622028 \n 616094111195201658 ' > ${TARGET_LIST_FILE}
@@ -187,7 +188,7 @@ if [[ $1 == 10 ]] || [[ $1 == '' ]]; then
                    --tiles 81062 80654 \
                    --target_list ${TARGET_LIST_FILE} \
                    --mask_type DESI_TARGET \
-                   --top_metadata TARGETID TILEID EXPID
+                   --top_metadata TARGETID TILEID COADD_EXPTIME
     rm -f ${TARGET_LIST_FILE}
 fi
 
@@ -196,11 +197,25 @@ fi
 if [[ $1 == 11 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 11 ------"
     DATADIR=${DESI_SPECTRO_REDUX}/daily/exposures
-    OUTPUTDIR=${DESI_ROOT}/spectro/prospect/tests/11
+    OUTPUTDIR=${OUTPUT_ROOT}/11
     mkdir ${OUTPUTDIR}
     prospect_pages --datadir ${DATADIR} \
                    --dirtree_type exposures --spectra_type cframe \
                    -o ${OUTPUTDIR} \
                    --nights 20210628 --expids 00096449 00096450 --petals 2 \
                    --titlepage prospect-frames
+fi
+
+#- 12) Inspect data in healpix directories, everest
+if [[ $1 == 12 ]] || [[ $1 == '' ]]; then
+    echo "------ Example/Test 12 ------"
+    DATADIR=${DESI_SPECTRO_REDUX}/everest/healpix
+    OUTPUTDIR=${OUTPUT_ROOT}/12
+    mkdir ${OUTPUTDIR}
+    prospect_pages --datadir ${DATADIR} \
+                   --dirtree_type healpix \
+                   --with_zcatalog --with_multiple_models \
+                   -o ${OUTPUTDIR} \
+                   --pixels 9557 --survey_program main dark \
+                   --targeting_mask QSO --chi2_min 200
 fi

@@ -463,7 +463,7 @@ def create_targetdb(datadir, subsetdb, dirtree_type=None):
             where dataset is a tile, night, or a (survey, program) tuple;
             subset is a night, expid or pixel; and petal is None when dirtree_type=healpix.
 
-    """`
+    """
     if dirtree_type=='exposures':
         raise ValueError("dirtree_type='exposures' is not supported in `create_targetdb`")
     targetdb = dict()
@@ -538,7 +538,7 @@ def load_spectra_zcat_from_targets(targetids, datadir, targetdb, dirtree_type=No
     ztables, rrtables = [], []
 
     for dataset, subset, petal in targetdb.keys():
-        targets_subset = set(targetdb[tile, subset, petal])
+        targets_subset = set(targetdb[dataset, subset, petal])
         targets_subset = targets_subset.intersection(set(targetids))
 
         # Load spectra for that tile-subset-petal only if one or more target(s) are in the list
