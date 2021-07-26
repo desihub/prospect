@@ -2,7 +2,7 @@
 prospect's Change Log
 =====================
 
-1.1.1 (unreleased)
+1.2.0 (2021-07-26)
 ------------------
 
 * Make specutils_ imports optional, for DESI-only users.
