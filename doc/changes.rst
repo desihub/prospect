@@ -2,10 +2,19 @@
 prospect's Change Log
 =====================
 
-1.1.2 (unreleased)
+1.2.0 (2021-07-26)
 ------------------
 
-* No changes yet.
+* Tuned widget layout, move legend location (Issues `#61`_ and `#63`_), added "Redrock_deltachi2" in VI outputs.
+* Various bug fixes, in particular handling z_input / rest-frame issues (Issue `#44`_)
+* Code cleaning.
+* Now a single script to create static html pages for DESI: ``prospect_pages.py``.
+* Two notebooks updated, and a script ``example_prospect_pages``, to be used both as doc and tests.
+* Compatible with files and directory trees from andes to everest.
+
+.. _`#61`: https://github.com/desihub/prospect/issues/61
+.. _`#63`: https://github.com/desihub/prospect/issues/63
+.. _`#44`: https://github.com/desihub/prospect/issues/44
 
 1.1.1 (2021-03-31)
 ------------------

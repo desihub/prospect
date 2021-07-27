@@ -1,6 +1,6 @@
 // CustomJS, callback for the model selection
 //  - Requires to include function in: interp_grid.js, smooth_data.js
-//  - args = ifiberslider, model_select, fit_templates, cds_model_2ndfit, cds_model, z_input
+//  - args = ispectrumslider, model_select, fit_templates, cds_model_2ndfit, cds_model, z_input
 //             cds_othermodel, fit_results, std_templates, median_spectra, smootherslider,
 //             cds_metadata
 // IN DEVLPT
@@ -20,24 +20,25 @@ function median(numbers) {
     return median
 }
 
+var i_spectrum = ispectrumslider.value
 var spec_z = 0.0
 
 if (model_select.value == 'Best fit') {
-    var origflux = cds_model.data['origflux'+ifiberslider.value]
+    var origflux = cds_model.data['origflux'+String(i_spectrum)]
 
     cds_othermodel.data['origflux'] = origflux.slice()
     cds_othermodel.data['plotflux'] = origflux.slice()
     cds_othermodel.data['plotwave'] = cds_model.data['plotwave'].slice()
     cds_othermodel.data['origwave'] = cds_model.data['origwave'].slice()
-    spec_z = cds_metadata.data['Z'][ifiberslider.value]
+    spec_z = cds_metadata.data['Z'][i_spectrum]
 
 } else if (model_select.value == '2nd best fit') {
-    var origflux = cds_model_2ndfit.data['origflux'+ifiberslider.value]
+    var origflux = cds_model_2ndfit.data['origflux'+String(i_spectrum)]
     cds_othermodel.data['origflux'] = origflux.slice()
     cds_othermodel.data['plotflux'] = origflux.slice()
     cds_othermodel.data['plotwave'] = cds_model_2ndfit.data['plotwave']
     cds_othermodel.data['origwave'] = cds_model_2ndfit.data['origwave']
-    spec_z = fit_results['Z'][ifiberslider.value][1] // entry "1" => 2nd best fit
+    spec_z = fit_results['Z'][i_spectrum][1] // entry "1" => 2nd best fit
 
 } else if ( (model_select.value).search("STD ") == 0) {
     // TODO : adapt median to relevant waverange (fct of z_spec at least).
@@ -61,7 +62,7 @@ if (model_select.value == 'Best fit') {
         }
     }
 
-    var median_goal = median_spectra.data['median'][ifiberslider.value]
+    var median_goal = median_spectra.data['median'][i_spectrum]
     var median_template = median(template_in_roi)
     var scaled_template_flux = std_templates["flux_"+template_key].slice()
     for (var i=0; i<scaled_template_flux.length; i++) {
@@ -75,10 +76,10 @@ if (model_select.value == 'Best fit') {
 
 } else { // recompute Nth best fit
     var i_fit = parseInt(model_select.value[0])-1 // hardcoded ("1st fit" => "1" => entry 0. Assumes N<10)
-    var coeffs = fit_results['COEFF'][ifiberslider.value][i_fit]
-    var spectype =  fit_results['SPECTYPE'][ifiberslider.value][i_fit]
-    var subtype =  fit_results['SUBTYPE'][ifiberslider.value][i_fit]
-    spec_z = fit_results['Z'][ifiberslider.value][i_fit]
+    var coeffs = fit_results['COEFF'][i_spectrum][i_fit]
+    var spectype =  fit_results['SPECTYPE'][i_spectrum][i_fit]
+    var subtype =  fit_results['SUBTYPE'][i_spectrum][i_fit]
+    spec_z = fit_results['Z'][i_spectrum][i_fit]
     
     var template_wave = fit_templates["wave_"+spectype+"_"+subtype]
     var template_flux = fit_templates["flux_"+spectype+"_"+subtype]
@@ -99,7 +100,7 @@ if (model_select.value == 'Best fit') {
     cds_othermodel.data['plotflux'] = model_flux.slice()
 }
 
-var zref_vect = (cds_othermodel.data['plotwave']).slice() // trick to keep track of spec_z (see plotframes.py)
+var zref_vect = (cds_othermodel.data['plotwave']).slice() // trick to keep track of spec_z (see change_redshift.js)
 for (var j=0; j<zref_vect.length; j++) zref_vect[j] = spec_z
 cds_othermodel.data['zref'] = zref_vect.slice()
 

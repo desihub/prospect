@@ -15,7 +15,7 @@ import numpy as np
 from bokeh.models import CustomJS, ColumnDataSource
 from bokeh.models.widgets import (
     Slider, Button, TextInput, RadioButtonGroup, TableColumn,
-    DataTable, CheckboxButtonGroup, CheckboxGroup, Select)
+    DataTable, CheckboxButtonGroup, CheckboxGroup, Select, Div)
 
 from ..utilities import get_resources
 
@@ -26,6 +26,8 @@ def _metadata_table(table_keys, viewer_cds, table_width=500, shortcds_name='shor
     """
     special_cell_width = { 'TARGETID':150, 'MORPHTYPE':70, 'SPECTYPE':70, 'SUBTYPE':60, 
                          'Z':50, 'ZERR':50, 'Z_ERR':50, 'ZWARN':50, 'ZWARNING':50, 'DELTACHI2':70 }
+    for x in viewer_cds.phot_bands:
+        special_cell_width['mag_'+x] = 40
     special_cell_title = { 'DELTACHI2': 'Δχ2(N+1/N)' }
     
     table_columns = []
@@ -39,7 +41,7 @@ def _metadata_table(table_keys, viewer_cds, table_width=500, shortcds_name='shor
             cell_title = special_cell_title[key]
         else:
             cell_title = key
-        if 'mag_' in key:
+        if ('mag_' in key) or ('EXPTIME' in key):
             cdsdata[key] = [ "{:.2f}".format(viewer_cds.cds_metadata.data[key][0]) ]
         elif 'CHI2' in key:
             cdsdata[key] = [ "{:.1f}".format(viewer_cds.cds_metadata.data[key][0]) ]
@@ -71,15 +73,21 @@ class ViewerWidgets(object):
         self.plot_widget_width = (plots.plot_width+(plots.plot_height//2))//2 - 40 # used for widgets scaling
     
         #-----
-        #- Ifiberslider and smoothing widgets
-        # Ifiberslider's value controls which spectrum is displayed
+        #- Ispectrumslider and smoothing widgets
+        # Ispectrumslider's value controls which spectrum is displayed
         # These two widgets call update_plot(), later defined
         slider_end = nspec-1 if nspec > 1 else 0.5 # Slider cannot have start=end
-        self.ifiberslider = Slider(start=0, end=slider_end, value=0, step=1, title='Spectrum (of '+str(nspec)+')')
+        self.ispectrumslider = Slider(start=0, end=slider_end, value=0, step=1, title='Spectrum (0 to '+str(nspec-1)+')')
         self.smootherslider = Slider(start=0, end=26, value=0, step=1.0, title='Gaussian Sigma Smooth')
         self.coaddcam_buttons = None
         self.model_select = None
-
+        #- Small CDS to contain informations on widgets/plots status
+        self.cds_widgetinfos = ColumnDataSource({'oii_save_xmin': [plots.fig.x_range.start],
+                                                 'oii_save_xmax': [plots.fig.x_range.end],
+                                                 'oii_save_nsmooth': [self.smootherslider.value],
+                                                 'waveframe_active': [0],
+                                                 'z_input_value': [0]
+                                                })
 
     def add_navigation(self, nspec):
         #-----
@@ -87,17 +95,17 @@ class ViewerWidgets(object):
         self.prev_button = Button(label="<", width=self.navigation_button_width)
         self.next_button = Button(label=">", width=self.navigation_button_width)
         self.prev_callback = CustomJS(
-            args=dict(ifiberslider=self.ifiberslider),
+            args=dict(ispectrumslider=self.ispectrumslider),
             code="""
-            if(ifiberslider.value>0 && ifiberslider.end>=1) {
-                ifiberslider.value--
+            if(ispectrumslider.value>0 && ispectrumslider.end>=1) {
+                ispectrumslider.value--
             }
             """)
         self.next_callback = CustomJS(
-            args=dict(ifiberslider=self.ifiberslider, nspec=nspec),
+            args=dict(ispectrumslider=self.ispectrumslider, nspec=nspec),
             code="""
-            if(ifiberslider.value<nspec-1 && ifiberslider.end>=1) {
-                ifiberslider.value++
+            if(ispectrumslider.value<nspec-1 && ispectrumslider.end>=1) {
+                ispectrumslider.value++
             }
             """)
         self.prev_button.js_on_event('button_click', self.prev_callback)
@@ -108,10 +116,14 @@ class ViewerWidgets(object):
         #- Axis reset button (superseeds the default bokeh "reset"
         self.reset_plotrange_button = Button(label="Reset X-Y range", button_type="default")
         reset_plotrange_code = self.js_files["adapt_plotrange.js"] + self.js_files["reset_plotrange.js"]
-        self.reset_plotrange_callback = CustomJS(args = dict(fig=plots.fig, xmin=plots.xmin, xmax=plots.xmax, spectra=viewer_cds.cds_spectra),
-                                            code = reset_plotrange_code)
+        self.reset_plotrange_callback = CustomJS(
+            args = dict(fig = plots.fig,
+                        xmin = plots.xmin,
+                        xmax = plots.xmax,
+                        spectra = viewer_cds.cds_spectra,
+                        widgetinfos = self.cds_widgetinfos),
+            code = reset_plotrange_code)
         self.reset_plotrange_button.js_on_event('button_click', self.reset_plotrange_callback)
-
 
     def add_redshift_widgets(self, z, viewer_cds, plots):
         ## TODO handle "z" (same issue as viewerplots TBD)
@@ -122,8 +134,10 @@ class ViewerWidgets(object):
         dz = z-z1
         self.zslider = Slider(start=-0.1, end=5.0, value=z1, step=0.01, title='Redshift rough tuning')
         self.dzslider = Slider(start=0.0, end=0.0099, value=dz, step=0.0001, title='Redshift fine-tuning')
+        self.zslider.format = "0[.]00" # default bokeh value, for record
         self.dzslider.format = "0[.]0000"
         self.z_input = TextInput(value="{:.4f}".format(z), title="Redshift value:")
+        self.cds_widgetinfos.data['z_input_value'][0] = self.z_input.value
 
         #- Observer vs. Rest frame wavelengths
         self.waveframe_buttons = RadioButtonGroup(
@@ -181,144 +195,69 @@ class ViewerWidgets(object):
         self.z_minus_button.js_on_event('button_click', self.z_minus_callback)
         self.z_plus_button.js_on_event('button_click', self.z_plus_callback)
 
-        self.zreset_button = Button(label='Reset to z_pipe')
-        self.zreset_callback = CustomJS(
-            args=dict(z_input=self.z_input, metadata=viewer_cds.cds_metadata, ifiberslider=self.ifiberslider),
-            code="""
-                var ifiber = ifiberslider.value
-                var z = metadata.data['Z'][ifiber]
-                z_input.value = z.toFixed(4)
-            """)
-        self.zreset_button.js_on_event('button_click', self.zreset_callback)
+        if 'Z' in viewer_cds.cds_metadata.data.keys():
+            self.zreset_button = Button(label='Reset to z_pipe')
+            self.zreset_callback = CustomJS(
+                args=dict(z_input=self.z_input, metadata=viewer_cds.cds_metadata, ispectrumslider=self.ispectrumslider),
+                code="""
+                    var z = metadata.data['Z'][ispectrumslider.value]
+                    z_input.value = z.toFixed(4)
+                """)
+            self.zreset_button.js_on_event('button_click', self.zreset_callback)
+        else:
+            self.zreset_button = Div(text="(z_pipe not available)")
 
+        z_input_args = dict(spectra = viewer_cds.cds_spectra,
+            coaddcam_spec = viewer_cds.cds_coaddcam_spec,
+            model = viewer_cds.cds_model,
+            othermodel = viewer_cds.cds_othermodel,
+            metadata = viewer_cds.cds_metadata,
+            widgetinfos = self.cds_widgetinfos,
+            ispectrumslider = self.ispectrumslider,
+            zslider = self.zslider,
+            dzslider = self.dzslider,
+            z_input = self.z_input,
+            line_data = viewer_cds.cds_spectral_lines,
+            lines = plots.speclines,
+            line_labels = plots.specline_labels,
+            zlines = plots.zoom_speclines,
+            zline_labels = plots.zoom_specline_labels,
+            overlap_waves = plots.overlap_waves,
+            overlap_bands = plots.overlap_bands,
+            fig = plots.fig)
         self.z_input_callback = CustomJS(
-            args=dict(spectra = viewer_cds.cds_spectra,
-                coaddcam_spec = viewer_cds.cds_coaddcam_spec,
-                model = viewer_cds.cds_model,
-                othermodel = viewer_cds.cds_othermodel,
-                metadata = viewer_cds.cds_metadata,
-                ifiberslider = self.ifiberslider,
-                zslider = self.zslider,
-                dzslider = self.dzslider,
-                z_input = self.z_input,
-                waveframe_buttons = self.waveframe_buttons,
-                line_data = viewer_cds.cds_spectral_lines,
-                lines = plots.speclines,
-                line_labels = plots.specline_labels,
-                zlines = plots.zoom_speclines,
-                zline_labels = plots.zoom_specline_labels,
-                overlap_waves = plots.overlap_waves,
-                overlap_bands = plots.overlap_bands,
-                fig = plots.fig
-                ),
-            code="""
-                var z = parseFloat(z_input.value)
-                if ( z >=-0.1 && z <= 5.0 ) {
-                    // update zsliders only if needed (avoid recursive call)
-                    z_input.value = parseFloat(z_input.value).toFixed(4)
-                    var z1 = Math.floor(z*100) / 100
-                    var z2 = z-z1
-                    if ( Math.abs(z1-zslider.value) >= 0.01) zslider.value = parseFloat(parseFloat(z1).toFixed(2))
-                    if ( Math.abs(z2-dzslider.value) >= 0.0001) dzslider.value = parseFloat(parseFloat(z2).toFixed(4))
-                } else {
-                    if (z_input.value < -0.1) z_input.value = (-0.1).toFixed(4)
-                    if (z_input.value > 5) z_input.value = (5.0).toFixed(4)
-                }
-
-                var line_restwave = line_data.data['restwave']
-                var ifiber = ifiberslider.value
-                var waveshift_lines = (waveframe_buttons.active == 0) ? 1+z : 1 ;
-                var waveshift_spec = (waveframe_buttons.active == 0) ? 1 : 1/(1+z) ;
-
-                for(var i=0; i<line_restwave.length; i++) {
-                    lines[i].location = line_restwave[i] * waveshift_lines
-                    line_labels[i].x = line_restwave[i] * waveshift_lines
-                    zlines[i].location = line_restwave[i] * waveshift_lines
-                    zline_labels[i].x = line_restwave[i] * waveshift_lines
-                }
-                if (overlap_bands.length>0) {
-                    for (var i=0; i<overlap_bands.length; i++) {
-                        overlap_bands[i].left = overlap_waves[i][0] * waveshift_spec
-                        overlap_bands[i].right = overlap_waves[i][1] * waveshift_spec
-                    }
-                }
-
-                function shift_plotwave(cds_spec, waveshift) {
-                    var data = cds_spec.data
-                    var origwave = data['origwave']
-                    var plotwave = data['plotwave']
-                    if ( plotwave[0] != origwave[0] * waveshift ) { // Avoid redo calculation if not needed
-                        for (var j=0; j<plotwave.length; j++) {
-                            plotwave[j] = origwave[j] * waveshift ;
-                        }
-                        cds_spec.change.emit()
-                    }
-                }
-
-                for(var i=0; i<spectra.length; i++) {
-                    shift_plotwave(spectra[i], waveshift_spec)
-                }
-                if (coaddcam_spec) shift_plotwave(coaddcam_spec, waveshift_spec)
-
-                // Update model wavelength array
-                // NEW : don't shift model if othermodel is there
-                if (othermodel) {
-                    var zref = othermodel.data['zref'][0]
-                    var waveshift_model = (waveframe_buttons.active == 0) ? (1+z)/(1+zref) : 1/(1+zref) ;
-                    shift_plotwave(othermodel, waveshift_model)
-                } else if (model) {
-                    var zfit = 0.0
-                    if(metadata.data['Z'] !== undefined) {
-                        zfit = metadata.data['Z'][ifiber]
-                    }
-                    var waveshift_model = (waveframe_buttons.active == 0) ? (1+z)/(1+zfit) : 1/(1+zfit) ;
-                    shift_plotwave(model, waveshift_model)
-                }
-            """)
-        self.z_input.js_on_change('value', self.z_input_callback)
-        self.waveframe_buttons.js_on_click(self.z_input_callback)
-
-        self.plotrange_callback = CustomJS(
-            args = dict(
-                z_input=self.z_input,
-                waveframe_buttons=self.waveframe_buttons,
-                fig=plots.fig,
-            ),
-            code="""
-            var z =  parseFloat(z_input.value)
-            // Observer Frame
-            if(waveframe_buttons.active == 0) {
-                fig.x_range.start = fig.x_range.start * (1+z)
-                fig.x_range.end = fig.x_range.end * (1+z)
-            } else {
-                fig.x_range.start = fig.x_range.start / (1+z)
-                fig.x_range.end = fig.x_range.end / (1+z)
-            }
-            """
+            args = z_input_args,
+            code = self.js_files["shift_wave.js"] + self.js_files["change_redshift.js"]
         )
-        self.waveframe_buttons.js_on_click(self.plotrange_callback) # TODO: for record: is this related to waveframe bug? : 2 callbakcs for same click...
+        self.z_input.js_on_change('value', self.z_input_callback)
 
+        waveframe_args = z_input_args
+        self.waveframe_callback = CustomJS(
+            args = waveframe_args,
+            code = self.js_files["shift_wave.js"] + self.js_files["change_waveframe.js"])
+        self.waveframe_buttons.js_on_click(self.waveframe_callback)
 
     def add_oii_widgets(self, plots):
         #------
-        #- Zoom on the OII doublet TODO mv js code to other file
-        # TODO: is there another trick than using a cds to pass the "oii_saveinfo" ?
-        # TODO: optimize smoothing for autozoom (current value: 0)
-        cds_oii_saveinfo = ColumnDataSource(
-            {'xmin':[plots.fig.x_range.start], 'xmax':[plots.fig.x_range.end], 'nsmooth':[self.smootherslider.value]})
+        #- Zoom on the OII doublet
+        # TODO? optimize smoothing for autozoom (current value: 0)
         self.oii_zoom_button = Button(label="OII-zoom", button_type="default")
         self.oii_zoom_callback = CustomJS(
-            args = dict(z_input=self.z_input, fig=plots.fig, smootherslider=self.smootherslider,
-                       cds_oii_saveinfo=cds_oii_saveinfo),
+            args = dict(fig=plots.fig, smootherslider=self.smootherslider,
+                        widgetinfos=self.cds_widgetinfos),
             code = """
             // Save previous setting (for the "Undo" button)
-            cds_oii_saveinfo.data['xmin'] = [fig.x_range.start]
-            cds_oii_saveinfo.data['xmax'] = [fig.x_range.end]
-            cds_oii_saveinfo.data['nsmooth'] = [smootherslider.value]
+            widgetinfos.data['oii_save_xmin'][0] = fig.x_range.start
+            widgetinfos.data['oii_save_xmax'][0] = fig.x_range.end
+            widgetinfos.data['oii_save_nsmooth'][0] = smootherslider.value
             // Center on the middle of the redshifted OII doublet (vaccum)
-            var z = parseFloat(z_input.value)
-            fig.x_range.start = 3728.48 * (1+z) - 100
-            fig.x_range.end = 3728.48 * (1+z) + 100
+            var central_wave = 3728.48;
+            if (widgetinfos.data['waveframe_active'][0] == 0) {
+                var z = parseFloat(widgetinfos.data['z_input_value'][0])
+                central_wave *= (1+z)
+            }
+            fig.x_range.start = central_wave - 100
+            fig.x_range.end = central_wave + 100
             // No smoothing (this implies a call to update_plot)
             smootherslider.value = 0
             """)
@@ -326,11 +265,11 @@ class ViewerWidgets(object):
 
         self.oii_undo_button = Button(label="Undo OII-zoom", button_type="default")
         self.oii_undo_callback = CustomJS(
-            args = dict(fig=plots.fig, smootherslider=self.smootherslider, cds_oii_saveinfo=cds_oii_saveinfo),
+            args = dict(fig=plots.fig, smootherslider=self.smootherslider, widgetinfos=self.cds_widgetinfos),
             code = """
-            fig.x_range.start = cds_oii_saveinfo.data['xmin'][0]
-            fig.x_range.end = cds_oii_saveinfo.data['xmax'][0]
-            smootherslider.value = cds_oii_saveinfo.data['nsmooth'][0]
+            fig.x_range.start = widgetinfos.data['oii_save_xmin'][0]
+            fig.x_range.end = widgetinfos.data['oii_save_xmax'][0]
+            smootherslider.value = widgetinfos.data['oii_save_nsmooth'][0]
             """)
         self.oii_undo_button.js_on_event('button_click', self.oii_undo_callback)
 
@@ -368,7 +307,7 @@ class ViewerWidgets(object):
     
     
     def add_metadata_tables(self, viewer_cds, show_zcat=True, template_dicts=None,
-                           top_metadata=['TARGETID', 'EXPID']):
+                           top_metadata=['TARGETID', 'EXPID', 'COADD_NUMEXP', 'COADD_EXPTIME']):
         """ Display object-related informations
                 top_metadata: metadata to be highlighted in table_a
             
@@ -377,9 +316,9 @@ class ViewerWidgets(object):
         """
 
         #- Sorted list of potential metadata:
-        metadata_to_check = ['TARGETID', 'HPXPIXEL', 'TILEID', 'COADD_NUMEXP', 'COADD_EXPTIME', 
-                             'NIGHT', 'EXPID', 'FIBER', 'CAMERA', 'MORPHTYPE']
-        metadata_to_check += [ ('mag_'+x) for x in viewer_cds.phot_bands ]
+        metadata_to_check = [ ('mag_'+x) for x in viewer_cds.phot_bands ]
+        metadata_to_check += ['MORPHTYPE', 'TARGETID', 'HPXPIXEL', 'TILEID', 'COADD_NUMEXP', 'COADD_EXPTIME', 'COADD_NUMNIGHT',
+                             'COADD_NUMTILE', 'NIGHT', 'EXPID', 'FIBER', 'CAMERA']
         table_keys = []
         for key in metadata_to_check:
             if key in viewer_cds.cds_metadata.data.keys():
@@ -414,7 +353,7 @@ class ViewerWidgets(object):
                                                                  shortcds_name='shortcds_table_d', selectable=False)
 
         #- Table z: redshift fitting information
-        if show_zcat is not None :
+        if show_zcat:
             if template_dicts is not None : # Add other best fits
                 fit_results = template_dicts[1]
                 # Case of DeltaChi2 : compute it from Chi2s
@@ -448,9 +387,9 @@ class ViewerWidgets(object):
         #-----
         #- Toggle lines
         self.speclines_button_group = CheckboxButtonGroup(
-                labels=["Emission lines", "Absorption lines"], active=[])
+                labels=["Emission lines", "Absorption lines"], active=[0, 1])
         self.majorline_checkbox = CheckboxGroup(
-                labels=['Show only major lines'], active=[])
+                labels=['Show only major lines'], active=[0])
 
         self.speclines_callback = CustomJS(
             args = dict(line_data = viewer_cds.cds_spectral_lines,
@@ -511,7 +450,7 @@ class ViewerWidgets(object):
         self.model_select = Select(value=model_options[0], title="Other model (dashed curve):", options=model_options)
         model_select_code = self.js_files["interp_grid.js"] + self.js_files["smooth_data.js"] + self.js_files["select_model.js"]
         self.model_select_callback = CustomJS(
-            args = dict(ifiberslider = self.ifiberslider,
+            args = dict(ispectrumslider = self.ispectrumslider,
                         model_select = self.model_select,
                         fit_templates=template_dicts[0],
                         cds_othermodel = viewer_cds.cds_othermodel,
@@ -549,10 +488,12 @@ class ViewerWidgets(object):
                 shortcds_table_b = self.shortcds_table_b,
                 shortcds_table_c = self.shortcds_table_c,
                 shortcds_table_d = self.shortcds_table_d,
-                ifiberslider = self.ifiberslider,
+                ispectrumslider = self.ispectrumslider,
                 smootherslider = self.smootherslider,
                 z_input = self.z_input,
+                widgetinfos = self.cds_widgetinfos,
                 fig = plots.fig,
+                xrange = [plots.xmin, plots.xmax],
                 imfig_source = plots.imfig_source,
                 imfig_urls = plots.imfig_urls,
                 model_select = self.model_select,
@@ -569,6 +510,6 @@ class ViewerWidgets(object):
             code = update_plot_code
         )
         self.smootherslider.js_on_change('value', self.update_plot_callback)
-        self.ifiberslider.js_on_change('value', self.update_plot_callback)
+        self.ispectrumslider.js_on_change('value', self.update_plot_callback)
 
 

@@ -2,24 +2,15 @@
 # -*- coding: utf-8 -*-
 """
 ===================
-prospect.mycoaddcam
+prospect.coaddcam
 ===================
 
-Coadds things.
+Python routines which translate the simple camera-coaddition algorithms
+used in prospect webpages (js code in js/interp_grid.js and js/coadd_brz_cameras.js).
 """
-# EA - Oct 2019 (Temporary / preliminary)
-# desispec.coaddition.coadd_cameras() unsatisfying at least since
-# 1) don't want to coadd over exposures / 2) cannot assume waves are aligned over arms (r/z mismatch seen in datachallenge)
-
-# In addition we need a python implementation of the same algorithm as used in js/coadd_brz_cameras.js
 
 import numpy as np
 from math import floor
-
-try:
-    from desispec.interpolation import resample_flux
-except ImportError:
-    pass
 
 def index_dichotomy(point, grid):
     """Find nearest index in `grid`, left from `point`; use dichotomy method.
@@ -155,9 +146,25 @@ def coadd_brz_cameras(wave_in, flux_in, noise_in) :
 
 
 def coaddcam_prospect(spectra):
-    """Wrapper to :func:`~prospect.mycoaddcam.coadd_brz_cameras`.
+    """ Camera-coaddition of *brz* bands in a set of DESI spectra.
 
-    Same input/output as :func:`~prospect.mycoaddcam.mycoaddcam`.
+    This is essentially a wrapper to :func:`~prospect.coaddcam.coadd_brz_cameras`.
+
+    Parameters
+    ----------
+    spectra: :class:`~desispec.spectra.Spectra` or similar
+
+    Returns
+    -------
+    :func:`tuple` (wave, flux, ivar), where
+        wave : 1D[nwave] array of wavelengths
+        flux : 2D[nspec, nwave] array of flux densities
+        ivar : 2D[nspec, nwave] array of inverse variances of `flux`
+
+    Raises
+    ------
+    RuntimeError
+        If spectra.bands does not contain 'b', 'r', 'z', and spectra.bands is not 'brz'
     """
 
     if np.all([ band in spectra.bands for band in ['b','r','z'] ]) :
@@ -186,68 +193,8 @@ def coaddcam_prospect(spectra):
         wave_out = spectra.wave['brz']
         flux_out = spectra.flux['brz']
         ivar_out = spectra.ivar['brz']
+
     else :
         raise RuntimeError("Set of bands for spectra not supported.")
 
     return (wave_out, flux_out, ivar_out)
-
-
-def mycoaddcam(spectra):
-    """"Merges *brz* spectra into a single (wave,flux).
-
-    Takes into account noise and mis-matched wavelengths over the 3 arms;
-    currently assumes b r z bands and two overlap regions.
-    """
-
-    if np.all([ band in spectra.bands for band in ['b','r','z'] ]) :
-
-        # Define (arbitrarily) wavelength grid
-        margin = 20 # Angstrom. Avoids using edge-of-band at overlap regions
-        wave = spectra.wave['b'].copy()
-        wave = wave[ (wave<np.max(wave)-margin) ]
-        tolerance = 0.0001
-        length_bands = {'b' : wave.size}
-        w_bands = {'b' : np.arange(wave.size)}
-        for band in ['r','z'] :
-            if band=='z' : w_bands[band], = np.where( spectra.wave[band]>wave[-1]+tolerance )
-            else : w_bands[band], = np.where( (spectra.wave[band]>wave[-1]+tolerance)
-                                      & (spectra.wave[band]<np.max(spectra.wave[band])-margin) )
-            wave=np.append(wave,spectra.wave[band][w_bands[band]])
-            length_bands[band] = w_bands[band].size
-
-        nwave = wave.size
-        nspec = spectra.num_spectra()
-        flux = np.zeros((nspec,nwave),dtype=spectra.flux['b'].dtype)
-        ivar = np.zeros((nspec,nwave),dtype=spectra.ivar['b'].dtype)
-
-        # Flux in non-overlapping waves
-        i = 0
-        for band in ['b', 'r', 'z'] :
-            flux[:,i:i+length_bands[band]] = spectra.flux[band][:,w_bands[band]]
-            ivar[:,i:i+length_bands[band]] = spectra.ivar[band][:,w_bands[band]]
-            i += length_bands[band]
-
-        # Overlapping regions
-        overlaps = ['br','rz']
-        for the_overlap in overlaps :
-            b1, b2 = the_overlap[0], the_overlap[1]
-            w_overlap, = np.where( (wave > spectra.wave[b2][0]) & (wave < spectra.wave[b1][-1]) )
-            assert (w_overlap.size > 0)
-            lambd_over = wave[w_overlap]
-            for ispec in range(nspec) :
-                phi1, ivar1 = resample_flux(lambd_over, spectra.wave[b1], spectra.flux[b1][ispec,:], ivar=spectra.ivar[b1][ispec,:])
-                phi2, ivar2 = resample_flux(lambd_over, spectra.wave[b2], spectra.flux[b2][ispec,:], ivar=spectra.ivar[b2][ispec,:])
-                ivar[ispec,w_overlap] = ivar1+ivar2
-                w_ok = np.where( ivar[ispec,w_overlap] > 0)
-                flux[ispec,w_overlap] = (phi1+phi2)/2
-                flux[ispec,w_overlap][w_ok] = (ivar1[w_ok]*phi1[w_ok] + ivar2[w_ok]*phi2[w_ok])/ivar[ispec,w_overlap][w_ok]
-
-    elif spectra.bands == ['brz'] :
-        wave = spectra.wave['brz']
-        flux = spectra.flux['brz']
-        ivar = spectra.ivar['brz']
-    else :
-        raise RuntimeError("mycoaddcam: set of bands for spectra not supported")
-
-
-    return (wave, flux, ivar)

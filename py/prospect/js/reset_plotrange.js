@@ -1,10 +1,15 @@
 // CustomJS, callback for the "Reset X-Y range" button
 //  - Requires to include function in: adapt_plotrange.js
-//  - args = fig, xmin, xmax, spectra
+//  - args = fig, xmin, xmax, spectra, widgetinfos
 
-// x-range : use fixed x-range determined once for all
+// x-range
 fig.x_range.start = xmin
 fig.x_range.end = xmax
+if (widgetinfos.data['waveframe_active'][0] == 1) {
+    var z = parseFloat(widgetinfos.data['z_input_value'][0]) ;
+    fig.x_range.start /= (1+z) ;
+    fig.x_range.end /= (1+z) ;
+}
 
 var ymin = 0.0
 var ymax = 0.0

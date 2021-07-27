@@ -80,17 +80,17 @@ def load_redrock_templates(template_dir=None) :
     return templates
 
 
-def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, template_dir=None):
+def create_model(spectra, zcat, archetype_fit=False, archetypes_dir=None, template_dir=None):
     '''
-    Returns model_wave[nwave], model_flux[nspec, nwave], row matched to zbest,
+    Returns model_wave[nwave], model_flux[nspec, nwave], row matched to zcat,
     which can be in a different order than spectra.
-    - zbest must be entry-matched to spectra.
+    - zcat must be entry-matched to spectra.
     '''
 
     assert _redrock_imported
     assert _desispec_imported  # for resample_flux
 
-    if np.any(zbest['TARGETID'] != spectra.fibermap['TARGETID']) :
+    if np.any(zcat['TARGETID'] != spectra.fibermap['TARGETID']) :
         raise ValueError('zcatalog and spectra do not match (different targetids)')
 
     if archetype_fit:
@@ -103,8 +103,8 @@ def create_model(spectra, zbest, archetype_fit=False, archetypes_dir=None, templ
     for band in spectra.bands:
         model_flux[band] = np.zeros(spectra.flux[band].shape)
 
-    for i in range(len(zbest)):
-        zb = zbest[i]
+    for i in range(len(zcat)):
+        zb = zcat[i]
 
         if archetype_fit:
             archetype  = archetypes[zb['SPECTYPE']]
@@ -237,7 +237,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
         you do not intend to record VI files.
     top_metadata : :class:`list`, optional
         List of metadata to be highlighted in the top (most visible) table.
-        Default values ['TARGETID', 'EXPID']
+        Default values ['TARGETID', 'EXPID', 'COADD_NUMEXP', 'COADD_EXPTIME']
     vi_countdown : :class:`int`, optional
         If ``>0``, add a countdown widget in the VI panel, with a value in minutes given
         by `vi_countdown``.
@@ -247,8 +247,8 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     with_coaddcam : :class:`bool`, optional
         Include camera-coaddition, only relevant for DESI.
     mask_type : :class:`str`, optional (default: DESI_TARGET)
-        Bitmask type to identify target categories in the spectra. For DESI
-        these could be: DESI_TARGET, SV1_DESI_TARGET, SV1_BGS_TARGET, CMX_TARGET.
+        Bitmask type to identify target categories in the spectra.
+        Supported types are in `..utilities.supported_desitarget_masks`
     model_from_zcat : :class:`bool`, optional
         If ``True``, model spectra will be computed from the input `zcatalog`.
     model : :func:`tuple`, optional
@@ -308,7 +308,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
         if len(spectra.bands)==1 : with_coaddcam = False
     
     if title is None:
-        title = "specviewer"
+        title = "prospect"
 
     #- Input zcatalog / model
     if zcatalog is not None:
@@ -383,7 +383,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     z = zcatalog['Z'][0] if (zcatalog is not None) else 0.0
     viewer_cds.load_spectral_lines(z)
     viewer_plots.add_spectral_lines(viewer_cds, figure='main')
-    viewer_plots.add_spectral_lines(viewer_cds, figure='zoom', label_offsets=[50, 5])
+    viewer_plots.add_spectral_lines(viewer_cds, figure='zoom', label_offset_top=50)
     
 
     #-------------------------
@@ -405,7 +405,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     if zcatalog is not None :
         show_zcat = True
     else : show_zcat = False
-    if top_metadata is None: top_metadata = ['TARGETID', 'EXPID']
+    if top_metadata is None: top_metadata = ['TARGETID', 'EXPID', 'COADD_NUMEXP', 'COADD_EXPTIME']
     viewer_widgets.add_metadata_tables(viewer_cds, top_metadata=top_metadata,
                                        show_zcat=show_zcat, template_dicts=template_dicts)
     viewer_widgets.add_specline_toggles(viewer_cds, viewer_plots)
@@ -451,7 +451,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
         bk.show(bokeh_layout.full_viewer)
     else:
         if html_dir is None : raise RuntimeError("Need html_dir")
-        html_page = os.path.join(html_dir, "specviewer_"+title+".html")
+        html_page = os.path.join(html_dir, title+".html")
         bk.output_file(html_page, title='DESI spectral viewer')
         bk.save(bokeh_layout.full_viewer)
 
@@ -459,7 +459,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     #- "Light" Bokeh layout including only the thumbnail gallery
     if with_thumb_only_page :
         assert not notebook
-        thumb_page = os.path.join(html_dir, "thumbs_specviewer_"+title+".html")
+        thumb_page = os.path.join(html_dir, "thumbs_"+title+".html")
         bk.output_file(thumb_page, title='DESI spectral viewer - thumbnail gallery')
         thumb_grid = StandaloneThumbLayout(spectra, viewer_plots, title)
         bk.save(thumb_grid.thumb_viewer)

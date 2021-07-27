@@ -21,7 +21,7 @@ try:
 except ImportError:
     _specutils_imported = False
 
-from ..mycoaddcam import coaddcam_prospect
+from ..coaddcam import coaddcam_prospect
 from ..utilities import supported_desitarget_masks, vi_file_fields
 
 
@@ -173,7 +173,9 @@ class ViewerCDS(object):
         if survey == 'DESI':
             nspec = spectra.num_spectra()
             # Optional metadata:
-            fibermap_keys = ['HPXPIXEL', 'MORPHTYPE', 'CAMERA', 'COADD_NUMEXP', 'COADD_EXPTIME']
+            fibermap_keys = ['HPXPIXEL', 'MORPHTYPE', 'CAMERA',
+                             'COADD_NUMEXP', 'COADD_EXPTIME',
+                             'COADD_NUMNIGHT', 'COADD_NUMTILE']
             # Optional metadata, will check matching FIRST/LAST/NUM keys in fibermap:
             special_fm_keys = ['FIBER', 'NIGHT', 'EXPID', 'TILEID']
             # Mandatory keys if zcatalog is set:
@@ -181,6 +183,13 @@ class ViewerCDS(object):
             # Mandatory metadata:
             self.phot_bands = ['G','R','Z', 'W1', 'W2']
             supported_masks = supported_desitarget_masks
+            # Galactic extinction coefficients:
+            # - Wise bands from https://github.com/dstndstn/tractor/blob/master/tractor/sfd.py
+            # - Other bands from desiutil.dust (updated coefficients Apr 2021,
+            #   matching https://desi.lbl.gov/trac/wiki/ImagingStandardBandpass)
+            R_extinction = {'W1':0.184, 'W2':0.113, 'W3':0.0241, 'W4':0.00910,
+                            'G_N':3.258, 'R_N':2.176, 'Z_N':1.199,
+                            'G_S':3.212, 'R_S':2.164, 'Z_S':1.211}
         elif survey == 'SDSS':
             nspec = spectra.flux.shape[0]
             # Mandatory keys if zcatalog is set:
@@ -218,6 +227,10 @@ class ViewerCDS(object):
                 # Arbitrary choice:
                 if fm_key == 'COADD_NUMEXP' and 'NUM_EXPID' in self.cds_metadata.data.keys():
                     continue
+                if fm_key == 'COADD_NUMNIGHT' and 'NUM_NIGHT' in self.cds_metadata.data.keys():
+                    continue
+                if fm_key == 'COADD_NUMTILE' and 'NUM_TILEID' in self.cds_metadata.data.keys():
+                    continue
                 if fm_key in spectra.fibermap.keys():
                     if not (np.all(spectra.fibermap[fm_key]==0) or np.all(spectra.fibermap[fm_key]==-1)):
                         self.cds_metadata.add(spectra.fibermap[fm_key], name=fm_key)
@@ -233,8 +246,15 @@ class ViewerCDS(object):
                 mag = np.zeros(nspec)
                 flux = spectra.fibermap['FLUX_'+bandname]
                 extinction = np.ones(len(flux))
-                if ('MW_TRANSMISSION_'+bandname) in spectra.fibermap.keys() :
+                if ('MW_TRANSMISSION_'+bandname) in spectra.fibermap.keys():
                     extinction = spectra.fibermap['MW_TRANSMISSION_'+bandname]
+                elif ('EBV' in spectra.fibermap.keys()) and (bandname.upper() in ['W1','W2','W3','W4']):
+                    extinction = 10**(- R_extinction[bandname.upper()] * spectra.fibermap['EBV'])
+                elif all(x in spectra.fibermap.keys() for x in ['EBV','PHOTSYS']) and (bandname.upper() in ['G','R','Z']):
+                    for photsys in ['N', 'S']:
+                        wphot, = np.where(spectra.fibermap['PHOTSYS'] == photsys)
+                        a_band = R_extinction[bandname.upper()+"_"+photsys] * spectra.fibermap['EBV'][wphot]
+                        extinction[wphot] = 10**(-a_band / 2.5)
                 w, = np.where( (flux>0) & (extinction>0) )
                 mag[w] = -2.5*np.log10(flux[w]/extinction[w])+22.5
             self.cds_metadata.add(mag, name='mag_'+bandname)
@@ -243,7 +263,8 @@ class ViewerCDS(object):
         if mask_type is not None:
             if survey == 'DESI':
                 if mask_type not in spectra.fibermap.keys():
-                    raise ValueError("mask_type is not in spectra.fibermap: "+mask_type)
+                    mask_candidates = [x for x in spectra.fibermap.keys() if '_TARGET' in x]
+                    raise ValueError(mask_type+" is not in spectra.fibermap.\n Hints of available masks: "+(' '.join(mask_candidates)))
                 mask_used = supported_masks[mask_type]
                 target_bits = spectra.fibermap[mask_type]
                 target_info = [ ' '.join(mask_used.names(x)) for x in target_bits ]

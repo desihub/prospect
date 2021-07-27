@@ -55,16 +55,16 @@ class ViewerVIWidgets(object):
                 if (vi_issue_input.active.indexOf(i) >= 0) issues.push(vi_issue_slabels[i])
             }
             if (issues.length > 0) {
-                cds_metadata.data['VI_issue_flag'][ifiberslider.value] = ( issues.join('') )
+                cds_metadata.data['VI_issue_flag'][ispectrumslider.value] = ( issues.join('') )
             } else {
-                cds_metadata.data['VI_issue_flag'][ifiberslider.value] = " "
+                cds_metadata.data['VI_issue_flag'][ispectrumslider.value] = " "
             }
             autosave_vi_localStorage(output_file_fields, cds_metadata.data, title)
             cds_metadata.change.emit()
             """
         self.vi_issue_callback = CustomJS(
             args=dict(cds_metadata = viewer_cds.cds_metadata,
-                      ifiberslider = widgets.ifiberslider,
+                      ispectrumslider = widgets.ispectrumslider,
                       vi_issue_input = self.vi_issue_input,
                       vi_issue_labels = self.vi_issue_labels,
                       vi_issue_slabels = self.vi_issue_slabels,
@@ -79,13 +79,13 @@ class ViewerVIWidgets(object):
         self.vi_z_input = TextInput(value='', title="VI redshift:")
         vi_z_code = self.js_files["CSVtoArray.js"] + self.js_files["save_vi.js"]
         vi_z_code += """
-            cds_metadata.data['VI_z'][ifiberslider.value]=vi_z_input.value
+            cds_metadata.data['VI_z'][ispectrumslider.value]=vi_z_input.value
             autosave_vi_localStorage(output_file_fields, cds_metadata.data, title)
             cds_metadata.change.emit()
             """
         self.vi_z_callback = CustomJS(
             args=dict(cds_metadata = viewer_cds.cds_metadata,
-                      ifiberslider = widgets.ifiberslider,
+                      ispectrumslider = widgets.ispectrumslider,
                       vi_z_input = self.vi_z_input,
                       title = self.title, output_file_fields=self.output_file_fields),
                       code = vi_z_code )
@@ -107,16 +107,16 @@ class ViewerVIWidgets(object):
         vi_category_code = self.js_files["CSVtoArray.js"] + self.js_files["save_vi.js"]
         vi_category_code += """
             if (vi_category_select.value == ' ') {
-                cds_metadata.data['VI_spectype'][ifiberslider.value]=''
+                cds_metadata.data['VI_spectype'][ispectrumslider.value]=''
             } else {
-                cds_metadata.data['VI_spectype'][ifiberslider.value]=vi_category_select.value
+                cds_metadata.data['VI_spectype'][ispectrumslider.value]=vi_category_select.value
             }
             autosave_vi_localStorage(output_file_fields, cds_metadata.data, title)
             cds_metadata.change.emit()
             """
         self.vi_category_callback = CustomJS(
             args=dict(cds_metadata=viewer_cds.cds_metadata, 
-                      ifiberslider = widgets.ifiberslider,
+                      ispectrumslider = widgets.ispectrumslider,
                       vi_category_select=self.vi_category_select,
                       title=self.title, output_file_fields=self.output_file_fields),
             code=vi_category_code )
@@ -142,13 +142,13 @@ class ViewerVIWidgets(object):
                     return '?'
                 }
             })
-            cds_metadata.data['VI_comment'][ifiberslider.value] = stored_comment
+            cds_metadata.data['VI_comment'][ispectrumslider.value] = stored_comment
             autosave_vi_localStorage(output_file_fields, cds_metadata.data, title)
             cds_metadata.change.emit()
             """
         self.vi_comment_callback = CustomJS(
             args=dict(cds_metadata = viewer_cds.cds_metadata,
-                      ifiberslider = widgets.ifiberslider, 
+                      ispectrumslider = widgets.ispectrumslider,
                       vi_comment_input = self.vi_comment_input,
                       title=self.title, output_file_fields=self.output_file_fields),
             code=vi_comment_code )
@@ -178,9 +178,9 @@ class ViewerVIWidgets(object):
         vi_quality_code = self.js_files["CSVtoArray.js"] + self.js_files["save_vi.js"]
         vi_quality_code += """
             if ( vi_quality_input.active >= 0 ) {
-                cds_metadata.data['VI_quality_flag'][ifiberslider.value] = vi_quality_labels[vi_quality_input.active]
+                cds_metadata.data['VI_quality_flag'][ispectrumslider.value] = vi_quality_labels[vi_quality_input.active]
             } else {
-                cds_metadata.data['VI_quality_flag'][ifiberslider.value] = "-1"
+                cds_metadata.data['VI_quality_flag'][ispectrumslider.value] = "-1"
             }
             autosave_vi_localStorage(output_file_fields, cds_metadata.data, title)
             cds_metadata.change.emit()
@@ -189,7 +189,7 @@ class ViewerVIWidgets(object):
             args = dict(cds_metadata = viewer_cds.cds_metadata,
                         vi_quality_input = self.vi_quality_input,
                         vi_quality_labels = self.vi_quality_labels,
-                        ifiberslider = widgets.ifiberslider,
+                        ispectrumslider = widgets.ispectrumslider,
                         title=self.title, output_file_fields = self.output_file_fields),
             code=vi_quality_code )
         self.vi_quality_input.js_on_click(self.vi_quality_callback)
@@ -250,7 +250,7 @@ class ViewerVIWidgets(object):
         self.recover_vi_callback = CustomJS(
             args = dict(title=self.title, output_file_fields=self.output_file_fields,
                         cds_metadata = viewer_cds.cds_metadata,
-                        ifiber = widgets.ifiberslider.value, vi_comment_input = self.vi_comment_input,
+                        ispectrumslider = widgets.ispectrumslider, vi_comment_input = self.vi_comment_input,
                         vi_name_input=self.vi_name_input, vi_quality_input=self.vi_quality_input,
                         vi_issue_input=self.vi_issue_input,
                         vi_issue_slabels=self.vi_issue_slabels, vi_quality_labels=self.vi_quality_labels),
