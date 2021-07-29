@@ -2,16 +2,17 @@
 prospect's Change Log
 =====================
 
-1.2.0 (2021-07-26)
+1.2.0 (2021-07-29)
 ------------------
 
 * Tuned widget layout, move legend location (Issues `#61`_ and `#63`_), added "Redrock_deltachi2" in VI outputs.
 * Various bug fixes, in particular handling z_input / rest-frame issues (Issue `#44`_)
-* Code cleaning.
+* Code cleaning (PR `#73`_).
 * Now a single script to create static html pages for DESI: ``prospect_pages.py``.
 * Two notebooks updated, and a script ``example_prospect_pages``, to be used both as doc and tests.
 * Compatible with files and directory trees from andes to everest.
 
+.. _`#73`: https://github.com/desihub/prospect/pull/73
 .. _`#61`: https://github.com/desihub/prospect/issues/61
 .. _`#63`: https://github.com/desihub/prospect/issues/63
 .. _`#44`: https://github.com/desihub/prospect/issues/44
@@ -20,7 +21,9 @@ prospect's Change Log
 ------------------
 
 * Make specutils_ imports optional, for DESI-only users.
-* Improved metadata internal handling and display in VI pages, including FIRST/LAST/NUM_EXPID/TILEID/NIGHT/FIBER, MORPHTYPE, redrock version, and support all current DESI targeting masks (Issues `#21`_, `#51`_ and `#55`_).
+* Improved metadata internal handling and display in VI pages,
+  including FIRST/LAST/NUM_EXPID/TILEID/NIGHT/FIBER, MORPHTYPE,
+  redrock version, and support all current DESI targeting masks (Issues `#21`_, `#51`_ and `#55`_).
 * List of "major" spectral lines updated (Issue `#69`_).
 
 .. _specutils: https://specutils.readthedocs.io
