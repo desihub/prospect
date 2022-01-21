@@ -662,7 +662,7 @@ def frames2spectra(frames, nspec=None, startspec=None, with_scores=False, with_r
     return spectra
 
 
-def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag_range=None, chi2_range=None, snr_range=None, clean_fiberstatus=False, with_dirty_mask_merge=False, zcat=None, log=None):
+def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag_range=None, chi2_range=None, snr_range=None, clean_fiberstatus=False, with_dirty_mask_merge=False, zcat=None, log=None, return_index=False):
     """Simple selection of DESI spectra based on various metadata.
 
     Filtering based on the logical AND of requested selection criteria.
@@ -695,12 +695,13 @@ def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag
     zcat : :class:`~astropy.table.Table`
         catalog with chi2 information, must be matched to spectra (needed for chi2_range filter).
     log : optional log.
-
+    return_index (bool): if True, also return the indices of selected spectra.
 
     Returns
     -------
     :class:`~desispec.spectra.Spectra`
-        No description provided.
+        Selected spectra.
+        If return_index is ``True``, returns (selected spectra, array of selected indices)
     """
     keep = np.ones(len(spectra.fibermap), bool)
 
@@ -818,6 +819,10 @@ def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag
             keep = ( keep & (spectra.fibermap['FIBERSTATUS']==0) )
         elif 'COADD_FIBERSTATUS' in spectra.fibermap.keys():
             keep = ( keep & (spectra.fibermap['COADD_FIBERSTATUS']==0) )
+
+    if return_index:
+        list_indices, = np.where(keep)
+        return (spectra[keep], list_indices)
 
     return spectra[keep]
 
