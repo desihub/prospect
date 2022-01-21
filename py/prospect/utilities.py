@@ -701,6 +701,7 @@ def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag
     -------
     :class:`~desispec.spectra.Spectra`
         Selected spectra.
+        If no spectra are selected, returns None
         If return_index is ``True``, returns (selected spectra, array of selected indices)
     """
     keep = np.ones(len(spectra.fibermap), bool)

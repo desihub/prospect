@@ -217,6 +217,7 @@ def load_spectra_zcat_from_dbentry(db_entry, args, log, with_redrock_version=Tru
 def page_subset(spectra, nspecperfile, titlepage_prefix, viewer_params, log,
                 zcat=None, redrock_cat=None, sort_by_targetid=False):
     """ Make a set of prospect html pages from (spectra, zcat, redrock_cat)
+        zcat and redrock_cat must be entry-matched to spectra
     """
     nspec_tot = spectra.num_spectra()
     log.info(" * Total nb spectra for this set of VI pages: "+str(nspec_tot))
@@ -230,11 +231,11 @@ def page_subset(spectra, nspecperfile, titlepage_prefix, viewer_params, log,
         the_indices = sort_indices[(i_page-1)*nspecperfile:i_page*nspecperfile]
         thespec = spectra[the_indices]
         if zcat is not None:
-            the_zcat = match_catalog_to_spectra(zcat, thespec)
+            the_zcat = zcat[the_indices]
         else:
             the_zcat = None
         if redrock_cat is not None :
-            the_rrtable = match_catalog_to_spectra(redrock_cat, thespec)
+            the_rrtable = redrock_cat[the_indices]
         else :
             the_rrtable = None
         titlepage = titlepage_prefix
@@ -263,6 +264,7 @@ def main():
         target_filter = False
     else:
         target_filter = True
+        targetids = _filter_list(args, 'target')
         #- If a list of TARGETIDs is given, one should not ask any other filtering at the spectra level
         for the_arg in ['targeting_mask', 'snr_min', 'snr_max', 'gmag_min', 'gmag_max', 'rmag_min', 'rmag_max', 'chi2_min', 'chi2_max', 'nmax_spectra']:
             if vars(args)[the_arg] is not None:
@@ -300,13 +302,12 @@ def main():
             viewer_params['with_full_2ndfit'] = True # TODO un-hardcode ?
             if len(args.redrock_details_files)!=n_specfiles:
                 raise ValueError('Number of redrock_details_files does not match number of input spectra_files')
- 
+
         log.info('Prospect_pages: start reading data [mode: Explicit input files]')
         #- Read input file(s)
         spectra_list, zcat_list, redrock_list = [], [], []
         for i_file in range(n_specfiles):
             spectra = desispec.io.read_spectra(args.spectra_files[i_file])
-            spectra_list.append(spectra)
             if args.zcat_files is not None:
                 try:
                     zcat = Table.read(args.zcat_files[i_file],'REDSHIFTS')
@@ -315,11 +316,36 @@ def main():
                 #- Add redrock version to zcat
                 hdulist = astropy.io.fits.open(args.zcat_files[i_file])
                 zcat['RRVER'] = hdulist[hdulist.index_of('PRIMARY')].header['RRVER']
-                zcat_list.append(zcat)
-            if args.redrock_details_files is not None:
-                redrock_cat = match_rrdetails_to_spectra(args.redrock_details_files[i_file], spectra)
-                redrock_list.append(redrock_cat)
+            else:
+                zcat = None
+            #- Filtering: generic metadata
+            spectra, indx = metadata_selection(spectra, log=log, mask=args.targeting_mask, mask_type=args.mask_type,
+                            snr_range=[args.snr_min, args.snr_max], gmag_range=[args.gmag_min, args.gmag_max],
+                            rmag_range=[args.rmag_min, args.rmag_max], clean_fiberstatus=args.clean_fiberstatus,
+                            chi2_range=[args.chi2_min, args.chi2_max], zcat=zcat, return_index=True)
+            if args.zcat_files is not None:
+                zcat = zcat[indx]
+            #- Filtering: targetids
+            # NB Here spectra are just filtered, ie. not reordered according to input targets
+            if target_filter:
+                try:
+                    spectra, indx = spectra.select(targets=targetids, return_index=True)
+                except RuntimeError:   # this happens if no TARGETID is matched:
+                    spectra, indx = None, np.array([], dtype='int64')
+                if args.zcat_files is not None:
+                    zcat = zcat[indx]
+            if spectra is not None:
+                spectra_list.append(spectra)
+                if args.zcat_files is not None:
+                    zcat_list.append(zcat)
+                if args.redrock_details_files is not None:
+                    redrock_cat = match_rrdetails_to_spectra(args.redrock_details_files[i_file], spectra)
+                    redrock_list.append(redrock_cat)
+        if len(spectra_list) == 0:
+            log.info("Prospect_pages: no spectra after filtering criteria -> End of task.")
+            return 0
         spectra = desispec.spectra.stack(spectra_list)
+        del spectra_list[:]   # should roughly divide memory usage by two
         if args.zcat_files is not None:
             zcat = vstack(zcat_list)
         else:
@@ -328,18 +354,7 @@ def main():
             redrock_cat = vstack(redrock_list)
         else:
             redrock_cat = None
-        #- Filtering: generic metadata
-        spectra = metadata_selection(spectra, log=log, mask=args.targeting_mask, mask_type=args.mask_type,
-                                     snr_range=[args.snr_min, args.snr_max], gmag_range=[args.gmag_min, args.gmag_max],
-                                     rmag_range=[args.rmag_min, args.rmag_max], clean_fiberstatus=args.clean_fiberstatus,
-                                     chi2_range=[args.chi2_min, args.chi2_max], zcat=zcat) # TODO dirty_mask_merge?
-        if spectra is None:
-            log.info("Prospect_pages: no spectra after filtering criteria -> End of task.")
-            return 0
-        #- Filtering: list of TARGETIDs. NB Here spectra are just filtered, ie. not reordered according to input targets
-        if target_filter:
-            targetids = _filter_list(args, 'target')
-            spectra = spectra.select(targets=targetids)
+
         #- Run viewer.plotspectra()
         log.info('Prospect_pages: start creating html page(s)')
         n_done = page_subset(spectra, args.nspecperfile, args.titlepage_prefix, viewer_params, log, zcat=zcat, redrock_cat=redrock_cat)
@@ -378,7 +393,6 @@ def main():
         if target_filter:
             log.info('Prospect_pages: start reading data [mode: Scan directory tree, with target selection]')
             target_db = create_targetdb(args.datadir, subset_db, dirtree_type=args.dirtree_type)
-            targetids = _filter_list(args, 'target')
             if args.with_multiple_models:
                 spectra, zcat, redrock_cat = load_spectra_zcat_from_targets(targetids, args.datadir, target_db,
                                                     dirtree_type=args.dirtree_type, with_redrock_details=True)
