@@ -722,12 +722,9 @@ def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag
         for band in ['B','R','Z'] :
             keep_snr = ( (spectra.scores[snr_var+'_'+band]>snr_range[0]) &
                        (spectra.scores[snr_var+'_'+band]<snr_range[1]) )
-            if np.all(~keep_snr):
-                if log is not None :
-                    log.info(" * No spectra with MEDIAN_CALIB_SNR_"+band+" in requested range")
-                return None
-            else :
-                keep = ( keep & keep_snr )
+            if np.all(~keep_snr) and log is not None:
+                log.info(" * No spectra with MEDIAN_CALIB_SNR_"+band+" in requested range")
+            keep = ( keep & keep_snr )
 
     #- Target mask selection
     if mask is not None :
@@ -749,11 +746,9 @@ def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag
             if mask2 is not None:
                 keep_mask = ( (spectra.fibermap[mask_type] & mask_used[mask]) |
                             (spectra.fibermap[mask_type] & mask_used[mask2]) ) > 0
-        if np.all(~keep_mask):
-            if log is not None : log.info(" * No spectra with mask "+mask)
-            return None
-        else :
-            keep = ( keep & keep_mask )
+        if np.all(~keep_mask) and log is not None:
+            log.info(" * No spectra with mask "+mask)
+        keep = ( keep & keep_mask )
 
     #- Photometry selection
     if (gmag_range is not None) and (gmag_range!=[None, None]):
@@ -770,11 +765,9 @@ def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag
             w, = np.where( (spectra.fibermap['FLUX_G']>0) & (spectra.fibermap['MW_TRANSMISSION_G']>0) )
             gmag[w] = -2.5*np.log10(spectra.fibermap['FLUX_G'][w]/spectra.fibermap['MW_TRANSMISSION_G'][w])+22.5
         keep_gmag = ( (gmag>gmag_range[0]) & (gmag<gmag_range[1]) )
-        if np.all(~keep_gmag):
-            if log is not None : log.info(" * No spectra with g_mag in requested range")
-            return None
-        else :
-            keep = ( keep & keep_gmag )
+        if np.all(~keep_gmag) and log is not None:
+            log.info(" * No spectra with g_mag in requested range")
+        keep = ( keep & keep_gmag )
 
     if (rmag_range is not None) and (rmag_range!=[None, None]):
         if rmag_range[0]==None:
@@ -790,11 +783,9 @@ def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag
             w, = np.where( (spectra.fibermap['FLUX_R']>0) & (spectra.fibermap['MW_TRANSMISSION_R']>0) )
             rmag[w] = -2.5*np.log10(spectra.fibermap['FLUX_R'][w]/spectra.fibermap['MW_TRANSMISSION_R'][w])+22.5
         keep_rmag = ( (rmag>rmag_range[0]) & (rmag<rmag_range[1]) )
-        if np.all(~keep_rmag):
-            if log is not None : log.info(" * No spectra with r_mag in requested range")
-            return None
-        else :
-            keep = ( keep & keep_rmag )
+        if np.all(~keep_rmag) and log is not None:
+            log.info(" * No spectra with r_mag in requested range")
+        keep = ( keep & keep_rmag )
 
     #- Chi2 selection
     if (chi2_range is not None) and (chi2_range!=[None, None]):
@@ -807,11 +798,9 @@ def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag
         if np.any(zcat['TARGETID'] != spectra.fibermap['TARGETID']) :
             raise RuntimeError('zcat and spectra do not match (different targetids)')
         keep_chi2 = ( (zcat['DELTACHI2']>chi2_range[0]) & (zcat['DELTACHI2']<chi2_range[1]) )
-        if np.all(~keep_chi2):
-            if log is not None : log.info(" * No target in this pixel with DeltaChi2 in requested range")
-            return None
-        else :
-            keep = ( keep & keep_chi2 )
+        if np.all(~keep_chi2) and log is not None:
+            log.info(" * No target in this pixel with DeltaChi2 in requested range")
+        keep = ( keep & keep_chi2 )
 
     #- Fiberstatus selection
     if clean_fiberstatus:
@@ -819,6 +808,12 @@ def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag
             keep = ( keep & (spectra.fibermap['FIBERSTATUS']==0) )
         elif 'COADD_FIBERSTATUS' in spectra.fibermap.keys():
             keep = ( keep & (spectra.fibermap['COADD_FIBERSTATUS']==0) )
+
+    #- Return None instead of an empty slice if no spectra is selected
+    if np.all(~keep):
+        if return_index:
+            return (None, np.array([], dtype='int64'))
+        return None
 
     if return_index:
         list_indices, = np.where(keep)
