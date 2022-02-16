@@ -195,7 +195,9 @@ def match_catalog_to_spectra(zcat_in, spectra, return_index=False):
             raise RuntimeError("No entry in zcat_in for TARGETID "+str(spectra.fibermap['TARGETID'][i_spec]))
         elif len(ww)>1 :
             raise RuntimeError("Several entries in zcat_in for TARGETID "+str(spectra.fibermap['TARGETID'][i_spec]))
-        zcat_out.add_row(zcat_in[ww[0]])
+        # zcat_out.add_row(zcat_in[ww[0]]) seems to convert '' to '0.0' (eg. SUBTYPE) with astropy 5.0 (?)
+        #   so we use vstack instead
+        zcat_out = vstack([zcat_out, zcat_in[ww[0]]])
         index_list.append(ww[0])
     if return_index:
         return (zcat_out, index_list)
