@@ -102,7 +102,7 @@ class ViewerPlots(object):
         self.xmin -= self.xmargin_left
         self.xmax += self.xmargin_right
 
-        tools = 'pan,box_zoom,wheel_zoom,save'
+        tools = 'pan,box_zoom,ywheel_zoom,xwheel_zoom,save'
         tooltips_fig = [("wave","$x"),("flux","$y")]
         self.fig = bk.figure(height=self.plot_height, width=self.plot_width, title=title,
             tools=tools, toolbar_location='above', tooltips=tooltips_fig,
