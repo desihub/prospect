@@ -2,10 +2,17 @@
 prospect's Change Log
 =====================
 
-1.2.1 (unreleased)
+1.2.2 (unreleased)
 ------------------
 
 * No changes yet.
+
+1.2.1 (2022-03-02)
+------------------
+
+* Bug fixes and support for astropy 5 (PR `#75`_).
+
+.. _`#75`: https://github.com/desihub/prospect/pull/75
 
 1.2.0 (2021-07-29)
 ------------------
