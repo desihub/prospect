@@ -20,6 +20,7 @@ import os, sys
 from pkg_resources import resource_filename
 
 import numpy as np
+import numpy.ma as ma
 import scipy.ndimage.filters
 
 from astropy.table import Table
@@ -118,7 +119,10 @@ def create_model(spectra, zcat, archetype_fit=False, archetypes_dir=None, templa
                 model_flux[band][i] = spectra.R[band][i].dot(mx)
 
         else:
-            tx    = templates[(zb['SPECTYPE'], zb['SUBTYPE'])]
+            if zb['SUBTYPE'] is ma.masked:
+                tx    = templates[(zb['SPECTYPE'],'')]
+            else:
+                tx    = templates[(zb['SPECTYPE'], zb['SUBTYPE'])]
             coeff = zb['COEFF'][0:tx.nbasis]
             model = tx.flux.T.dot(coeff).T
 
