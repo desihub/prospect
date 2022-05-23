@@ -1,4 +1,5 @@
 specutils
 bokeh
+fitsio
 jinja2
 git+https://github.com/desihub/desiutil.git@3.0.3#egg=desiutil
