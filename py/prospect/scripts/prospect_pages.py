@@ -13,6 +13,7 @@ import argparse
 import numpy as np
 from astropy.table import Table, vstack
 import astropy.io.fits
+import fitsio
 
 import desispec.io
 import desispec.spectra
@@ -161,10 +162,10 @@ def load_spectra_zcat_from_dbentry(db_entry, args, log, with_redrock_version=Tru
         if args.with_zcatalog:
             if os.path.isfile(os.path.join(the_dir, "redrock-"+file_label+".fits")):
                 redrock_is_pre_everest = False
-                the_zcat = Table.read(os.path.join(the_dir, "redrock-"+file_label+".fits"), 'REDSHIFTS')
+                the_zcat = Table(fitsio.read(os.path.join(the_dir, "redrock-"+file_label+".fits"), ext='REDSHIFTS'))
             else: # pre-everest Redrock file nomenclature
                 redrock_is_pre_everest = True
-                the_zcat = Table.read(os.path.join(the_dir, "zbest-"+file_label+".fits"), 'ZBEST')
+                the_zcat = Table(fitsio.read(os.path.join(the_dir, "zbest-"+file_label+".fits"), ext='ZBEST'))
             if with_redrock_version:
                 if redrock_is_pre_everest:
                     hdulist = astropy.io.fits.open(os.path.join(the_dir, "zbest-"+file_label+".fits"))
@@ -310,9 +311,9 @@ def main():
             spectra = desispec.io.read_spectra(args.spectra_files[i_file])
             if args.zcat_files is not None:
                 try:
-                    zcat = Table.read(args.zcat_files[i_file],'REDSHIFTS')
-                except KeyError: # pre-everest Redrock file nomenclature
-                    zcat = Table.read(args.zcat_files[i_file],'ZBEST')
+                    zcat = Table(fitsio.read(args.zcat_files[i_file], ext='REDSHIFTS'))
+                except (KeyError, IOError) as e:  # pre-everest Redrock file nomenclature
+                    zcat = Table(fitsio.read(args.zcat_files[i_file], ext='ZBEST'))
                 #- Add redrock version to zcat
                 hdulist = astropy.io.fits.open(args.zcat_files[i_file])
                 zcat['RRVER'] = hdulist[hdulist.index_of('PRIMARY')].header['RRVER']

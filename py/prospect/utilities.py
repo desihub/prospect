@@ -13,6 +13,7 @@ from pkg_resources import resource_string, resource_listdir
 
 import numpy as np
 import astropy.io.fits
+import fitsio
 from astropy.table import Table, vstack
 import scipy.ndimage.filters
 
@@ -557,10 +558,10 @@ def load_spectra_zcat_from_targets(targetids, datadir, targetdb, dirtree_type=No
             the_spec = the_spec.select(targets=sorted(targets_subset))
             if os.path.isfile(os.path.join(the_path, "redrock-"+file_label+".fits")):
                 redrock_is_pre_everest = False
-                the_zcat = Table.read(os.path.join(the_path, "redrock-"+file_label+".fits"), 'REDSHIFTS')
+                the_zcat = Table(fitsio.read(os.path.join(the_path, "redrock-"+file_label+".fits"), ext='REDSHIFTS'))
             else: # pre-everest Redrock file nomenclature
                 redrock_is_pre_everest = True
-                the_zcat = Table.read(os.path.join(the_path, "zbest-"+file_label+".fits"), 'ZBEST')
+                the_zcat = Table(fitsio.read(os.path.join(the_path, "zbest-"+file_label+".fits"), ext='ZBEST'))
             if with_redrock_version:
                 if redrock_is_pre_everest:
                     hdulist = astropy.io.fits.open(os.path.join(the_path, "zbest-"+file_label+".fits"))

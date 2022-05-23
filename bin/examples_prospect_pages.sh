@@ -110,6 +110,19 @@ if [[ $1 == 6 ]] || [[ $1 == '' ]]; then
                    --targets 39633289673182563 39633289673182038 39633289673182074
 fi
 
+#- 6a) Same as (6), with a more recent data release (guadalupe)
+if [[ $1 == 6a ]] || [[ $1 == '' ]]; then
+    echo "------ Example/Test 6a ------"
+    DATAPATH=${DESI_SPECTRO_REDUX}/guadalupe/healpix/main/dark/309/30973
+    OUTPUTDIR=${OUTPUT_ROOT}/6a
+    mkdir ${OUTPUTDIR}
+    prospect_pages --spectra_files ${DATAPATH}/coadd-main-dark-30973.fits \
+                   --zcat_files ${DATAPATH}/redrock-main-dark-30973.fits \
+                   -o ${OUTPUTDIR} \
+                   --targets 39627770770234272 39627764738818698 39627764734628731
+fi
+
+
 
 # -------------------------
 # Mode: Scan directory tree
