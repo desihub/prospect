@@ -46,7 +46,6 @@ intersphinx_mapping = {
     'matplotlib': ('http://matplotlib.org/', None),
     'astropy': ('http://docs.astropy.org/en/stable/', None),
     'h5py': ('http://docs.h5py.org/en/latest/', None),
-    'fitsio': ('https://heasarc.gsfc.nasa.gov/fitsio/', None)
     }
 
 # Add any paths that contain templates here, relative to this directory.
