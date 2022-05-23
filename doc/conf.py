@@ -45,7 +45,8 @@ intersphinx_mapping = {
     'scipy': ('http://docs.scipy.org/doc/scipy/reference/', None),
     'matplotlib': ('http://matplotlib.org/', None),
     'astropy': ('http://docs.astropy.org/en/stable/', None),
-    'h5py': ('http://docs.h5py.org/en/latest/', None)
+    'h5py': ('http://docs.h5py.org/en/latest/', None),
+    'fitsio': ('https://heasarc.gsfc.nasa.gov/fitsio/', None)
     }
 
 # Add any paths that contain templates here, relative to this directory.
@@ -122,7 +123,7 @@ napoleon_include_private_with_doc = True
 # building process.
 autodoc_mock_imports = []
 for missing in ('astropy', 'bokeh', 'desiutil', 'desispec', 'desitarget',
-                'jinja2', 'numpy', 'scipy', 'specutils'):
+                'jinja2', 'numpy', 'scipy', 'fitsio', 'specutils'):
     try:
         foo = import_module(missing)
     except ImportError:
