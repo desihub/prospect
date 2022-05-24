@@ -13,7 +13,7 @@ from pkg_resources import resource_string, resource_listdir
 
 import numpy as np
 import astropy.io.fits
-from astropy.table import Table, vstack
+from astropy.table import Table, vstack, hstack
 import scipy.ndimage.filters
 
 _desiutil_imported = True
@@ -561,6 +561,9 @@ def load_spectra_zcat_from_targets(targetids, datadir, targetdb, dirtree_type=No
             else: # pre-everest Redrock file nomenclature
                 redrock_is_pre_everest = True
                 the_zcat = Table.read(os.path.join(the_path, "zbest-"+file_label+".fits"), 'ZBEST')
+            if hasattr(the_zcat['SUBTYPE'], 'mask'):  # work around Table auto-masking in astropy 5
+                blanksubtype = the_zcat['SUBTYPE'].mask
+                the_zcat['SUBTYPE'][blanksubtype] = ''
             if with_redrock_version:
                 if redrock_is_pre_everest:
                     hdulist = astropy.io.fits.open(os.path.join(the_path, "zbest-"+file_label+".fits"))
@@ -651,15 +654,16 @@ def frames2spectra(frames, nspec=None, startspec=None, with_scores=False, with_r
 
     merged_scores = None
     if with_scores :
-        scores_columns = frames[0].scores.columns
-        for i in range(1,len(frames)) :
-            scores_columns += frames[i].scores.columns
-        merged_scores = astropy.io.fits.FITS_rec.from_columns(scores_columns)
+        list_scores = []
+        for i in range(len(frames)):
+            #- This works for both ndarray and fits_REC input scores
+            list_scores.append(Table(frames[i].scores))
+        merged_scores = hstack(list_scores)
 
     if not with_resolution_data : res = None
 
     spectra = desispec.spectra.Spectra(
-        bands, wave, flux, ivar, mask, fibermap=fibermap, meta=fr.meta, scores=merged_scores, resolution_data=res
+        bands, wave, flux, ivar, mask, fibermap=fibermap, meta=dict(fr.meta), scores=merged_scores, resolution_data=res
     )
     return spectra
 
