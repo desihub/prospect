@@ -2,7 +2,12 @@
 prospect's Change Log
 =====================
 
-1.2.2 (unreleased)
+1.2.3 (unreleased)
+------------------
+
+* No changes yet.
+
+1.2.2 (2022-05-24)
 ------------------
 
 * Support for astropy 5 (redrock files I/O).
