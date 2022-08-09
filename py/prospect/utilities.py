@@ -668,7 +668,7 @@ def frames2spectra(frames, nspec=None, startspec=None, with_scores=False, with_r
     return spectra
 
 
-def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag_range=None, chi2_range=None, snr_range=None, clean_fiberstatus=False, with_dirty_mask_merge=False, zcat=None, log=None, return_index=False):
+def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag_range=None, chi2_range=None, snr_range=None, clean_fiberstatus=False, select_bad_fiberstatus=False, with_dirty_mask_merge=False, zcat=None, log=None, return_index=False):
     """Simple selection of DESI spectra based on various metadata.
 
     Filtering based on the logical AND of requested selection criteria.
@@ -698,6 +698,8 @@ def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag
         chi2 range to select, chi2_range = [chi2_min, chi2_max]. Requires to set zcat.
     clean_fiberstatus : :class:`bool`
         if True, remove spectra with FIBERSTATUS!=0 or COADD_FIBERSTATUS!=0
+    select_bad_fiberstatus : :class:`bool`
+        if True, select only spectra with FIBERSTATUS!=0 or COADD_FIBERSTATUS!=0
     zcat : :class:`~astropy.table.Table`
         catalog with chi2 information, must be matched to spectra (needed for chi2_range filter).
     log : optional log.
@@ -815,6 +817,13 @@ def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag
             keep = ( keep & (spectra.fibermap['FIBERSTATUS']==0) )
         elif 'COADD_FIBERSTATUS' in spectra.fibermap.keys():
             keep = ( keep & (spectra.fibermap['COADD_FIBERSTATUS']==0) )
+    if select_bad_fiberstatus:  # A very, very specific choice, for debugging.
+        if clean_fiberstatus:
+            raise ValueError('Cannot have both select_bad_fiberstatus and clean_fiberstatus.')
+        if 'FIBERSTATUS' in spectra.fibermap.keys():
+            keep = ( keep & (spectra.fibermap['FIBERSTATUS']!=0) )
+        elif 'COADD_FIBERSTATUS' in spectra.fibermap.keys():
+            keep = ( keep & (spectra.fibermap['COADD_FIBERSTATUS']!=0) )
 
     #- Return None instead of an empty slice if no spectra is selected
     if np.all(~keep):

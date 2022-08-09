@@ -75,6 +75,7 @@ def _parse():
     parser.add_argument('--clean_fiberstatus', dest='clean_fiberstatus', help='Filter out spectra with FIBERSTATUS!=0 (even if a target list is provided)', action='store_true')
     parser.add_argument('--no-clean_fiberstatus', dest='clean_fiberstatus', action='store_false')
     parser.set_defaults(clean_fiberstatus=True)
+    parser.add_argument('--select_bad_fiberstatus', help='[For debugging] Select spectra with FIBERSTATUS!=0', action='store_true')
     parser.add_argument('--clean_bad_fibers_cmx', help='[Specific to CMX conditions] Remove list of known bad fibers at CMX time.', action='store_true')
 
     #- Filtering at the spectra level
@@ -178,9 +179,10 @@ def load_spectra_zcat_from_dbentry(db_entry, args, log, with_redrock_version=Tru
             the_zcat = None
         #- Filtering (done after zcat is loaded, in order to include chi2_min/max !)
         the_spec = metadata_selection(the_spec, log=log, mask=args.targeting_mask, mask_type=args.mask_type,
-                                      snr_range=[args.snr_min, args.snr_max], gmag_range=[args.gmag_min, args.gmag_max],
-                                      rmag_range=[args.rmag_min, args.rmag_max], clean_fiberstatus=args.clean_fiberstatus,
-                                      chi2_range=[args.chi2_min, args.chi2_max], zcat=the_zcat) # TODO dirty_mask_merge?
+                            snr_range=[args.snr_min, args.snr_max], gmag_range=[args.gmag_min, args.gmag_max],
+                            rmag_range=[args.rmag_min, args.rmag_max], chi2_range=[args.chi2_min, args.chi2_max],
+                            clean_fiberstatus=args.clean_fiberstatus, select_bad_fiberstatus=args.select_bad_fiberstatus,
+                            zcat=the_zcat) # TODO dirty_mask_merge?
         #- Fiber-based filter in CMX data kept here for record only
         if args.clean_bad_fibers_cmx:
             fibers = np.arange(5000)
@@ -327,8 +329,9 @@ def main():
             #- Filtering: generic metadata
             spectra, indx = metadata_selection(spectra, log=log, mask=args.targeting_mask, mask_type=args.mask_type,
                             snr_range=[args.snr_min, args.snr_max], gmag_range=[args.gmag_min, args.gmag_max],
-                            rmag_range=[args.rmag_min, args.rmag_max], clean_fiberstatus=args.clean_fiberstatus,
-                            chi2_range=[args.chi2_min, args.chi2_max], zcat=zcat, return_index=True)
+                            rmag_range=[args.rmag_min, args.rmag_max], chi2_range=[args.chi2_min, args.chi2_max],
+                            clean_fiberstatus=args.clean_fiberstatus, select_bad_fiberstatus=args.select_bad_fiberstatus,
+                            zcat=zcat, return_index=True)
             if args.zcat_files is not None:
                 zcat = zcat[indx]
             #- Filtering: targetids
