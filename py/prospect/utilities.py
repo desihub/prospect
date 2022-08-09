@@ -232,9 +232,10 @@ def match_rrdetails_to_spectra(redrockfile, spectra, Nfit=None):
     if Nfit is None:
         ww, = np.where( (rr_targets == rr_targets[0]) )
         Nfit = len(ww)
+    nbasis_tmplt = rr_table['coeff'].shape[1]
     matched_redrock_cat = Table(
         dtype=[('TARGETID', '<i8'), ('CHI2', '<f8', (Nfit,)),
-               ('DELTACHI2', '<f8', (Nfit,)), ('COEFF', '<f8', (Nfit,10,)),
+               ('DELTACHI2', '<f8', (Nfit,)), ('COEFF', '<f8', (Nfit,nbasis_tmplt,)),
                ('Z', '<f8', (Nfit,)), ('ZERR', '<f8', (Nfit,)),
                ('ZWARN', '<i8', (Nfit,)), ('SPECTYPE', '<U6', (Nfit,)), ('SUBTYPE', '<U2', (Nfit,))])
 
@@ -271,7 +272,8 @@ def create_zcat_from_redrock_cat(redrock_cat, fit_num=0):
     rr_cat_num_best_fits = redrock_cat['Z'].shape[1]
     if (fit_num >= rr_cat_num_best_fits):
         raise ValueError("fit_num too large wrt redrock_cat")
-    zcat_dtype=[('TARGETID', '<i8'), ('CHI2', '<f8'), ('COEFF', '<f8', (10,)),
+    nbasis_tmplt = redrock_cat['COEFF'].shape[1]
+    zcat_dtype=[('TARGETID', '<i8'), ('CHI2', '<f8'), ('COEFF', '<f8', (nbasis_tmplt,)),
                 ('Z', '<f8'), ('ZERR', '<f8'), ('ZWARN', '<i8'),
                 ('SPECTYPE', '<U6'), ('SUBTYPE', '<U2'), ('DELTACHI2', '<f8')]
     zcat_out = Table( data=np.zeros(len(redrock_cat), dtype=zcat_dtype) )
