@@ -193,6 +193,7 @@ def make_template_dicts(redrock_cat, delta_lambd_templates=3, with_fit_templates
     std_templates = {'QSO': ('QSO',''), 'GALAXY': ('GALAXY',''), 'STAR': ('STAR','F') }
     dict_std_templates = dict()
     for key,rr_key in std_templates.items() :
+        if rr_key not in rr_templts.keys(): continue  # new templates (LBG, QSO) - Temporary trick
         wave_array = np.arange(rr_templts[rr_key].wave[0],rr_templts[rr_key].wave[-1],delta_lambd_templates)
         flux_array = resample_flux(wave_array, rr_templts[rr_key].wave, rr_templts[rr_key].flux[0,:])
         dict_std_templates["wave_"+key] = wave_array
@@ -354,7 +355,9 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
                                              with_fit_templates=with_fit_templates, template_dir=template_dir)
         nfits_redrock_cat = template_dicts[1]['Nfit']
         if num_approx_fits is None : num_approx_fits = nfits_redrock_cat
-        if (num_approx_fits > nfits_redrock_cat) : raise ValueError("num_approx_fits too large wrt redrock_cat")
+        if (num_approx_fits > nfits_redrock_cat):
+            print("Warning, num_approx_fits too large wrt redrock_cat. Changing it.")
+            num_approx_fits = nfits_redrock_cat
         if with_full_2ndfit :
             zcat_2ndfit = create_zcat_from_redrock_cat(redrock_cat, fit_num=1)
             model_2ndfit = create_model(spectra, zcat_2ndfit, archetype_fit=archetype_fit,
