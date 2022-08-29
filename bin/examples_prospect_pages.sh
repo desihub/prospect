@@ -3,13 +3,19 @@
 #- Set of examples/tests to run `prospect_pages`
 
 #- To be run with DESI data (eg at NERSC computing center)
-# Requires to have DESI_SPECTRO_REDUX and DESI_ROOT environment variables set.
+# Requires to have DESI_SPECTRO_REDUX, DESICONDA and DESI_ROOT environment variables set.
 
 #- Usage:
 #  ./examples_prospect_pages     => run all examples/tests
 #  ./examples_prospect_pages N   => run example/test N only
 
+#- Base directory for output html pages:
 OUTPUT_ROOT=${DESI_ROOT}/spectro/prospect/tests
+#- With the default NERSC DESI environment, redrock templates used by prospect
+# are as given from the module redrock-templates/main.
+# For redrock fits produced before Aug 2022, one needs to use an earlier
+# version of templates, matching those from module redrock-templates/0.7.2:
+OLD_TEMPLATE_DIR=${DESICONDA}/../code/redrock-templates/0.7.2
 
 # --------------------------
 # Mode: Explicit input files
@@ -22,7 +28,7 @@ if [[ $1 == 1 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 1 ------"
     DATAPATH=${DESI_SPECTRO_REDUX}/denali/tiles/cumulative/81067/20210327
     OUTPUTDIR=${OUTPUT_ROOT}/1
-    mkdir ${OUTPUTDIR}
+    [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
     prospect_pages --spectra_files ${DATAPATH}/coadd-5-81067-thru20210327.fits \
                    -o ${OUTPUTDIR}
 fi
@@ -32,10 +38,11 @@ if [[ $1 == 2 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 2 ------"
     DATAPATH=${DESI_SPECTRO_REDUX}/denali/tiles/cumulative/81067/20210327
     OUTPUTDIR=${OUTPUT_ROOT}/2
-    mkdir ${OUTPUTDIR}
+    [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
     prospect_pages --spectra_files ${DATAPATH}/coadd-5-81067-thru20210327.fits \
                    --zcat_files ${DATAPATH}/zbest-5-81067-thru20210327.fits \
                    --redrock_details_files ${DATAPATH}/redrock-5-81067-thru20210327.h5 \
+                   --template_dir ${OLD_TEMPLATE_DIR} \
                    --outputdir ${OUTPUTDIR}
 fi
 
@@ -47,9 +54,10 @@ if [[ $1 == 3 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 3 ------"
     DATAPATH=${DESI_SPECTRO_REDUX}/denali/tiles/cumulative/81067/20210327
     OUTPUTDIR=${OUTPUT_ROOT}/3
-    mkdir ${OUTPUTDIR}
+    [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
     prospect_pages --spectra_files ${DATAPATH}/coadd-5-81067-thru20210327.fits \
                    --zcat_files ${DATAPATH}/zbest-5-81067-thru20210327.fits \
+                   --template_dir ${OLD_TEMPLATE_DIR} \
                    -o ${OUTPUTDIR} \
                    --mask_type SV2_DESI_TARGET \
                    --top_metadata TARGETID TILEID mag_G mag_R \
@@ -66,9 +74,10 @@ if [[ $1 == 4 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 4 ------"
     DATAPATH=${DESI_SPECTRO_REDUX}/denali/tiles/cumulative/81067/20210327
     OUTPUTDIR=${OUTPUT_ROOT}/4
-    mkdir ${OUTPUTDIR}
+    [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
     prospect_pages --spectra_files ${DATAPATH}/coadd-5-81067-thru20210327.fits \
                    --zcat_files ${DATAPATH}/zbest-5-81067-thru20210327.fits \
+                   --template_dir ${OLD_TEMPLATE_DIR} \
                    -o ${OUTPUTDIR} \
                    --mask_type SV2_DESI_TARGET \
                    --targeting_mask BGS_ANY \
@@ -82,13 +91,14 @@ if [[ $1 == 5 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 5 ------"
     DATAPATH=${DESI_SPECTRO_REDUX}/denali/tiles/cumulative/81067/20210327
     OUTPUTDIR=${OUTPUT_ROOT}/5
-    mkdir ${OUTPUTDIR}
+    [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
     prospect_pages --spectra_files ${DATAPATH}/coadd-5-81067-thru20210327.fits \
                                    ${DATAPATH}/coadd-7-81067-thru20210327.fits \
                    --zcat_files ${DATAPATH}/zbest-5-81067-thru20210327.fits \
                                 ${DATAPATH}/zbest-7-81067-thru20210327.fits \
                    --redrock_details_files ${DATAPATH}/redrock-5-81067-thru20210327.h5 \
                                            ${DATAPATH}/redrock-7-81067-thru20210327.h5 \
+                   --template_dir ${OLD_TEMPLATE_DIR} \
                    -o ${OUTPUTDIR} \
                    --titlepage prospect_example_5 \
                    --mask_type SV2_DESI_TARGET \
@@ -103,9 +113,10 @@ if [[ $1 == 6 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 6 ------"
     DATAPATH=${DESI_SPECTRO_REDUX}/denali/tiles/cumulative/81067/20210327
     OUTPUTDIR=${OUTPUT_ROOT}/6
-    mkdir ${OUTPUTDIR}
+    [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
     prospect_pages --spectra_files ${DATAPATH}/coadd-5-81067-thru20210327.fits \
                    --zcat_files ${DATAPATH}/zbest-5-81067-thru20210327.fits \
+                   --template_dir ${OLD_TEMPLATE_DIR} \
                    -o ${OUTPUTDIR} \
                    --targets 39633289673182563 39633289673182038 39633289673182074
 fi
@@ -115,9 +126,10 @@ if [[ $1 == 6a ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 6a ------"
     DATAPATH=${DESI_SPECTRO_REDUX}/guadalupe/healpix/main/dark/309/30973
     OUTPUTDIR=${OUTPUT_ROOT}/6a
-    mkdir ${OUTPUTDIR}
+    [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
     prospect_pages --spectra_files ${DATAPATH}/coadd-main-dark-30973.fits \
                    --zcat_files ${DATAPATH}/redrock-main-dark-30973.fits \
+                   --template_dir ${OLD_TEMPLATE_DIR} \
                    -o ${OUTPUTDIR} \
                    --targets 39627770770234272 39627764738818698 39627764734628731
 fi
@@ -137,7 +149,7 @@ if [[ $1 == 7 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 7 ------"
     DATADIR=${DESI_SPECTRO_REDUX}/andes/tiles
     OUTPUTDIR=${OUTPUT_ROOT}/7
-    mkdir ${OUTPUTDIR}
+    [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
     prospect_pages --datadir ${DATADIR} \
                    --dirtree_type pernight \
                    -o ${OUTPUTDIR} \
@@ -153,11 +165,12 @@ if [[ $1 == 8 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 8 ------"
     DATADIR=${DESI_SPECTRO_REDUX}/blanc/tiles
     OUTPUTDIR=${OUTPUT_ROOT}/8
-    mkdir ${OUTPUTDIR}
+    [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
     prospect_pages --datadir ${DATADIR} \
                    --dirtree_type pernight \
                    -o ${OUTPUTDIR} \
                    --with_zcatalog \
+                   --template_dir ${OLD_TEMPLATE_DIR} \
                    --tiles 80607 80609 --nights deep \
                    --petals 6 7 \
                    --mask_type SV1_DESI_TARGET --targeting_mask QSO
@@ -170,13 +183,14 @@ if [[ $1 == 9 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 9 ------"
     DATADIR=${DESI_SPECTRO_REDUX}/denali/tiles/perexp
     OUTPUTDIR=${OUTPUT_ROOT}/9
-    mkdir ${OUTPUTDIR}
+    [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
     TILE_LIST_FILE=tmp_tile_list.txt
     echo -e ' 81058 \n 81059 \n 81060' > ${TILE_LIST_FILE}
     prospect_pages --datadir ${DATADIR} \
                    --dirtree_type perexp \
                    -o ${OUTPUTDIR} \
                    --with_zcatalog \
+                   --template_dir ${OLD_TEMPLATE_DIR} \
                    --tile_list ${TILE_LIST_FILE} \
                    --mask_type SV2_DESI_TARGET --targeting_mask LRG \
                    --chi2_min 200 --chi2_max 500 \
@@ -191,13 +205,14 @@ if [[ $1 == 10 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 10 ------"
     DATADIR=${DESI_SPECTRO_REDUX}/everest/tiles/cumulative
     OUTPUTDIR=${OUTPUT_ROOT}/10
-    mkdir ${OUTPUTDIR}
+    [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
     TARGET_LIST_FILE=tmp_target_list.txt
     echo -e ' 616094114412233066 \n 39632930179383639 \n 39632930179384420 \n 39632930179384518 \n 616094111199396534 \n 616094114420622028 \n 616094111195201658 ' > ${TARGET_LIST_FILE}
     prospect_pages --datadir ${DATADIR} \
                    --dirtree_type cumulative \
                    -o ${OUTPUTDIR} \
                    --with_zcatalog --with_multiple_models \
+                   --template_dir ${OLD_TEMPLATE_DIR} \
                    --tiles 81062 80654 \
                    --target_list ${TARGET_LIST_FILE} \
                    --mask_type DESI_TARGET \
@@ -211,7 +226,7 @@ if [[ $1 == 11 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 11 ------"
     DATADIR=${DESI_SPECTRO_REDUX}/daily/exposures
     OUTPUTDIR=${OUTPUT_ROOT}/11
-    mkdir ${OUTPUTDIR}
+    [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
     prospect_pages --datadir ${DATADIR} \
                    --dirtree_type exposures --spectra_type cframe \
                    -o ${OUTPUTDIR} \
@@ -224,10 +239,11 @@ if [[ $1 == 12 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 12 ------"
     DATADIR=${DESI_SPECTRO_REDUX}/everest/healpix
     OUTPUTDIR=${OUTPUT_ROOT}/12
-    mkdir ${OUTPUTDIR}
+    [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
     prospect_pages --datadir ${DATADIR} \
                    --dirtree_type healpix \
                    --with_zcatalog --with_multiple_models \
+                   --template_dir ${OLD_TEMPLATE_DIR} \
                    -o ${OUTPUTDIR} \
                    --pixels 9557 --survey_program main dark \
                    --targeting_mask QSO --chi2_min 200
