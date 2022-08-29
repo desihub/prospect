@@ -21,8 +21,14 @@ try:
 except ImportError:
     _specutils_imported = False
 
+_desispec_imported = True
+try:
+    from desispec.interpolation import resample_flux
+except ImportError:
+    _desispec_imported = False
+
 from ..coaddcam import coaddcam_prospect
-from ..utilities import supported_desitarget_masks, vi_file_fields
+from ..utilities import supported_desitarget_masks, vi_file_fields, load_redrock_templates
 
 
 def _airtovac(w):
@@ -61,6 +67,10 @@ class ViewerCDS(object):
         self.cds_model_2ndfit = None
         self.cds_othermodel = None
         self.cds_metadata = None
+        self.cds_spectral_lines = None
+        self.cds_fit_templates = None
+        self.cds_std_templates = None
+        self.cds_rrdetails = None
     
     def load_spectra(self, spectra, with_noise=True):
         """ Creates column data source for observed spectra """
@@ -165,6 +175,50 @@ class ViewerCDS(object):
         })
     
     
+    def load_fit_templates(self, template_dir=None, delta_lambd_templates=3):
+        """ Create column data source for spectral templates used in Redrock fits.
+            These are used to recompute Redrock's Nth best-fit spectra on-the-fly
+            in javascript.
+            Templates are resampled in order to limit the size of html pages (and the
+            browser's CPU usage).
+            This resampling is dictated by parameter delta_lambd_temmplates.
+        """
+
+        assert _desispec_imported # for resample_flux
+        rr_templts = load_redrock_templates(template_dir=template_dir)
+        cdsdata = dict()
+        for key,val in rr_templts.items():
+            fulltype_key = "_".join(key)  # merge redrock's (TYPE, SUBTYPE)
+            wave_array = np.arange(val.wave[0], val.wave[-1], delta_lambd_templates)
+            flux_array = np.zeros(( val.flux.shape[0], len(wave_array) ))
+            for i in range(val.flux.shape[0]):
+                flux_array[i,:] = resample_flux(wave_array, val.wave, val.flux[i,:])
+            cdsdata["wave_"+fulltype_key] = wave_array
+            cdsdata["flux_"+fulltype_key] = flux_array
+        self.cds_fit_templates = ColumnDataSource(cdsdata)
+
+
+    def load_std_templates(self):
+        try:
+            template_file = resource_filename('prospect', "data/TBD.fits")
+        except:
+            print("No STD template file found")
+            return
+        # TBD read file (file format TBD), store to seld.cds_std_templates
+
+
+    def load_rrdetails(self, redrock_cat):
+        """ Create column data source for detailled redrock outputs.
+            Used to recompute redrock's Nth best fit spectra on-the-fly in javascript,
+            and display them in a table.
+        """
+        cdsdata = dict()
+        for key in redrock_cat.keys() :
+            cdsdata[key] = np.asarray(redrock_cat[key])
+        cdsdata['Nfit'] = redrock_cat['Z'].shape[1]
+        self.cds_rrdetails = ColumnDataSource(cdsdata)
+
+
     def load_metadata(self, spectra, mask_type=None, zcatalog=None, survey='DESI'):
         """ Creates column data source for target-related metadata,
             from fibermap, zcatalog and VI files 

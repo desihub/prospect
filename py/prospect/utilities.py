@@ -8,7 +8,7 @@ prospect.utilities
 Utility functions for prospect.
 """
 
-import os, glob
+import os, glob, sys
 from pkg_resources import resource_string, resource_listdir
 
 import numpy as np
@@ -71,6 +71,8 @@ except ImportError:
 
 _redrock_imported = True
 try:
+    import redrock.templates
+    from redrock.archetypes import All_archetypes
     import redrock.results
 except ImportError:
     _redrock_imported = False
@@ -163,6 +165,25 @@ def get_resources(filetype):
     return _resource_cache[filetype]
 
 
+def load_redrock_templates(template_dir=None) :
+    '''
+    Load redrock templates; redirect stdout because redrock is chatty
+    '''
+    assert _redrock_imported
+    saved_stdout = sys.stdout
+    sys.stdout = open('/dev/null', 'w')
+    try:
+        templates = dict()
+        for filename in redrock.templates.find_templates(template_dir=template_dir):
+            tx = redrock.templates.Template(filename)
+            templates[(tx.template_type, tx.sub_type)] = tx
+    except Exception as err:
+        sys.stdout = saved_stdout
+        raise(err)
+    sys.stdout = saved_stdout
+    return templates
+
+
 def match_catalog_to_spectra(zcat_in, spectra, return_index=False):
     """ Creates a subcatalog, matching a set of DESI spectra
 
@@ -227,6 +248,7 @@ def match_rrdetails_to_spectra(redrockfile, spectra, Nfit=None):
         If a set of Nfit rows in redrockfile is not found matching each of spectra's TARGETIDs
     """
 
+    assert _redrock_imported
     dummy, rr_table = redrock.results.read_zscan(redrockfile)
     rr_targets = rr_table['targetid']
     if Nfit is None:

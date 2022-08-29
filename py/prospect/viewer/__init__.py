@@ -55,29 +55,12 @@ try:
 except ImportError:
     _redrock_imported = False
 
-from ..utilities import frames2spectra, create_zcat_from_redrock_cat
+from ..utilities import frames2spectra, create_zcat_from_redrock_cat, load_redrock_templates
 from .cds import ViewerCDS
 from .plots import ViewerPlots
 from .widgets import ViewerWidgets
 from .vi_widgets import ViewerVIWidgets
 from .layouts import ViewerLayout, StandaloneThumbLayout
-
-def load_redrock_templates(template_dir=None) :
-    '''
-    Load redrock templates; redirect stdout because redrock is chatty
-    '''
-    saved_stdout = sys.stdout
-    sys.stdout = open('/dev/null', 'w')
-    try:
-        templates = dict()
-        for filename in redrock.templates.find_templates(template_dir=template_dir):
-            tx = redrock.templates.Template(filename)
-            templates[(tx.template_type, tx.sub_type)] = tx
-    except Exception as err:
-        sys.stdout = saved_stdout
-        raise(err)
-    sys.stdout = saved_stdout
-    return templates
 
 
 def create_model(spectra, zcat, archetype_fit=False, archetypes_dir=None, template_dir=None):
@@ -219,7 +202,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     zcatalog : :class:`~astropy.table.Table`, optional
         Redshift values, matched one-to-one with the input spectra.
     redrock_cat : :class:`~astropy.table.Table`, optional
-        Redrock output (as defined in :func:`~prospect.utilities.match_redrock_zfit_to_spectra`).
+        Redrock output (as defined in :func:`~prospect.utilities.match_rrdetails_to_spectra`).
         Entries must be matched one-by-one (in order) to spectra.
     notebook : :class:`bool`, optional
         If ``True``, bokeh outputs the viewer to a Jupyter notebook.
