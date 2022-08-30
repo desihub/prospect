@@ -4,7 +4,8 @@
 # Sources: 
 #   - SDSS spZline files ($IDLSPEC2D_DIR/etc/emlines.par, wavelengths in air for lambda > 2000, vacuum for lambda < 2000); 
 #   - A. Edge list (sent by email to T. Davis, 07/04/2020); 
-#   - desisim recombination/forbidden line lists (J. Moustakas; selected those whose quoted line-ratio wrt Hbeta is > 0.1); 
+#   - desisim recombination/forbidden line lists (J. Moustakas; selected those whose quoted line-ratio wrt Hbeta is > 0.1);
+#   - V. Fawcett ([NeIV] and CII], email 30/08/2022, from VI of reddened QSO);
 #   - few others.
 # name,longname,lambda,vacuum,major
 Lyβ,Lyman β,1025.18,True,False
@@ -23,6 +24,10 @@ Si III],Si III] 1882,1882.468,True,False
 Si III],Si III] 1892,1892.030,True,False
 C III],C III] 1907,1907.640,True,False
 C III],C III] 1908,1908.734,True,True
+[Ne IV],[Ne IV] 2422,2421.8,False,False
+[Ne IV],[Ne IV] 2425,2424.5,False,False
+C II],C II] 2324,2323.5,False,False
+C II],C II] 2325,2324.69,False,False
 Mg II,Mg II 2796,2796.3543,False,True
 Mg II,Mg II 2803,2803.5315,False,True
 Ne V,Ne V 3346,3346.79,True,False
