@@ -374,7 +374,6 @@ def create_subsetdb(datadir, dirtree_type=None, spectra_type='coadd', tiles=None
        - To use blanc/cascades 'all' (resp 'deep') coadds, use dirtree_type='pernight' and nights=['all'] (resp ['deep']).
 
     """
-    # TODO support (everest) healpix-based directory trees
 
     if ( (nights is not None and dirtree_type!='pernight' and dirtree_type!='exposures')
         or (expids is not None and dirtree_type!='perexp' and dirtree_type!='exposures') ):

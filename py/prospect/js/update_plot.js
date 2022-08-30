@@ -40,20 +40,20 @@ if (cb_obj == ispectrumslider) {
         shortcds_list[i_cds].change.emit();
     }
     if (shortcds_table_z !== null) {
-        if (fit_results !== null) {
-            shortcds_table_z.data['SPECTYPE'] = fit_results['SPECTYPE'][i_spectrum].slice(); // (0,num_best_fits)
-            shortcds_table_z.data['SUBTYPE'] = fit_results['SUBTYPE'][i_spectrum].slice();
-            shortcds_table_z.data['Z'] = fit_results['Z'][i_spectrum].slice();
-            shortcds_table_z.data['ZERR'] = fit_results['ZERR'][i_spectrum].slice();
-            shortcds_table_z.data['ZWARN'] = fit_results['ZWARN'][i_spectrum].slice();
-            var chi2s = fit_results['CHI2'][i_spectrum].slice(); // Custom DeltaChi2 calculation
+        if (rrdetails !== null) {
+            shortcds_table_z.data['SPECTYPE'] = rrdetails['SPECTYPE'][i_spectrum].slice(); // (0,num_best_fits)
+            shortcds_table_z.data['SUBTYPE'] = rrdetails['SUBTYPE'][i_spectrum].slice();
+            shortcds_table_z.data['Z'] = rrdetails['Z'][i_spectrum].slice();
+            shortcds_table_z.data['ZERR'] = rrdetails['ZERR'][i_spectrum].slice();
+            shortcds_table_z.data['ZWARN'] = rrdetails['ZWARN'][i_spectrum].slice();
+            var chi2s = rrdetails['CHI2'][i_spectrum].slice(); // Custom DeltaChi2 calculation
             var full_deltachi2s = [];
-            for (var i=0; i<fit_results['Nfit']-1; i++) {
+            for (var i=0; i<rrdetails['Nfit']-1; i++) {
                 full_deltachi2s.push(chi2s[i+1]-chi2s[i]);
             }
             full_deltachi2s.push(-1);
             shortcds_table_z.data['DELTACHI2'] = full_deltachi2s;
-            for (var i=0; i<fit_results['Nfit']; i++) {
+            for (var i=0; i<rrdetails['Nfit']; i++) {
                 shortcds_table_z.data['Z'][i] = shortcds_table_z.data['Z'][i].toFixed(4);
                 shortcds_table_z.data['ZERR'][i] = shortcds_table_z.data['ZERR'][i].toFixed(4);
                 shortcds_table_z.data['DELTACHI2'][i] = shortcds_table_z.data['DELTACHI2'][i].toFixed(1);

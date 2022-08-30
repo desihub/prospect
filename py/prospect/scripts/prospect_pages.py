@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 ====================================
-prospect.scripts.specview_cmx_coadds
+prospect.scripts.prospect_pages
 ====================================
 
 Create static html files to visually inspect DESI spectra.
