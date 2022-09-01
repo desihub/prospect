@@ -142,7 +142,8 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
                 top_metadata=None, vi_countdown=-1, with_thumb_only_page=False,
                 with_coaddcam=True, mask_type='DESI_TARGET',
                 model_from_zcat=True, model=None, num_approx_fits=None, with_full_2ndfit=True,
-                template_dir=None, archetype_fit=False, archetypes_dir=None):
+                template_dir=None, archetype_fit=False, archetypes_dir=None,
+                std_template_file=None):
     '''Main prospect routine. From a set of spectra, creates a bokeh document
     used for VI, to be displayed as an HTML page or within a Jupyter notebook.
 
@@ -203,6 +204,8 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
         and plot model accordingly.
     archetypes_dir : :class:`str`, optional
         Directory path for archetypes if not :envvar:`RR_ARCHETYPE_DIR`.
+    std_template_file : :class:`str`, optional
+        File containing standard templates to display in viewer.
     '''
 
     #- Check input spectra.
@@ -278,7 +281,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
         viewer_cds.init_coaddcam_spec(spectra, with_noise)
     if model is not None:
         viewer_cds.init_model(model)
-    viewer_cds.load_std_templates()
+    viewer_cds.load_std_templates(std_template_file=std_template_file)
 
     if redrock_cat is not None :
         if np.any(redrock_cat['TARGETID'] != spectra.fibermap['TARGETID']) :

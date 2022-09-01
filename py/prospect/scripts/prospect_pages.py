@@ -72,6 +72,10 @@ def _parse():
     parser.add_argument('--with_thumbnail_only_pages', help='Create independent html pages with a thumbnail gallery, in addition to the main prospect pages. These additional pages are much faster to download than the main pages.', action='store_true')
     parser.add_argument('--mask_type', help='Targeting mask type', type=str, default='DESI_TARGET')
     parser.add_argument('--template_dir', help='Redrock template directory', type=str, default=None)
+    parser.add_argument('--std_template_file', help='''File containing "standard templates" to display in viewer.
+                Format: N templates in a single fits file, containing N tables (HDU 1 to N) exclusively.
+                The table associated to template TMPLT should contain two columns, named 'wave_TMPLT' and 'flux_TMPLT'.
+            Prospect default is in data/std_template.fits.''', type=str, default=None)
     parser.add_argument('--clean_fiberstatus', dest='clean_fiberstatus', help='Filter out spectra with FIBERSTATUS!=0 (even if a target list is provided)', action='store_true')
     parser.add_argument('--no-clean_fiberstatus', dest='clean_fiberstatus', action='store_false')
     parser.set_defaults(clean_fiberstatus=True)
@@ -250,7 +254,8 @@ def page_subset(spectra, nspecperfile, titlepage_prefix, viewer_params, log,
                     mask_type=viewer_params['mask_type'], top_metadata=viewer_params['top_metadata'],
                     template_dir=viewer_params['template_dir'], num_approx_fits=viewer_params['num_approx_fits'],
                     with_full_2ndfit=viewer_params['with_full_2ndfit'], vi_countdown=viewer_params['vi_countdown'],
-                    with_thumb_only_page=viewer_params['with_thumb_only_page'])
+                    with_thumb_only_page=viewer_params['with_thumb_only_page'],
+                    std_template_file=viewer_params['std_template_file'])
 
     return nspec_tot
 
@@ -285,6 +290,7 @@ def main():
         'num_approx_fits': None,
         'with_full_2ndfit': False,
         'with_thumb_only_page': args.with_thumbnail_only_pages,
+        'std_template_file': args.std_template_file
     }
 
 

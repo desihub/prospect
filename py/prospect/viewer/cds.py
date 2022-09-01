@@ -198,23 +198,22 @@ class ViewerCDS(object):
             self.dict_fit_templates["flux_"+fulltype_key] = flux_array
 
 
-    def load_std_templates(self):
+    def load_std_templates(self, std_template_file=None):
         """ Load a dict of "standard" templates.
             The std template file is `data/std_templates.fits`.
             It was created from `../scripts/prospect_std_templates.py`.
         """
         self.dict_std_templates = dict()
-        try:
-            template_file = resource_filename('prospect', "data/std_templates.fits")
-            hdul = fits.open(template_file)
-            nhdu = len(hdul)
-            hdul.close()
-        except:
-            print("Error reading std template file")
-            return
+        if std_template_file is None:
+            std_template_file = resource_filename('prospect', "data/std_templates.fits")
+        hdul = fits.open(std_template_file)
+        nhdu = len(hdul)
+        hdul.close()
         for i in range(1, nhdu):
-            t = Table.read(template_file, hdu=i)
+            t = Table.read(std_template_file, hdu=i)
             for key in t.keys():
+                if key[:5] not in ['wave_', 'flux_']:
+                    raise ValueError('Wrong column name in std template file: '+key)
                 self.dict_std_templates[key] = np.array(t[key])
 
 
