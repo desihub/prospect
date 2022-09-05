@@ -576,7 +576,7 @@ def load_spectra_zcat_from_targets(targetids, datadir, targetdb, dirtree_type=No
             else:
                 the_path = os.path.join(datadir, dataset, subset)
                 file_label = '-'.join([petal, dataset, subset_label])
-            the_spec = desispec.io.read_spectra(os.path.join(the_path, "coadd-"+file_label+".fits"))
+            the_spec = desispec.io.read_spectra(os.path.join(the_path, "coadd-"+file_label+".fits"), single=True)
             the_spec = the_spec.select(targets=sorted(targets_subset))
             if os.path.isfile(os.path.join(the_path, "redrock-"+file_label+".fits")):
                 redrock_is_pre_everest = False

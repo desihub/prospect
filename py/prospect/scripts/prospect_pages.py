@@ -163,7 +163,7 @@ def load_spectra_zcat_from_dbentry(db_entry, args, log, with_redrock_version=Tru
             the_spec = frames2spectra(frames, with_scores=True)
         else:
             #- Read a single Spectra file directly
-            the_spec = desispec.io.read_spectra(os.path.join(the_dir, args.spectra_type+"-"+file_label+".fits"))
+            the_spec = desispec.io.read_spectra(os.path.join(the_dir, args.spectra_type+"-"+file_label+".fits"), single=True)
         if args.with_zcatalog:
             if os.path.isfile(os.path.join(the_dir, "redrock-"+file_label+".fits")):
                 redrock_is_pre_everest = False
@@ -319,7 +319,7 @@ def main():
         #- Read input file(s)
         spectra_list, zcat_list, redrock_list = [], [], []
         for i_file in range(n_specfiles):
-            spectra = desispec.io.read_spectra(args.spectra_files[i_file])
+            spectra = desispec.io.read_spectra(args.spectra_files[i_file], single=True)
             if args.zcat_files is not None:
                 try:
                     zcat = Table.read(args.zcat_files[i_file], 'REDSHIFTS')
