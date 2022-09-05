@@ -42,8 +42,8 @@ qsotemplate_file = os.environ['HOME'] + '/stdtemplate-qso.fits'
 hdul = fits.open(qsotemplate_file)
 qsowave = 10**(hdul[0].header['CRVAL1']+np.arange(hdul[0].header['NAXIS1'])*hdul[0].header['CDELT1'])
 qsoflux = hdul[0].data
-resamp_factor = 3
-wave_array = qsowave[::resamp_factor]
+# Resample as previously:
+wave_array = np.arange(qsowave[0], qsowave[-1], delta_lambd_templates)
 flux_array = resample_flux(wave_array, qsowave, qsoflux)
 table_templates = Table(data=[wave_array, flux_array], names=['wave_QSO', 'flux_QSO'], meta={'name':'QSO'})
 table_templates.write(std_template_file, append=True)

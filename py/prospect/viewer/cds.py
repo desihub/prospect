@@ -212,8 +212,15 @@ class ViewerCDS(object):
         for i in range(1, nhdu):
             t = Table.read(std_template_file, hdu=i)
             for key in t.keys():
+                #- check table column name:
                 if key[:5] not in ['wave_', 'flux_']:
-                    raise ValueError('Wrong column name in std template file: '+key)
+                    raise ValueError('STD template file: wrong column name ('+key+')')
+                #- check wavelength array is regularly, linearly binned (with absolute tolerance 0.01 AA):
+                if key[:5]=='wave_':
+                    waves = np.array(t[key])
+                    delta_waves = waves[1:] - waves[:-1]
+                    if not np.allclose(delta_waves, delta_waves[0], atol=0.01, rtol=1.e-10):
+                        raise ValueError('STD template file: found irregular wavelength binning ('+key+')')
                 self.dict_std_templates[key] = np.array(t[key])
 
 
