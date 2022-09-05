@@ -9,13 +9,7 @@
 var i_spectrum = ispectrumslider.value;
 var nsmooth = smootherslider.value;
 
-//
-// Smoothing kernel.
-//
-var kernel = [];
-if (nsmooth > 0)
-    for(var i=-2*nsmooth; i<=2*nsmooth; i++)
-        kernel.push(Math.exp(-(i**2)/(2*(nsmooth**2))));
+
 //
 // update VI widgets + infos for current spectrum
 //
@@ -123,6 +117,7 @@ if (metadata.data['Z'] !== undefined && cb_obj == ispectrumslider && model_selec
 //
 // Smooth plot and recalculate ymin/ymax.
 //
+var kernel = get_kernel(nsmooth)
 var ymin = 0.0;
 var ymax = 0.0;
 // Switch for ivar-weighting in smoothing. We normally want this true unless
@@ -208,7 +203,11 @@ if (model) {
 //
 if (othermodel) {
     if (cb_obj == smootherslider) {
-        othermodel.data['plotflux'] = smooth_data(othermodel.data['origflux'], kernel, {});
+        // Original binning of othermodel may differ from data:
+        var binning_data = spectra[0].data['plotwave'][1]-spectra[0].data['plotwave'][0] ;
+        var binning_othermodel = othermodel.data['plotwave'][1]-othermodel.data['plotwave'][0] ;
+        var kernel_othermodel = get_kernel(nsmooth*binning_data/binning_othermodel) ;
+        othermodel.data['plotflux'] = smooth_data(othermodel.data['origflux'], kernel_othermodel, {});
         othermodel.change.emit();
     } else if (cb_obj == ispectrumslider) {
         // Trick to trigger execution of select_model.js

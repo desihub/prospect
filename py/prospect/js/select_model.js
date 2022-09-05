@@ -104,12 +104,12 @@ for (var j=0; j<zref_vect.length; j++) zref_vect[j] = spec_z
 cds_othermodel.data['zref'] = zref_vect.slice()
 
 // Smooth plotflux
-var nsmooth = smootherslider.value
+// Take into account binning difference between data and othermodel:
+var binning_data = cds_model.data['plotwave'][1]-cds_model.data['plotwave'][0] ;
+var binning_othermodel = cds_othermodel.data['plotwave'][1]-cds_othermodel.data['plotwave'][0] ;
+var nsmooth = smootherslider.value * binning_data / binning_othermodel ;
 if (nsmooth > 0) {
-    var kernel = [];
-    for (var i=-2*nsmooth; i<=2*nsmooth; i++) {
-        kernel.push(Math.exp( -(i**2)/(2*(nsmooth**2)) ))
-    }
+    var kernel = get_kernel(nsmooth);
     cds_othermodel.data['plotflux'] = smooth_data(cds_othermodel.data['origflux'], kernel, {})
 }
 

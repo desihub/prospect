@@ -75,6 +75,7 @@ def _parse():
     parser.add_argument('--std_template_file', help='''File containing "standard templates" to display in viewer.
                 Format: N templates in a single fits file, containing N tables (HDU 1 to N) exclusively.
                 The table associated to template TMPLT should contain two columns, named 'wave_TMPLT' and 'flux_TMPLT'.
+                Wavelength arrays should be regularly, linearly binned.
             Prospect default is in data/std_template.fits.''', type=str, default=None)
     parser.add_argument('--clean_fiberstatus', dest='clean_fiberstatus', help='Filter out spectra with FIBERSTATUS!=0 (even if a target list is provided)', action='store_true')
     parser.add_argument('--no-clean_fiberstatus', dest='clean_fiberstatus', action='store_false')
