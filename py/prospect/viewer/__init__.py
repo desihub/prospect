@@ -351,10 +351,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     viewer_widgets.add_metadata_tables(viewer_cds, top_metadata=top_metadata,
                                        show_zcat=show_zcat)
     viewer_widgets.add_specline_toggles(viewer_cds, viewer_plots)
-
-    if redrock_cat is not None :
-        viewer_widgets.add_model_select(viewer_cds,
-                            num_approx_fits, with_full_2ndfit=with_full_2ndfit)
+    viewer_widgets.add_model_select(viewer_cds, num_approx_fits, with_full_2ndfit=with_full_2ndfit)
     
     #-----
     #- VI-related widgets
