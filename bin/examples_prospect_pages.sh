@@ -107,6 +107,32 @@ if [[ $1 == 5 ]] || [[ $1 == '' ]]; then
                    --snr_min 5
 fi
 
+#- 5a) Similar to (5), with guadalupe data release
+if [[ $1 == 5a ]] || [[ $1 == '' ]]; then
+    echo "------ Example/Test 5a ------"
+    DATAPATH=${DESI_SPECTRO_REDUX}/guadalupe/tiles/cumulative/1776/20210516
+    OUTPUTDIR=${OUTPUT_ROOT}/5a
+    [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
+    SP_LIST_FILE=tmp_sp_list.txt
+    ZCAT_LIST_FILE=tmp_zcat_list.txt
+    RR_LIST_FILE=tmp_rr_list.txt
+    for i in {6..7}; do
+        echo ${DATAPATH}/coadd-${i}-1776-thru20210516.fits >> ${SP_LIST_FILE}
+        echo ${DATAPATH}/redrock-${i}-1776-thru20210516.fits >> ${ZCAT_LIST_FILE}
+        echo ${DATAPATH}/rrdetails-${i}-1776-thru20210516.h5 >> ${RR_LIST_FILE}
+    done
+    prospect_pages --spectra_file_list ${SP_LIST_FILE} \
+                   --zcat_file_list ${ZCAT_LIST_FILE} \
+                   --redrock_details_file_list ${RR_LIST_FILE} \
+                   --template_dir ${OLD_TEMPLATE_DIR} \
+                   -o ${OUTPUTDIR} \
+                   --titlepage prospect_example_5a \
+                   --mask_type DESI_TARGET \
+                   --targeting_mask QSO \
+                   --snr_min 5
+    rm -f ${SP_LIST_FILE} ${ZCAT_LIST_FILE} ${RR_LIST_FILE}
+fi
+
 #- 6) Filter spectra from a list of targets
 #     Input target(s) by hand
 if [[ $1 == 6 ]] || [[ $1 == '' ]]; then
