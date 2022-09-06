@@ -269,7 +269,7 @@ def main():
     log = get_logger()
     
     #- Two ways to provide input files
-    if args.spectra_files is None:
+    if (args.spectra_files is None) and (args.spectra_file_list is None):
         input_mode = 'scan-dirtree'
     else:
         input_mode = 'explicit-files'

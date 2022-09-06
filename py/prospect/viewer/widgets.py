@@ -437,9 +437,9 @@ class ViewerWidgets(object):
     def add_model_select(self, viewer_cds, num_approx_fits, with_full_2ndfit=True):
         #------
         #- Select secondary model to display
-        model_options = ['Best fit']
+        model_options = []
         if num_approx_fits is not None:
-            model_option.append('2nd best fit')
+            model_options = ['Best fit', '2nd best fit']
             for i in range(1,1+num_approx_fits) :
                 ith = 'th'
                 if i==1 : ith='st'

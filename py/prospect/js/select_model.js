@@ -105,7 +105,10 @@ cds_othermodel.data['zref'] = zref_vect.slice()
 
 // Smooth plotflux
 // Take into account binning difference between data and othermodel:
-var binning_data = cds_model.data['plotwave'][1]-cds_model.data['plotwave'][0] ;
+var binning_data = 0.8 ;
+if (cds_model !== null) {
+    binning_data = cds_model.data['plotwave'][1]-cds_model.data['plotwave'][0] ;
+}
 var binning_othermodel = cds_othermodel.data['plotwave'][1]-cds_othermodel.data['plotwave'][0] ;
 var nsmooth = smootherslider.value * binning_data / binning_othermodel ;
 if (nsmooth > 0) {

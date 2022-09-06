@@ -222,6 +222,15 @@ class ViewerCDS(object):
                     if not np.allclose(delta_waves, delta_waves[0], atol=0.01, rtol=1.e-10):
                         raise ValueError('STD template file: found irregular wavelength binning ('+key+')')
                 self.dict_std_templates[key] = np.array(t[key])
+        #- initialize cds_othermodel, if this was not done yet:
+        if self.cds_othermodel is None:
+            key_zero = list(self.dict_std_templates.keys())[0][5:]
+            self.cds_othermodel = ColumnDataSource({
+                'plotwave' : self.dict_std_templates['wave_'+key_zero],
+                'origwave' : self.dict_std_templates['wave_'+key_zero],
+                'origflux' : self.dict_std_templates['flux_'+key_zero],
+                'plotflux' : self.dict_std_templates['flux_'+key_zero]
+            })
 
 
     def load_rrdetails(self, redrock_cat):
