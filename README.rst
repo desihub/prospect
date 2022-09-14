@@ -6,16 +6,14 @@ Digging into DESI spectra, looking for stuff.
 
 |Actions Status| |Coveralls Status| |Documentation Status|
 
-This repository is a rewrite of inspector_, which itself is very much a work
-in progress.  This repository is intended to provide similar functionality
-as inspector, but do so without using ipywidgets so that it can be used as
-standalone code outside of Jupyter notebooks, while still also working within
-Jupyter notebooks.
+Prospect provides a tool to visually inspect DESI spectra, especially in order to 
+carry out coordinated visual inspection campaigns of specific datasets.
+
+The software can be used within Jupyter notebooks, or can be used as a standalone code
+to create (standalone) HTML pages.
 
 .. image:: screenshot.png
     :alt: Prospect Screenshot
-
-.. _inspector: https://github.com/desihub/inspector
 
 .. |Actions Status| image:: https://github.com/desihub/prospect/workflows/CI/badge.svg
     :target: https://github.com/desihub/prospect/actions
@@ -34,26 +32,24 @@ What it does
 
 * Provides an interactive spectral viewer for DESI data at NERSC without
   needing to download or install anything locally.
+* All DESI spectra can be displayed, eg. individual exposures, coadds, etc.
 * Interative zoom and pan
+* User-defined smoothing
 * Shows noise estimated for each spectrum.
-* Shows redrock results including the redshift, ZWARN flags, and the
-  best fit model.
 * Mouse over a region of the spectrum to get a real-time zoom in a sub-window;
   this is handy for inspecting narrow emission lines without zooming in and out
   on each one.
-* Shows TARGETID and targeting bits from DESI_TARGET, MWS_TARGET,
-  and BGS_TARGET.
 * Highlight common emission / absorption lines.
+* Restframe wavelengths
+* Shows redrock results including the redshift, ZWARN flags, and the
+  best fit model.
+* User-defined redshift
+* Show redrock's Nth best fit in addition to the best fit model.
+* Shows TARGETID and targeting bits from DESI_TARGET, MWS_TARGET,
+  and BGS_TARGET, and more target info like mags and shapes.
 * Display imaging of target.
 * Buttons for saving visual inspection results before moving to next target.
 
-Added here but not in the original inspector
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-* Restframe wavelengths
-* User-defined smoothing
-* User-defined redshift
-* Viewing spectra that don't yet have redshift fits
 
 What it doesn't do (yet)
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -61,12 +57,16 @@ What it doesn't do (yet)
 Any of these could be added later but don't yet exist.
 If you really want a feature, please consider contributing it.
 
-* Show individual exposures (multiple exposures are coadded prior to display)
 * Show masks
-* Show the Nth best fit instead of just the best fit
-* More target info like mags and shapes
 * Displaying model of 2D sky-subtracted raw data
-* Filtering to individual exposures or tiles
+
+
+Examples
+~~~~~~~~
+
+Usage within Jupyter notebooks: see example notebooks in `doc/nb`.
+
+Creating standalone HTML pages: see example scripts in `bin/example_prospect_pages.sh`
 
 -----
 

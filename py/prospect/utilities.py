@@ -8,7 +8,7 @@ prospect.utilities
 Utility functions for prospect.
 """
 
-import os, glob
+import os, glob, sys
 from pkg_resources import resource_string, resource_listdir
 
 import numpy as np
@@ -50,7 +50,7 @@ try:
         'DESI_TARGET': desi_mask,
         'BGS_TARGET': bgs_mask,
         'MWS_TARGET': mws_mask,
-        'SECONDARY_TARGET': scnd_mask,
+        'SCND_TARGET': scnd_mask,
         'CMX_TARGET': cmx_mask,
         'SV1_DESI_TARGET': sv1_desi_mask,
         'SV1_BGS_TARGET': sv1_bgs_mask,
@@ -71,6 +71,8 @@ except ImportError:
 
 _redrock_imported = True
 try:
+    import redrock.templates
+    from redrock.archetypes import All_archetypes
     import redrock.results
 except ImportError:
     _redrock_imported = False
@@ -163,6 +165,25 @@ def get_resources(filetype):
     return _resource_cache[filetype]
 
 
+def load_redrock_templates(template_dir=None) :
+    '''
+    Load redrock templates; redirect stdout because redrock is chatty
+    '''
+    assert _redrock_imported
+    saved_stdout = sys.stdout
+    sys.stdout = open('/dev/null', 'w')
+    try:
+        templates = dict()
+        for filename in redrock.templates.find_templates(template_dir=template_dir):
+            tx = redrock.templates.Template(filename)
+            templates[(tx.template_type, tx.sub_type)] = tx
+    except Exception as err:
+        sys.stdout = saved_stdout
+        raise(err)
+    sys.stdout = saved_stdout
+    return templates
+
+
 def match_catalog_to_spectra(zcat_in, spectra, return_index=False):
     """ Creates a subcatalog, matching a set of DESI spectra
 
@@ -227,14 +248,16 @@ def match_rrdetails_to_spectra(redrockfile, spectra, Nfit=None):
         If a set of Nfit rows in redrockfile is not found matching each of spectra's TARGETIDs
     """
 
+    assert _redrock_imported
     dummy, rr_table = redrock.results.read_zscan(redrockfile)
     rr_targets = rr_table['targetid']
     if Nfit is None:
         ww, = np.where( (rr_targets == rr_targets[0]) )
         Nfit = len(ww)
+    nbasis_tmplt = rr_table['coeff'].shape[1]
     matched_redrock_cat = Table(
         dtype=[('TARGETID', '<i8'), ('CHI2', '<f8', (Nfit,)),
-               ('DELTACHI2', '<f8', (Nfit,)), ('COEFF', '<f8', (Nfit,10,)),
+               ('DELTACHI2', '<f8', (Nfit,)), ('COEFF', '<f8', (Nfit,nbasis_tmplt,)),
                ('Z', '<f8', (Nfit,)), ('ZERR', '<f8', (Nfit,)),
                ('ZWARN', '<i8', (Nfit,)), ('SPECTYPE', '<U6', (Nfit,)), ('SUBTYPE', '<U2', (Nfit,))])
 
@@ -271,7 +294,8 @@ def create_zcat_from_redrock_cat(redrock_cat, fit_num=0):
     rr_cat_num_best_fits = redrock_cat['Z'].shape[1]
     if (fit_num >= rr_cat_num_best_fits):
         raise ValueError("fit_num too large wrt redrock_cat")
-    zcat_dtype=[('TARGETID', '<i8'), ('CHI2', '<f8'), ('COEFF', '<f8', (10,)),
+    nbasis_tmplt = redrock_cat['COEFF'].shape[1]
+    zcat_dtype=[('TARGETID', '<i8'), ('CHI2', '<f8'), ('COEFF', '<f8', (nbasis_tmplt,)),
                 ('Z', '<f8'), ('ZERR', '<f8'), ('ZWARN', '<i8'),
                 ('SPECTYPE', '<U6'), ('SUBTYPE', '<U2'), ('DELTACHI2', '<f8')]
     zcat_out = Table( data=np.zeros(len(redrock_cat), dtype=zcat_dtype) )
@@ -350,7 +374,6 @@ def create_subsetdb(datadir, dirtree_type=None, spectra_type='coadd', tiles=None
        - To use blanc/cascades 'all' (resp 'deep') coadds, use dirtree_type='pernight' and nights=['all'] (resp ['deep']).
 
     """
-    # TODO support (everest) healpix-based directory trees
 
     if ( (nights is not None and dirtree_type!='pernight' and dirtree_type!='exposures')
         or (expids is not None and dirtree_type!='perexp' and dirtree_type!='exposures') ):
@@ -553,7 +576,7 @@ def load_spectra_zcat_from_targets(targetids, datadir, targetdb, dirtree_type=No
             else:
                 the_path = os.path.join(datadir, dataset, subset)
                 file_label = '-'.join([petal, dataset, subset_label])
-            the_spec = desispec.io.read_spectra(os.path.join(the_path, "coadd-"+file_label+".fits"))
+            the_spec = desispec.io.read_spectra(os.path.join(the_path, "coadd-"+file_label+".fits"), single=True)
             the_spec = the_spec.select(targets=sorted(targets_subset))
             if os.path.isfile(os.path.join(the_path, "redrock-"+file_label+".fits")):
                 redrock_is_pre_everest = False
@@ -668,7 +691,7 @@ def frames2spectra(frames, nspec=None, startspec=None, with_scores=False, with_r
     return spectra
 
 
-def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag_range=None, chi2_range=None, snr_range=None, clean_fiberstatus=False, with_dirty_mask_merge=False, zcat=None, log=None, return_index=False):
+def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag_range=None, chi2_range=None, snr_range=None, clean_fiberstatus=False, select_bad_fiberstatus=False, with_dirty_mask_merge=False, zcat=None, log=None, return_index=False):
     """Simple selection of DESI spectra based on various metadata.
 
     Filtering based on the logical AND of requested selection criteria.
@@ -698,6 +721,8 @@ def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag
         chi2 range to select, chi2_range = [chi2_min, chi2_max]. Requires to set zcat.
     clean_fiberstatus : :class:`bool`
         if True, remove spectra with FIBERSTATUS!=0 or COADD_FIBERSTATUS!=0
+    select_bad_fiberstatus : :class:`bool`
+        if True, select only spectra with FIBERSTATUS!=0 or COADD_FIBERSTATUS!=0
     zcat : :class:`~astropy.table.Table`
         catalog with chi2 information, must be matched to spectra (needed for chi2_range filter).
     log : optional log.
@@ -815,6 +840,13 @@ def metadata_selection(spectra, mask=None, mask_type=None, gmag_range=None, rmag
             keep = ( keep & (spectra.fibermap['FIBERSTATUS']==0) )
         elif 'COADD_FIBERSTATUS' in spectra.fibermap.keys():
             keep = ( keep & (spectra.fibermap['COADD_FIBERSTATUS']==0) )
+    if select_bad_fiberstatus:  # A very, very specific choice, for debugging.
+        if clean_fiberstatus:
+            raise ValueError('Cannot have both select_bad_fiberstatus and clean_fiberstatus.')
+        if 'FIBERSTATUS' in spectra.fibermap.keys():
+            keep = ( keep & (spectra.fibermap['FIBERSTATUS']!=0) )
+        elif 'COADD_FIBERSTATUS' in spectra.fibermap.keys():
+            keep = ( keep & (spectra.fibermap['COADD_FIBERSTATUS']!=0) )
 
     #- Return None instead of an empty slice if no spectra is selected
     if np.all(~keep):

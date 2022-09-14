@@ -5,7 +5,14 @@ prospect's Change Log
 1.2.3 (unreleased)
 ------------------
 
-* No changes yet.
+* "Standard templates" now provided from standalone files, independently of Redrock (Issue `#68`_).
+* Handling of different Redrock templates (Issue `#77`_).
+* Solved oversmoothing issue (Issue `#60`_).
+* New (convenience) options in ``prospect_pages.py``.
+
+.. _`#68`: https://github.com/desihub/prospect/issues/68
+.. _`#77`: https://github.com/desihub/prospect/issues/77
+.. _`#60`: https://github.com/desihub/prospect/issues/60
 
 1.2.2 (2022-05-24)
 ------------------

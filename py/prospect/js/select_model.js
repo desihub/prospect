@@ -1,7 +1,7 @@
 // CustomJS, callback for the model selection
 //  - Requires to include function in: interp_grid.js, smooth_data.js
 //  - args = ispectrumslider, model_select, fit_templates, cds_model_2ndfit, cds_model, z_input
-//             cds_othermodel, fit_results, std_templates, median_spectra, smootherslider,
+//             cds_othermodel, rrdetails, std_templates, median_spectra, smootherslider,
 //             cds_metadata
 // IN DEVLPT
 // values for model_select (model_options) are hardcoded
@@ -38,7 +38,7 @@ if (model_select.value == 'Best fit') {
     cds_othermodel.data['plotflux'] = origflux.slice()
     cds_othermodel.data['plotwave'] = cds_model_2ndfit.data['plotwave']
     cds_othermodel.data['origwave'] = cds_model_2ndfit.data['origwave']
-    spec_z = fit_results['Z'][i_spectrum][1] // entry "1" => 2nd best fit
+    spec_z = rrdetails['Z'][i_spectrum][1] // entry "1" => 2nd best fit
 
 } else if ( (model_select.value).search("STD ") == 0) {
     // TODO : adapt median to relevant waverange (fct of z_spec at least).
@@ -76,11 +76,10 @@ if (model_select.value == 'Best fit') {
 
 } else { // recompute Nth best fit
     var i_fit = parseInt(model_select.value[0])-1 // hardcoded ("1st fit" => "1" => entry 0. Assumes N<10)
-    var coeffs = fit_results['COEFF'][i_spectrum][i_fit]
-    var spectype =  fit_results['SPECTYPE'][i_spectrum][i_fit]
-    var subtype =  fit_results['SUBTYPE'][i_spectrum][i_fit]
-    spec_z = fit_results['Z'][i_spectrum][i_fit]
-    
+    var coeffs = rrdetails['COEFF'][i_spectrum][i_fit]
+    var spectype = rrdetails['SPECTYPE'][i_spectrum][i_fit]
+    var subtype = rrdetails['SUBTYPE'][i_spectrum][i_fit]
+    spec_z = rrdetails['Z'][i_spectrum][i_fit]
     var template_wave = fit_templates["wave_"+spectype+"_"+subtype]
     var template_flux = fit_templates["flux_"+spectype+"_"+subtype]
     
@@ -105,12 +104,15 @@ for (var j=0; j<zref_vect.length; j++) zref_vect[j] = spec_z
 cds_othermodel.data['zref'] = zref_vect.slice()
 
 // Smooth plotflux
-var nsmooth = smootherslider.value
+// Take into account binning difference between data and othermodel:
+var binning_data = 0.8 ;
+if (cds_model !== null) {
+    binning_data = cds_model.data['plotwave'][1]-cds_model.data['plotwave'][0] ;
+}
+var binning_othermodel = cds_othermodel.data['plotwave'][1]-cds_othermodel.data['plotwave'][0] ;
+var nsmooth = smootherslider.value * binning_data / binning_othermodel ;
 if (nsmooth > 0) {
-    var kernel = [];
-    for (var i=-2*nsmooth; i<=2*nsmooth; i++) {
-        kernel.push(Math.exp( -(i**2)/(2*(nsmooth**2)) ))
-    }
+    var kernel = get_kernel(nsmooth);
     cds_othermodel.data['plotflux'] = smooth_data(cds_othermodel.data['origflux'], kernel, {})
 }
 

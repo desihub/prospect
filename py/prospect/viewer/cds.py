@@ -11,6 +11,8 @@ Class containing all bokeh's ColumnDataSource objects needed in viewer.py
 
 import numpy as np
 from pkg_resources import resource_filename
+from astropy.io import fits
+from astropy.table import Table
 
 import bokeh.plotting as bk
 from bokeh.models import ColumnDataSource
@@ -21,8 +23,14 @@ try:
 except ImportError:
     _specutils_imported = False
 
+_desispec_imported = True
+try:
+    from desispec.interpolation import resample_flux
+except ImportError:
+    _desispec_imported = False
+
 from ..coaddcam import coaddcam_prospect
-from ..utilities import supported_desitarget_masks, vi_file_fields
+from ..utilities import supported_desitarget_masks, vi_file_fields, load_redrock_templates
 
 
 def _airtovac(w):
@@ -61,6 +69,10 @@ class ViewerCDS(object):
         self.cds_model_2ndfit = None
         self.cds_othermodel = None
         self.cds_metadata = None
+        self.cds_spectral_lines = None
+        self.dict_fit_templates = None  # Special case: not a CDS
+        self.dict_std_templates = None  # Special case: not a CDS
+        self.dict_rrdetails = None  # Special case: not a CDS
     
     def load_spectra(self, spectra, with_noise=True):
         """ Creates column data source for observed spectra """
@@ -165,6 +177,73 @@ class ViewerCDS(object):
         })
     
     
+    def load_fit_templates(self, template_dir=None, nbpts_templates=4000):
+        """ Create dict for spectral templates used in Redrock fits.
+            These are used to recompute Redrock's Nth best-fit spectra on-the-fly
+            in javascript.
+            Templates are resampled in order to limit the size of html pages (and the
+            browser's CPU usage).
+            This resampling is dictated by parameter nbpts_templates.
+        """
+        assert _desispec_imported # for resample_flux
+        rr_templts = load_redrock_templates(template_dir=template_dir)
+        self.dict_fit_templates = dict()
+        for key,templt in rr_templts.items():
+            fulltype_key = "_".join(key)   # merge redrock's (TYPE, SUBTYPE)
+            wave_array = np.linspace(templt.wave[0], templt.wave[-1], num=nbpts_templates)
+            flux_array = np.zeros(( templt.flux.shape[0],len(wave_array) ))
+            for i in range(templt.flux.shape[0]):
+                flux_array[i,:] = resample_flux(wave_array, templt.wave, templt.flux[i,:])
+            self.dict_fit_templates["wave_"+fulltype_key] = wave_array
+            self.dict_fit_templates["flux_"+fulltype_key] = flux_array
+
+
+    def load_std_templates(self, std_template_file=None):
+        """ Load a dict of "standard" templates.
+            The std template file is `data/std_templates.fits`.
+            It was created from `../scripts/prospect_std_templates.py`.
+        """
+        self.dict_std_templates = dict()
+        if std_template_file is None:
+            std_template_file = resource_filename('prospect', "data/std_templates.fits")
+        hdul = fits.open(std_template_file)
+        nhdu = len(hdul)
+        hdul.close()
+        for i in range(1, nhdu):
+            t = Table.read(std_template_file, hdu=i)
+            for key in t.keys():
+                #- check table column name:
+                if key[:5] not in ['wave_', 'flux_']:
+                    raise ValueError('STD template file: wrong column name ('+key+')')
+                #- check wavelength array is regularly, linearly binned (with absolute tolerance 0.01 AA):
+                if key[:5]=='wave_':
+                    waves = np.array(t[key])
+                    delta_waves = waves[1:] - waves[:-1]
+                    if not np.allclose(delta_waves, delta_waves[0], atol=0.01, rtol=1.e-10):
+                        raise ValueError('STD template file: found irregular wavelength binning ('+key+')')
+                self.dict_std_templates[key] = np.array(t[key])
+        #- initialize cds_othermodel, if this was not done yet:
+        if self.cds_othermodel is None:
+            key_zero = list(self.dict_std_templates.keys())[0][5:]
+            self.cds_othermodel = ColumnDataSource({
+                'plotwave' : self.dict_std_templates['wave_'+key_zero],
+                'origwave' : self.dict_std_templates['wave_'+key_zero],
+                'origflux' : self.dict_std_templates['flux_'+key_zero],
+                'plotflux' : self.dict_std_templates['flux_'+key_zero]
+            })
+
+
+    def load_rrdetails(self, redrock_cat):
+        """ Create dict for detailled redrock outputs.
+            Used to recompute redrock's Nth best fit spectra on-the-fly in javascript,
+            and display them in a table.
+        """
+        self.dict_rrdetails = dict()
+        for key in redrock_cat.keys() :
+            self.dict_rrdetails[key] = np.asarray(redrock_cat[key])
+        self.dict_rrdetails['Nfit'] = redrock_cat['Z'].shape[1]
+
+
     def load_metadata(self, spectra, mask_type=None, zcatalog=None, survey='DESI'):
         """ Creates column data source for target-related metadata,
             from fibermap, zcatalog and VI files 

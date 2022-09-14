@@ -1,6 +1,15 @@
 // Utility javascript function used in CustomJS callbacks
 //  (Standalone module)
 
+function get_kernel(nsmooth) {
+    var kernel = [];
+    if (nsmooth > 0) {
+        for(var i=-2*nsmooth; i<=2*nsmooth; i++)
+            kernel.push(Math.exp(-(i**2)/(2*(nsmooth**2))));
+    }
+    return kernel;
+}
+
 function smooth_data(data_in, kernel, options) {
     // by default: out_j ~ (sum K_i in_i) / (sum K_i)
     // ivar-weighting: out_j ~ (sum K_i in_i ivar_i) / (sum K_i ivar_i) ~ smooth(in*ivar)/smooth(ivar)

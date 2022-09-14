@@ -306,7 +306,7 @@ class ViewerWidgets(object):
         self.coaddcam_buttons.js_on_click(self.coaddcam_callback)
     
     
-    def add_metadata_tables(self, viewer_cds, show_zcat=True, template_dicts=None,
+    def add_metadata_tables(self, viewer_cds, show_zcat=True,
                            top_metadata=['TARGETID', 'EXPID', 'COADD_NUMEXP', 'COADD_EXPTIME']):
         """ Display object-related informations
                 top_metadata: metadata to be highlighted in table_a
@@ -354,10 +354,11 @@ class ViewerWidgets(object):
 
         #- Table z: redshift fitting information
         if show_zcat:
-            if template_dicts is not None : # Add other best fits
-                fit_results = template_dicts[1]
+            if viewer_cds.dict_rrdetails is not None:  # "Detailled" info for Nth best fits
+                fit_results = viewer_cds.dict_rrdetails
                 # Case of DeltaChi2 : compute it from Chi2s
-                #    The "DeltaChi2" in rr fits is between best fits for a given (spectype,subtype)
+                #    The "DeltaChi2" in redrock files is between best fits for a given (spectype,subtype)
+                #    Here we want to display DeltaChi2 independently of (spectype,subtype)
                 #    Convention: DeltaChi2 = -1 for the last fit.
                 chi2s = fit_results['CHI2'][0]
                 full_deltachi2s = np.zeros(len(chi2s))-1
@@ -433,31 +434,37 @@ class ViewerWidgets(object):
         self.majorline_checkbox.js_on_click(self.speclines_callback)
 
 
-    def add_model_select(self, viewer_cds, template_dicts, num_approx_fits, with_full_2ndfit=True):
+    def add_model_select(self, viewer_cds, num_approx_fits, with_full_2ndfit=True):
         #------
         #- Select secondary model to display
-        model_options = ['Best fit', '2nd best fit']
-        for i in range(1,1+num_approx_fits) :
-            ith = 'th'
-            if i==1 : ith='st'
-            if i==2 : ith='nd'
-            if i==3 : ith='rd'
-            model_options.append(str(i)+ith+' fit (approx)')
-        if with_full_2ndfit is False :
-            model_options.remove('2nd best fit')
-        for std_template in ['QSO', 'GALAXY', 'STAR'] :
-            model_options.append('STD '+std_template)
-        self.model_select = Select(value=model_options[0], title="Other model (dashed curve):", options=model_options)
+        model_options = []
+        if num_approx_fits is not None:
+            model_options = ['Best fit', '2nd best fit']
+            for i in range(1,1+num_approx_fits) :
+                ith = 'th'
+                if i==1 : ith='st'
+                if i==2 : ith='nd'
+                if i==3 : ith='rd'
+                model_options.append(str(i)+ith+' fit (approx)')
+            if with_full_2ndfit is False :
+                model_options.remove('2nd best fit')
+        if viewer_cds.dict_std_templates is not None:
+            std_template_labels = [x[5:] for x in viewer_cds.dict_std_templates.keys() if x[:5]=='wave_']
+            for std_template in std_template_labels:
+                model_options.append('STD '+std_template)
+        self.model_select = Select(value=model_options[0],
+                                   title="Other model (dashed curve):",
+                                   options=model_options)
         model_select_code = self.js_files["interp_grid.js"] + self.js_files["smooth_data.js"] + self.js_files["select_model.js"]
         self.model_select_callback = CustomJS(
             args = dict(ispectrumslider = self.ispectrumslider,
                         model_select = self.model_select,
-                        fit_templates=template_dicts[0],
+                        fit_templates = viewer_cds.dict_fit_templates,
                         cds_othermodel = viewer_cds.cds_othermodel,
                         cds_model_2ndfit = viewer_cds.cds_model_2ndfit,
                         cds_model = viewer_cds.cds_model,
-                        fit_results=template_dicts[1],
-                        std_templates=template_dicts[2],
+                        rrdetails = viewer_cds.dict_rrdetails,
+                        std_templates = viewer_cds.dict_std_templates,
                         median_spectra = viewer_cds.cds_median_spectra,
                         smootherslider = self.smootherslider,
                         z_input = self.z_input,
@@ -466,14 +473,12 @@ class ViewerWidgets(object):
         self.model_select.js_on_change('value', self.model_select_callback)
 
 
-    def add_update_plot_callback(self, viewer_cds, plots, vi_widgets, template_dicts):
+    def add_update_plot_callback(self, viewer_cds, plots, vi_widgets):
         #-----
         #- Main js code to update plots
         update_plot_code = (self.js_files["adapt_plotrange.js"] + self.js_files["interp_grid.js"] +
                             self.js_files["smooth_data.js"] + self.js_files["coadd_brz_cameras.js"] +
                             self.js_files["update_plot.js"])
-        # TMP handling of template_dicts
-        the_fit_results = None if template_dicts is None else template_dicts[1] # dirty
         self.update_plot_callback = CustomJS(
             args = dict(
                 spectra = viewer_cds.cds_spectra,
@@ -482,7 +487,7 @@ class ViewerWidgets(object):
                 othermodel = viewer_cds.cds_othermodel,
                 model_2ndfit = viewer_cds.cds_model_2ndfit,
                 metadata = viewer_cds.cds_metadata,
-                fit_results = the_fit_results,
+                rrdetails = viewer_cds.dict_rrdetails,
                 shortcds_table_z = self.shortcds_table_z,
                 shortcds_table_a = self.shortcds_table_a,
                 shortcds_table_b = self.shortcds_table_b,

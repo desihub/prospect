@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 ====================================
-prospect.scripts.specview_cmx_coadds
+prospect.scripts.prospect_pages
 ====================================
 
 Create static html files to visually inspect DESI spectra.
@@ -30,8 +30,11 @@ def _parse():
     
     #- Single file input
     parser.add_argument('--spectra_files', help='[Mode: Explicit input files] Absolute path of file(s) with DESI spectra. All input spectra files must have exactly the same format (fibermap, extra, scores...). Frames are not supported.', nargs='+', type=str, default=None)
+    parser.add_argument('--spectra_file_list', help='[Mode: Explicit input files] ASCII file with list of DESI spectra files, one per row', type=str, default=None)
     parser.add_argument('--zcat_files', help='[Mode: Explicit input files] Absolute path of redshift catalog fits file(s), matched one-by-one to spectra_files', nargs='+', type=str, default=None)
+    parser.add_argument('--zcat_file_list', help='[Mode: Explicit input files] ASCII file with list of redshift catalog files, one per row', type=str, default=None)
     parser.add_argument('--redrock_details_files', help='[Mode: Explicit input files] Absolute path of detailed redrock file(s) (.h5), matched one-by-one to spectra_files', nargs='+', type=str, default=None)
+    parser.add_argument('--redrock_details_file_list', help='[Mode: Explicit input files] ASCII file with list of detailed redrock files, one per row', type=str, default=None)
     
     #- "Multi" file input (can select some data subsets based on tiles, expids...)
     parser.add_argument('--datadir', help='[Mode: Scan directory tree] Location of input directory tree', type=str, default=None)
@@ -72,9 +75,15 @@ def _parse():
     parser.add_argument('--with_thumbnail_only_pages', help='Create independent html pages with a thumbnail gallery, in addition to the main prospect pages. These additional pages are much faster to download than the main pages.', action='store_true')
     parser.add_argument('--mask_type', help='Targeting mask type', type=str, default='DESI_TARGET')
     parser.add_argument('--template_dir', help='Redrock template directory', type=str, default=None)
+    parser.add_argument('--std_template_file', help='''File containing "standard templates" to display in viewer.
+                Format: N templates in a single fits file, containing N tables (HDU 1 to N) exclusively.
+                The table associated to template TMPLT should contain two columns, named 'wave_TMPLT' and 'flux_TMPLT'.
+                Wavelength arrays should be regularly, linearly binned.
+            Prospect default is in data/std_template.fits.''', type=str, default=None)
     parser.add_argument('--clean_fiberstatus', dest='clean_fiberstatus', help='Filter out spectra with FIBERSTATUS!=0 (even if a target list is provided)', action='store_true')
     parser.add_argument('--no-clean_fiberstatus', dest='clean_fiberstatus', action='store_false')
     parser.set_defaults(clean_fiberstatus=True)
+    parser.add_argument('--select_bad_fiberstatus', help='[For debugging] Select spectra with FIBERSTATUS!=0', action='store_true')
     parser.add_argument('--clean_bad_fibers_cmx', help='[Specific to CMX conditions] Remove list of known bad fibers at CMX time.', action='store_true')
 
     #- Filtering at the spectra level
@@ -157,7 +166,7 @@ def load_spectra_zcat_from_dbentry(db_entry, args, log, with_redrock_version=Tru
             the_spec = frames2spectra(frames, with_scores=True)
         else:
             #- Read a single Spectra file directly
-            the_spec = desispec.io.read_spectra(os.path.join(the_dir, args.spectra_type+"-"+file_label+".fits"))
+            the_spec = desispec.io.read_spectra(os.path.join(the_dir, args.spectra_type+"-"+file_label+".fits"), single=True)
         if args.with_zcatalog:
             if os.path.isfile(os.path.join(the_dir, "redrock-"+file_label+".fits")):
                 redrock_is_pre_everest = False
@@ -178,9 +187,10 @@ def load_spectra_zcat_from_dbentry(db_entry, args, log, with_redrock_version=Tru
             the_zcat = None
         #- Filtering (done after zcat is loaded, in order to include chi2_min/max !)
         the_spec = metadata_selection(the_spec, log=log, mask=args.targeting_mask, mask_type=args.mask_type,
-                                      snr_range=[args.snr_min, args.snr_max], gmag_range=[args.gmag_min, args.gmag_max],
-                                      rmag_range=[args.rmag_min, args.rmag_max], clean_fiberstatus=args.clean_fiberstatus,
-                                      chi2_range=[args.chi2_min, args.chi2_max], zcat=the_zcat) # TODO dirty_mask_merge?
+                            snr_range=[args.snr_min, args.snr_max], gmag_range=[args.gmag_min, args.gmag_max],
+                            rmag_range=[args.rmag_min, args.rmag_max], chi2_range=[args.chi2_min, args.chi2_max],
+                            clean_fiberstatus=args.clean_fiberstatus, select_bad_fiberstatus=args.select_bad_fiberstatus,
+                            zcat=the_zcat) # TODO dirty_mask_merge?
         #- Fiber-based filter in CMX data kept here for record only
         if args.clean_bad_fibers_cmx:
             fibers = np.arange(5000)
@@ -248,7 +258,8 @@ def page_subset(spectra, nspecperfile, titlepage_prefix, viewer_params, log,
                     mask_type=viewer_params['mask_type'], top_metadata=viewer_params['top_metadata'],
                     template_dir=viewer_params['template_dir'], num_approx_fits=viewer_params['num_approx_fits'],
                     with_full_2ndfit=viewer_params['with_full_2ndfit'], vi_countdown=viewer_params['vi_countdown'],
-                    with_thumb_only_page=viewer_params['with_thumb_only_page'])
+                    with_thumb_only_page=viewer_params['with_thumb_only_page'],
+                    std_template_file=viewer_params['std_template_file'])
 
     return nspec_tot
 
@@ -258,7 +269,7 @@ def main():
     log = get_logger()
     
     #- Two ways to provide input files
-    if args.spectra_files is None:
+    if (args.spectra_files is None) and (args.spectra_file_list is None):
         input_mode = 'scan-dirtree'
     else:
         input_mode = 'explicit-files'
@@ -283,6 +294,7 @@ def main():
         'num_approx_fits': None,
         'with_full_2ndfit': False,
         'with_thumb_only_page': args.with_thumbnail_only_pages,
+        'std_template_file': args.std_template_file
     }
 
 
@@ -294,42 +306,46 @@ def main():
                         'nights', 'night_list', 'expids', 'expid_list', 'petals', 'nmax_spectra']:
             if vars(args)[the_arg] is not None:
                 raise ValueError('Argument not allowed in mode "Explicit input files": '+the_arg)
-        if (args.redrock_details_files is not None) and (args.zcat_files is None):
+        spectra_files = _filter_list(args, 'spectra_file')
+        zcat_files = _filter_list(args, 'zcat_file')
+        redrock_details_files = _filter_list(args, 'redrock_details_file')
+        if (redrock_details_files is not None) and (zcat_files is None):
             raise ValueError('Argument `zcat_files` is needed if `redrock_details_files` is set')
-        n_specfiles = len(args.spectra_files)
-        if args.zcat_files is not None :
-            if len(args.zcat_files)!=n_specfiles:
+        n_specfiles = len(spectra_files)
+        if zcat_files is not None :
+            if len(zcat_files)!=n_specfiles:
                 raise ValueError('Number of zcat_files does not match number of input spectra_files')
-        if args.redrock_details_files is not None :
+        if redrock_details_files is not None :
             viewer_params['num_approx_fits'] = 4 # TODO un-hardcode ?
             viewer_params['with_full_2ndfit'] = True # TODO un-hardcode ?
-            if len(args.redrock_details_files)!=n_specfiles:
+            if len(redrock_details_files)!=n_specfiles:
                 raise ValueError('Number of redrock_details_files does not match number of input spectra_files')
 
         log.info('Prospect_pages: start reading data [mode: Explicit input files]')
         #- Read input file(s)
         spectra_list, zcat_list, redrock_list = [], [], []
         for i_file in range(n_specfiles):
-            spectra = desispec.io.read_spectra(args.spectra_files[i_file])
-            if args.zcat_files is not None:
+            spectra = desispec.io.read_spectra(spectra_files[i_file], single=True)
+            if zcat_files is not None:
                 try:
-                    zcat = Table.read(args.zcat_files[i_file], 'REDSHIFTS')
+                    zcat = Table.read(zcat_files[i_file], 'REDSHIFTS')
                 except KeyError as e:  # pre-everest Redrock file nomenclature
-                    zcat = Table.read(args.zcat_files[i_file], 'ZBEST')
+                    zcat = Table.read(zcat_files[i_file], 'ZBEST')
                 if hasattr(zcat['SUBTYPE'], 'mask'):  # work around Table auto-masking in astropy 5
                     blanksubtype = zcat['SUBTYPE'].mask
                     zcat['SUBTYPE'][blanksubtype] = ''
                 #- Add redrock version to zcat
-                hdulist = astropy.io.fits.open(args.zcat_files[i_file])
+                hdulist = astropy.io.fits.open(zcat_files[i_file])
                 zcat['RRVER'] = hdulist[hdulist.index_of('PRIMARY')].header['RRVER']
             else:
                 zcat = None
             #- Filtering: generic metadata
             spectra, indx = metadata_selection(spectra, log=log, mask=args.targeting_mask, mask_type=args.mask_type,
                             snr_range=[args.snr_min, args.snr_max], gmag_range=[args.gmag_min, args.gmag_max],
-                            rmag_range=[args.rmag_min, args.rmag_max], clean_fiberstatus=args.clean_fiberstatus,
-                            chi2_range=[args.chi2_min, args.chi2_max], zcat=zcat, return_index=True)
-            if args.zcat_files is not None:
+                            rmag_range=[args.rmag_min, args.rmag_max], chi2_range=[args.chi2_min, args.chi2_max],
+                            clean_fiberstatus=args.clean_fiberstatus, select_bad_fiberstatus=args.select_bad_fiberstatus,
+                            zcat=zcat, return_index=True)
+            if zcat_files is not None:
                 zcat = zcat[indx]
             #- Filtering: targetids
             # NB Here spectra are just filtered, ie. not reordered according to input targets
@@ -338,25 +354,25 @@ def main():
                     spectra, indx = spectra.select(targets=targetids, return_index=True)
                 except RuntimeError:   # this happens if no TARGETID is matched:
                     spectra, indx = None, np.array([], dtype='int64')
-                if args.zcat_files is not None:
+                if zcat_files is not None:
                     zcat = zcat[indx]
             if spectra is not None:
                 spectra_list.append(spectra)
-                if args.zcat_files is not None:
+                if zcat_files is not None:
                     zcat_list.append(zcat)
-                if args.redrock_details_files is not None:
-                    redrock_cat = match_rrdetails_to_spectra(args.redrock_details_files[i_file], spectra)
+                if redrock_details_files is not None:
+                    redrock_cat = match_rrdetails_to_spectra(redrock_details_files[i_file], spectra)
                     redrock_list.append(redrock_cat)
         if len(spectra_list) == 0:
             log.info("Prospect_pages: no spectra after filtering criteria -> End of task.")
             return 0
         spectra = desispec.spectra.stack(spectra_list)
         del spectra_list[:]   # should roughly divide memory usage by two
-        if args.zcat_files is not None:
+        if zcat_files is not None:
             zcat = vstack(zcat_list)
         else:
             zcat = None
-        if args.redrock_details_files is not None:
+        if redrock_details_files is not None:
             redrock_cat = vstack(redrock_list)
         else:
             redrock_cat = None
@@ -370,7 +386,8 @@ def main():
     #- Mode: Scan directory tree
     ############################
     if input_mode == 'scan-dirtree':
-        if any([ x is not None for x in [args.spectra_files, args.zcat_files, args.redrock_details_files] ]):
+        if any([ x is not None for x in [args.spectra_files, args.zcat_files, args.redrock_details_files,
+                            args.spectra_file_list, args.zcat_file_list, args.redrock_details_file_list] ]):
             raise ValueError('Argument not allowed in "Scan directory tree" mode: spectra/zcat/redrock_details_files')
         if any([ x is None for x in [args.datadir, args.dirtree_type] ]):
             raise ValueError('Missing parameter in "Scan directory tree" mode: datadir/dirtree_type')

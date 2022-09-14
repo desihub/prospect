@@ -55,29 +55,12 @@ try:
 except ImportError:
     _redrock_imported = False
 
-from ..utilities import frames2spectra, create_zcat_from_redrock_cat
+from ..utilities import frames2spectra, create_zcat_from_redrock_cat, load_redrock_templates
 from .cds import ViewerCDS
 from .plots import ViewerPlots
 from .widgets import ViewerWidgets
 from .vi_widgets import ViewerVIWidgets
 from .layouts import ViewerLayout, StandaloneThumbLayout
-
-def load_redrock_templates(template_dir=None) :
-    '''
-    Load redrock templates; redirect stdout because redrock is chatty
-    '''
-    saved_stdout = sys.stdout
-    sys.stdout = open('/dev/null', 'w')
-    try:
-        templates = dict()
-        for filename in redrock.templates.find_templates(template_dir=template_dir):
-            tx = redrock.templates.Template(filename)
-            templates[(tx.template_type, tx.sub_type)] = tx
-    except Exception as err:
-        sys.stdout = saved_stdout
-        raise(err)
-    sys.stdout = saved_stdout
-    return templates
 
 
 def create_model(spectra, zcat, archetype_fit=False, archetypes_dir=None, template_dir=None):
@@ -154,59 +137,13 @@ def create_model(spectra, zcat, archetype_fit=False, archetypes_dir=None, templa
     return model_wave, mflux
 
 
-
-def make_template_dicts(redrock_cat, delta_lambd_templates=3, with_fit_templates=True, template_dir=None) :
-    """
-    Input : TODO document
-    - redrock_cat : Table produced by match_redrock_zfit_to_spectra (matches spectra).
-    Create list of CDS including all data needed to plot other models (Nth best fit, std templates) :
-    - list of templates used in fits
-    - RR output for Nth best fits
-    - list of std templates
-    """
-
-    assert _redrock_imported
-    assert _desispec_imported # for resample_flux
-    rr_templts = load_redrock_templates(template_dir=template_dir)
-
-    if with_fit_templates :
-        dict_fit_templates = dict()
-        for key,val in rr_templts.items() :
-            fulltype_key = "_".join(key)
-            wave_array = np.arange(val.wave[0],val.wave[-1],delta_lambd_templates)
-            flux_array = np.zeros(( val.flux.shape[0],len(wave_array) ))
-            for i in range(val.flux.shape[0]) :
-                flux_array[i,:] = resample_flux(wave_array, val.wave, val.flux[i,:])
-            dict_fit_templates["wave_"+fulltype_key] = wave_array
-            dict_fit_templates["flux_"+fulltype_key] = flux_array
-    else : dict_fit_templates = None
-
-    dict_fit_results = dict()
-    for key in redrock_cat.keys() :
-        dict_fit_results[key] = np.asarray(redrock_cat[key])
-    dict_fit_results['Nfit'] = redrock_cat['Z'].shape[1]
-
-    # TODO fix the list of std templates
-    # We take flux[0,:] : ie use first entry in RR template basis
-    # We choose here not to convolve with a "typical" resolution (could easily be done)
-    # Std template : corresponding RR template . TODO put this list somewhere else
-    std_templates = {'QSO': ('QSO',''), 'GALAXY': ('GALAXY',''), 'STAR': ('STAR','F') }
-    dict_std_templates = dict()
-    for key,rr_key in std_templates.items() :
-        wave_array = np.arange(rr_templts[rr_key].wave[0],rr_templts[rr_key].wave[-1],delta_lambd_templates)
-        flux_array = resample_flux(wave_array, rr_templts[rr_key].wave, rr_templts[rr_key].flux[0,:])
-        dict_std_templates["wave_"+key] = wave_array
-        dict_std_templates["flux_"+key] = flux_array
-
-    return [dict_fit_templates, dict_fit_results, dict_std_templates]
-
-
 def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_dir=None, title=None,
                 with_imaging=True, with_noise=True, with_thumb_tab=True, with_vi_widgets=True,
                 top_metadata=None, vi_countdown=-1, with_thumb_only_page=False,
                 with_coaddcam=True, mask_type='DESI_TARGET',
                 model_from_zcat=True, model=None, num_approx_fits=None, with_full_2ndfit=True,
-                template_dir=None, archetype_fit=False, archetypes_dir=None):
+                template_dir=None, archetype_fit=False, archetypes_dir=None,
+                std_template_file=None):
     '''Main prospect routine. From a set of spectra, creates a bokeh document
     used for VI, to be displayed as an HTML page or within a Jupyter notebook.
 
@@ -218,7 +155,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     zcatalog : :class:`~astropy.table.Table`, optional
         Redshift values, matched one-to-one with the input spectra.
     redrock_cat : :class:`~astropy.table.Table`, optional
-        Redrock output (as defined in :func:`~prospect.utilities.match_redrock_zfit_to_spectra`).
+        Redrock output (as defined in :func:`~prospect.utilities.match_rrdetails_to_spectra`).
         Entries must be matched one-by-one (in order) to spectra.
     notebook : :class:`bool`, optional
         If ``True``, bokeh outputs the viewer to a Jupyter notebook.
@@ -267,6 +204,8 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
         and plot model accordingly.
     archetypes_dir : :class:`str`, optional
         Directory path for archetypes if not :envvar:`RR_ARCHETYPE_DIR`.
+    std_template_file : :class:`str`, optional
+        File containing standard templates to display in viewer.
     '''
 
     #- Check input spectra.
@@ -337,32 +276,35 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     #- Gather information into ColumnDataSource objects for Bokeh
     viewer_cds = ViewerCDS()
     viewer_cds.load_spectra(spectra, with_noise)
+    viewer_cds.compute_median_spectra(spectra)
     if with_coaddcam :
         viewer_cds.init_coaddcam_spec(spectra, with_noise)
     if model is not None:
         viewer_cds.init_model(model)
+    viewer_cds.load_std_templates(std_template_file=std_template_file)
 
     if redrock_cat is not None :
-        # TODO unhardcode delta_lambd_templates=3
         if np.any(redrock_cat['TARGETID'] != spectra.fibermap['TARGETID']) :
             raise RuntimeError('redrock_cat and spectra do not match (different targetids)')
         if zcatalog is None :
             raise ValueError('Redrock_cat was provided but not zcatalog.')
 
-        with_fit_templates = False if num_approx_fits==0 else True
-        template_dicts = make_template_dicts(redrock_cat, delta_lambd_templates=3,
-                                             with_fit_templates=with_fit_templates, template_dir=template_dir)
-        nfits_redrock_cat = template_dicts[1]['Nfit']
+        if num_approx_fits!=0 :
+            # TODO un-hardcode nbpts_templates ?
+            viewer_cds.load_fit_templates(template_dir=template_dir, nbpts_templates=4000)
+        viewer_cds.load_rrdetails(redrock_cat)
+        #- define num_approx_fits, used in the "model_select" widget:
+        nfits_redrock_cat = viewer_cds.dict_rrdetails['Nfit']
         if num_approx_fits is None : num_approx_fits = nfits_redrock_cat
-        if (num_approx_fits > nfits_redrock_cat) : raise ValueError("num_approx_fits too large wrt redrock_cat")
+        if (num_approx_fits > nfits_redrock_cat):
+            print("Warning, num_approx_fits too large wrt redrock_cat. Changing it.")
+            num_approx_fits = nfits_redrock_cat
         if with_full_2ndfit :
             zcat_2ndfit = create_zcat_from_redrock_cat(redrock_cat, fit_num=1)
             model_2ndfit = create_model(spectra, zcat_2ndfit, archetype_fit=archetype_fit,
                                         archetypes_dir=archetypes_dir, template_dir=template_dir)
             viewer_cds.init_model(model_2ndfit, second_fit=True)
         viewer_cds.init_othermodel(zcatalog)
-    else :
-        template_dicts = None
 
     viewer_cds.load_metadata(spectra, mask_type=mask_type, zcatalog=zcatalog, survey=survey)
     
@@ -407,13 +349,9 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     else : show_zcat = False
     if top_metadata is None: top_metadata = ['TARGETID', 'EXPID', 'COADD_NUMEXP', 'COADD_EXPTIME']
     viewer_widgets.add_metadata_tables(viewer_cds, top_metadata=top_metadata,
-                                       show_zcat=show_zcat, template_dicts=template_dicts)
+                                       show_zcat=show_zcat)
     viewer_widgets.add_specline_toggles(viewer_cds, viewer_plots)
-
-    if template_dicts is not None :
-        viewer_cds.compute_median_spectra(spectra)
-        viewer_widgets.add_model_select(viewer_cds, template_dicts, 
-                            num_approx_fits, with_full_2ndfit=with_full_2ndfit)
+    viewer_widgets.add_model_select(viewer_cds, num_approx_fits, with_full_2ndfit=with_full_2ndfit)
     
     #-----
     #- VI-related widgets
@@ -436,7 +374,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
         viewer_vi_widgets.add_countdown(vi_countdown)
 
     viewer_widgets.add_update_plot_callback(viewer_cds, viewer_plots, 
-                viewer_vi_widgets, template_dicts)
+                viewer_vi_widgets)
 
     #-----
     #- Bokeh layout and output
