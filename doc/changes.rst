@@ -2,7 +2,12 @@
 prospect's Change Log
 =====================
 
-1.2.3 (unreleased)
+1.2.4 (unreleased)
+------------------
+
+* No changes yet.
+
+1.2.3 (2022-09-15)
 ------------------
 
 * "Standard templates" now provided from standalone files, independently of Redrock (Issue `#68`_).
