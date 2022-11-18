@@ -17,7 +17,7 @@ jobs:
             fail-fast: true
             matrix:
                 os: [ubuntu-latest]
-                python-version: [3.6, 3.7, 3.8]
+                python-version: ['3.8', '3.9']
 
         steps:
             - name: Checkout code
@@ -30,9 +30,9 @@ jobs:
                 python-version: ${{ matrix.python-version }}
             - name: Install Python dependencies
               run: |
-                python -m pip install --upgrade pip wheel
+                python -m pip install --upgrade pip setuptools wheel
                 python -m pip install pytest
-                if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+                if [ -f requirements.txt ]; then python -m pip install -r requirements.txt; fi
             - name: Run the test
               run: pytest
 
@@ -43,7 +43,7 @@ jobs:
             fail-fast: true
             matrix:
                 os: [ubuntu-latest]
-                python-version: [3.8]
+                python-version: ['3.9']
 
         steps:
             - name: Checkout code
@@ -56,9 +56,9 @@ jobs:
                 python-version: ${{ matrix.python-version }}
             - name: Install Python dependencies
               run: |
-                python -m pip install --upgrade pip wheel
+                python -m pip install --upgrade pip setuptools wheel
                 python -m pip install pytest pytest-cov coveralls
-                if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+                if [ -f requirements.txt ]; then python -m pip install -r requirements.txt; fi
             - name: Run the test with coverage
               run: pytest --cov
             - name: Coveralls
@@ -74,7 +74,7 @@ jobs:
             fail-fast: false
             matrix:
                 os: [ubuntu-latest]
-                python-version: [3.8]
+                python-version: ['3.9']
 
         steps:
             - name: Checkout code
@@ -86,7 +86,7 @@ jobs:
               with:
                 python-version: ${{ matrix.python-version }}
             - name: Install Python dependencies
-              run: python -m pip install --upgrade pip wheel Sphinx
+              run: python -m pip install --upgrade pip setuptools wheel Sphinx
             - name: Test the documentation
               run: sphinx-build -W --keep-going -b html doc doc/_build/html
 
@@ -97,7 +97,7 @@ jobs:
             fail-fast: false
             matrix:
                 os: [ubuntu-latest]
-                python-version: [3.8]
+                python-version: ['3.9']
 
         steps:
             - name: Checkout code
@@ -109,7 +109,7 @@ jobs:
               with:
                 python-version: ${{ matrix.python-version }}
             - name: Install Python dependencies
-              run: python -m pip install --upgrade pip wheel pycodestyle
+              run: python -m pip install --upgrade pip setuptools wheel pycodestyle
             - name: Test the style; failures are allowed
               # This is equivalent to an allowed falure.
               continue-on-error: true
