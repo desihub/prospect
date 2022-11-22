@@ -5,7 +5,9 @@ prospect's Change Log
 1.2.4 (unreleased)
 ------------------
 
-* No changes yet.
+* Update API documentation and test infrastructure (PR `#79`_).
+
+.. _`#79`: https://github.com/desihub/prospect/pull/79
 
 1.2.3 (2022-09-15)
 ------------------

@@ -5,16 +5,19 @@ prospect API
 .. automodule:: prospect
     :members:
 
-.. automodule:: prospect.grid_thumbs
+.. automodule:: prospect.coaddcam
     :members:
 
-.. automodule:: prospect.coaddcam
+.. automodule:: prospect.grid_thumbs
     :members:
 
 .. automodule:: prospect.scripts
     :members:
 
 .. automodule:: prospect.scripts.prospect_pages
+    :members:
+
+.. automodule:: prospect.scripts.prospect_std_templates
     :members:
 
 .. automodule:: prospect.specutils
@@ -35,8 +38,8 @@ prospect API
 .. automodule:: prospect.viewer.plots
     :members:
 
-.. automodule:: prospect.viewer.widgets
+.. automodule:: prospect.viewer.vi_widgets
     :members:
 
-.. automodule:: prospect.viewer.vi_widgets
+.. automodule:: prospect.viewer.widgets
     :members:
