@@ -2,7 +2,7 @@
 prospect's Change Log
 =====================
 
-1.2.4 (unreleased)
+1.2.4 (2023-01-09)
 ------------------
 
 * Workaround masked ``SUBTYPE`` when loading templates (PR `#81`_).
