@@ -5,8 +5,10 @@ prospect's Change Log
 1.2.4 (unreleased)
 ------------------
 
+* Workaround masked ``SUBTYPE`` when loading templates (PR `#81`_).
 * Update API documentation and test infrastructure (PR `#79`_).
 
+.. _`#81`: https://github.com/desihub/prospect/pull/81
 .. _`#79`: https://github.com/desihub/prospect/pull/79
 
 1.2.3 (2022-09-15)

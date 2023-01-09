@@ -20,6 +20,7 @@ import os, sys
 from pkg_resources import resource_filename
 
 import numpy as np
+from numpy.ma.core import MaskedConstant
 import scipy.ndimage.filters
 
 from astropy.table import Table
@@ -101,7 +102,11 @@ def create_model(spectra, zcat, archetype_fit=False, archetypes_dir=None, templa
                 model_flux[band][i] = spectra.R[band][i].dot(mx)
 
         else:
-            tx    = templates[(zb['SPECTYPE'], zb['SUBTYPE'])]
+            if isinstance(zb['SUBTYPE'], MaskedConstant):
+                subtype = zcat['SUBTYPE'].data.data[i].decode('utf-8')
+            else:
+                subtype = zb['SUBTYPE']
+            tx    = templates[(zb['SPECTYPE'], subtype)]
             coeff = zb['COEFF'][0:tx.nbasis]
             model = tx.flux.T.dot(coeff).T
 
