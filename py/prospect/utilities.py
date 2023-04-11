@@ -165,6 +165,30 @@ def get_resources(filetype):
     return _resource_cache[filetype]
 
 
+def file_or_gz(fname):
+    """
+    Returns `fname.gz` if `fname` does not exist but `fname.gz` exists.
+    Returns `fname` in all other cases.
+
+    Note
+    ----
+    This function is similar to `desispec.io.util.checkgzip`,
+    but does not raise an error if files are not found.
+    """
+    fname_out = fname
+    if (not os.path.exists(fname)) and os.path.exists(fname+'.gz'):
+        fname_out += '.gz'
+    return fname_out
+
+
+def file_or_gz_exists(fname):
+    """
+    Returns `True` if `fname` or `fname.gz` exists.
+    """
+    one_exists = os.path.isfile(fname) or os.path.isfile(fname+'.gz')
+    return one_exists
+
+
 def load_redrock_templates(template_dir=None) :
     '''
     Load redrock templates; redirect stdout because redrock is chatty
@@ -321,23 +345,24 @@ def get_subset_label(subset, dirtree_type):
         raise ValueError("Unrecognized value for dirtree_type.")
     return label
 
+
 def create_subsetdb(datadir, dirtree_type=None, spectra_type='coadd', tiles=None, nights=None, expids=None,
                     survey_program=None, petals=None, pixels=None, with_zcat=True):
     """Create a 'mini-db' of DESI spectra files, in a given directory tree.
 
-    Supports tile-based and exposure-based directory trees for daily, andes, ... to everest.
-    This routine does not open any file, it just checks they exist.
+    Supports tile-, exposure- and healpix-based directory trees for daily, andes, ... to iron.
+    This routine parses directory trees, but does not open any file: it just checks they exist.
 
     Parameters
     ----------
     datadir : :class:`string`
-        No description provided.
+        Base directory, eg. /global/cfs/cdirs/desi/spectro/redux/iron/healpix
     dirtree_type : :class:`string`
-        The directory tree and file names must match the types listed in the notes below.
+        The directory tree and file names must be as listed in the notes below.
     spectra_type : :class:`string`, optional
         [c/s]frames are only supported when dirtree_type='exposures'
     petals : :class:`list`, optional
-        Filter a set of petal numbers.
+        Filter a list of petal numbers.
     tiles : :class:`list`, optional
         Filter a list of tiles.
     nights : :class:`list`, optional
@@ -372,7 +397,7 @@ def create_subsetdb(datadir, dirtree_type=None, spectra_type='coadd', tiles=None
        - ``dirtree_type='exposures'``: ``{datadir}/{night}/{expid}/{spectra_type}-{band}{petal}-{expid}.fits``
        - Note that 'perexp' and 'exposures' are different.
        - To use blanc/cascades 'all' (resp 'deep') coadds, use dirtree_type='pernight' and nights=['all'] (resp ['deep']).
-
+       - Extensions can be fits or fits.gz
     """
 
     if ( (nights is not None and dirtree_type!='pernight' and dirtree_type!='exposures')
@@ -438,9 +463,15 @@ def create_subsetdb(datadir, dirtree_type=None, spectra_type='coadd', tiles=None
                 nside = 64 # dummy, currently
                 subset_dir = os.path.join(datadir, dataset[0], dataset[1], healpix_subdirectory(nside, int(subset)))
                 file_label = '-'.join([dataset[0], dataset[1], subset])
-                spectra_fname = os.path.join(subset_dir, spectra_type+'-'+file_label+'.fits')
-                redrock_fname = os.path.join(subset_dir, 'redrock-'+file_label+'.fits')
-                zbest_fname = os.path.join(subset_dir, 'zbest-'+file_label+'.fits') # pre-everest nomenclature
+                spectra_fname = file_or_gz(
+                    os.path.join(subset_dir, spectra_type+'-'+file_label+'.fits')
+                )
+                redrock_fname = file_or_gz(
+                    os.path.join(subset_dir, 'redrock-'+file_label+'.fits')
+                )
+                zbest_fname = file_or_gz(
+                    os.path.join(subset_dir, 'zbest-'+file_label+'.fits') # pre-everest nomenclature
+                )
                 if os.path.isfile(spectra_fname) and ( (not with_zcat) or os.path.isfile(zbest_fname) or os.path.isfile(redrock_fname)):
                     subsetdb.append( {'dataset':dataset, 'subset':subset, 'petals':[None]} )
             else:
@@ -448,14 +479,22 @@ def create_subsetdb(datadir, dirtree_type=None, spectra_type='coadd', tiles=None
                 for petal in petals:
                     subset_label = get_subset_label(subset, dirtree_type)
                     if dirtree_type == 'exposures':
-                        spectra_fnames = [ spectra_type+'-'+band+petal+'-'+subset_label+'.fits' for band in ['b', 'r', 'z'] ]
-                        if all([os.path.isfile(os.path.join(datadir, dataset, subset, x)) for x in spectra_fnames]):
+                        spectra_fnames = [
+                            file_or_gz(os.path.join(datadir, dataset, subset, spectra_type+'-'+band+petal+'-'+subset_label+'.fits'))
+                            for band in ['b', 'r', 'z'] ]
+                        if all([os.path.isfile(x) for x in spectra_fnames]):
                             existing_petals.append(petal)
                     else:
                         file_label = '-'.join([petal, dataset, subset_label])
-                        spectra_fname = os.path.join(datadir, dataset, subset, spectra_type+'-'+file_label+'.fits')
-                        redrock_fname = os.path.join(datadir, dataset, subset, 'redrock-'+file_label+'.fits')
-                        zbest_fname = os.path.join(datadir, dataset, subset, 'zbest-'+file_label+'.fits') # pre-everest nomenclature
+                        spectra_fname = file_or_gz(
+                            os.path.join(datadir, dataset, subset, spectra_type+'-'+file_label+'.fits')
+                        )
+                        redrock_fname = file_or_gz(
+                            os.path.join(datadir, dataset, subset, 'redrock-'+file_label+'.fits')
+                        )
+                        zbest_fname = file_or_gz(
+                            os.path.join(datadir, dataset, subset, 'zbest-'+file_label+'.fits') # pre-everest nomenclature
+                        )
                         if os.path.isfile(spectra_fname) and ( (not with_zcat) or os.path.isfile(zbest_fname) or os.path.isfile(redrock_fname)):
                             existing_petals.append(petal)
                 if len(existing_petals)>0:
@@ -503,10 +542,10 @@ def create_targetdb(datadir, subsetdb, dirtree_type=None):
             else:
                 subset_dir = os.path.join(datadir, the_entry['dataset'], the_entry['subset'])
                 file_label = '-'.join([petal, the_entry['dataset'], subset_label])
-            fname = os.path.join(subset_dir, 'redrock-'+file_label+'.fits')
+            fname = file_or_gz(os.path.join(subset_dir, 'redrock-'+file_label+'.fits'))
             hduname = 'REDSHIFTS'
             if not os.path.isfile(fname): # pre-everest Redrock file nomenclature
-                fname = os.path.join(subset_dir, 'zbest-'+file_label+'.fits')
+                fname = file_or_gz(os.path.join(subset_dir, 'zbest-'+file_label+'.fits'))
                 hduname = 'ZBEST'
             targetids = np.unique(Table.read(fname, hduname)['TARGETID'])
             targetdb[ (the_entry['dataset'], the_entry['subset'], petal) ] = np.array(targetids, dtype='int64')
@@ -547,7 +586,7 @@ def load_spectra_zcat_from_targets(targetids, datadir, targetdb, dirtree_type=No
 
     Notes
     -----
-    * `dirtree_type` must be one of the following, for "coadd", "redrock"/"zbest" (.fits), and "rrdetails"/"redrock" (.h5) files:
+    * `dirtree_type` must be one of the following, for "coadd", "redrock"/"zbest" (.fits/.fits.gz), and "rrdetails"/"redrock" (.h5) files:
       - ``dirtree_type='healpix'``: ``{datadir}/{survey}/{program}/{pixel//100}/{pixel}/redrock-{survey}-{program}-{pixel}.fits``
       - ``dirtree_type='pernight'``: ``{datadir}/{tileid}/{night}/redrock-{petal}-{tile}-{night}.fits``
       - ``dirtree_type='perexp'``: ``{datadir}/{tileid}/{expid}/redrock-{petal}-{tile}-exp{expid}.fits``
@@ -578,20 +617,20 @@ def load_spectra_zcat_from_targets(targetids, datadir, targetdb, dirtree_type=No
                 file_label = '-'.join([petal, dataset, subset_label])
             the_spec = desispec.io.read_spectra(os.path.join(the_path, "coadd-"+file_label+".fits"), single=True)
             the_spec = the_spec.select(targets=sorted(targets_subset))
-            if os.path.isfile(os.path.join(the_path, "redrock-"+file_label+".fits")):
+            if file_or_gz_exists(os.path.join(the_path, "redrock-"+file_label+".fits")):
                 redrock_is_pre_everest = False
-                the_zcat = Table.read(os.path.join(the_path, "redrock-"+file_label+".fits"), 'REDSHIFTS')
+                the_zcat = Table.read(file_or_gz(os.path.join(the_path, "redrock-"+file_label+".fits")), 'REDSHIFTS')
             else: # pre-everest Redrock file nomenclature
                 redrock_is_pre_everest = True
-                the_zcat = Table.read(os.path.join(the_path, "zbest-"+file_label+".fits"), 'ZBEST')
+                the_zcat = Table.read(file_or_gz(os.path.join(the_path, "zbest-"+file_label+".fits")), 'ZBEST')
             if hasattr(the_zcat['SUBTYPE'], 'mask'):  # work around Table auto-masking in astropy 5
                 blanksubtype = the_zcat['SUBTYPE'].mask
                 the_zcat['SUBTYPE'][blanksubtype] = ''
             if with_redrock_version:
                 if redrock_is_pre_everest:
-                    hdulist = astropy.io.fits.open(os.path.join(the_path, "zbest-"+file_label+".fits"))
+                    hdulist = astropy.io.fits.open(file_or_gz(os.path.join(the_path, "zbest-"+file_label+".fits")))
                 else:
-                    hdulist = astropy.io.fits.open(os.path.join(the_path, "redrock-"+file_label+".fits"))
+                    hdulist = astropy.io.fits.open(file_or_gz(os.path.join(the_path, "redrock-"+file_label+".fits")))
                 the_zcat['RRVER'] = hdulist[hdulist.index_of('PRIMARY')].header['RRVER']
             the_zcat = match_catalog_to_spectra(the_zcat, the_spec)
             ztables.append(the_zcat)
