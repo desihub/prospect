@@ -20,6 +20,9 @@ OUTPUT_ROOT=${DESI_ROOT}/spectro/prospect/tests
 # For redrock fits produced before Aug 2022, one needs to use an earlier
 # version of templates, matching those from module redrock-templates/0.7.2:
 OLD_TEMPLATE_DIR=${DESICONDA}/../code/redrock-templates/0.7.2
+if [ ! -d $OLD_TEMPLATE_DIR ] ; then
+    OLD_TEMPLATE_DIR=${DESICONDA}/../../20220119-2.0.1/code/redrock-templates/0.7.2
+fi
 
 #- Check env vars / paths:
 # The script requires to have TMPDIR, DESI_SPECTRO_REDUX, DESICONDA and DESI_ROOT environment variables set.
@@ -171,20 +174,37 @@ if [[ $1 == 8 ]] || [[ $1 == '' ]]; then
                    --targets 39627770770234272 39627764738818698 39627764734628731
 fi
 
+#- 9) A sample with high-PM stars (A. Dey),
+#     A second cross-hair is then visible in imaging thumbs
+if [[ $1 == 9 ]] || [[ $1 == '' ]]; then
+    echo "------ Example/Test 9 ------"
+    OUTPUTDIR=${OUTPUT_ROOT}/9
+    [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
+    DATAPATH=${DESI_SPECTRO_REDUX}/iron/healpix/main/bright
+    TARGET_LIST_FILE=${TMPDIR}/tmp_target_list.txt
+    SPECTRA_LIST_FILE=${TMPDIR}/tmp_spectra_list.txt
+    echo -e "2376933706825728 \n 2376982100705280 \n 2377019157381120 \n 2376644622811136 \n 2376978715901952" > ${TARGET_LIST_FILE}
+    echo -e "${DATAPATH}/7/733/coadd-main-bright-733.fits \n ${DATAPATH}/21/2110/coadd-main-bright-2110.fits \n ${DATAPATH}/22/2202/coadd-main-bright-2202.fits \n ${DATAPATH}/42/4285/coadd-main-bright-4285.fits \n ${DATAPATH}/52/5264/coadd-main-bright-5264.fits" > ${SPECTRA_LIST_FILE}
+    prospect_pages --spectra_file_list ${SPECTRA_LIST_FILE} \
+                   --titlepage_prefix high-pm-stars \
+                   --target_list ${TARGET_LIST_FILE} \
+                   -o ${OUTPUTDIR}
+    rm -f ${TARGET_LIST_FILE} ${SPECTRA_LIST_FILE}
+fi
 
 # -------------------------
 # Mode: Scan directory tree
 # -------------------------
 
-#- 9) Parse tiles/nights in andes release
+#- 10) Parse tiles/nights in andes release
 #     Mandatory to specify dirtree_type, 'pernight' here
 #     Filter over tiles, petals
 #     (in andes, tile 70004 has a single night, CMX targeting, petal 5 is missing)
 #     No redrock info, no filter
-if [[ $1 == 9 ]] || [[ $1 == '' ]]; then
-    echo "------ Example/Test 9 ------"
+if [[ $1 == 10 ]] || [[ $1 == '' ]]; then
+    echo "------ Example/Test 10 ------"
     DATADIR=${DESI_SPECTRO_REDUX}/andes/tiles
-    OUTPUTDIR=${OUTPUT_ROOT}/9
+    OUTPUTDIR=${OUTPUT_ROOT}/10
     [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
     prospect_pages --datadir ${DATADIR} \
                    --dirtree_type pernight \
@@ -197,10 +217,10 @@ fi
 #- 10) Inspect deep coadds tiles/nights in blanc release
 #     => Set dirtree_type = pernight and night = deep
 #     Select QSO in COSMOS + LYNX tiles
-if [[ $1 == 10 ]] || [[ $1 == '' ]]; then
-    echo "------ Example/Test 10 ------"
+if [[ $1 == 11 ]] || [[ $1 == '' ]]; then
+    echo "------ Example/Test 11 ------"
     DATADIR=${DESI_SPECTRO_REDUX}/blanc/tiles
-    OUTPUTDIR=${OUTPUT_ROOT}/10
+    OUTPUTDIR=${OUTPUT_ROOT}/11
     [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
     prospect_pages --datadir ${DATADIR} \
                    --dirtree_type pernight \
@@ -210,29 +230,6 @@ if [[ $1 == 10 ]] || [[ $1 == '' ]]; then
                    --tiles 80607 80609 --nights deep \
                    --petals 6 7 \
                    --mask_type SV1_DESI_TARGET --targeting_mask QSO
-fi
-
-#- 11) Inspect data in cascades release, a subsample of the SV0 LRG VI set
-#     Input tile list from file
-#     Stop creating pages after 300 spectra
-if [[ $1 == 11 ]] || [[ $1 == '' ]]; then
-    echo "------ Example/Test 11 ------"
-    DATADIR=${DESI_SPECTRO_REDUX}/cascades/tiles
-    OUTPUTDIR=${OUTPUT_ROOT}/11
-    [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
-    TILE_LIST_FILE=${TMPDIR}/tmp_tile_list.txt
-    echo -e '80609 \n 80607' > ${TILE_LIST_FILE}
-    prospect_pages --datadir ${DATADIR} \
-                   --dirtree_type pernight \
-                   -o ${OUTPUTDIR} \
-                   --with_zcatalog \
-                   --template_dir ${OLD_TEMPLATE_DIR} \
-                   --tile_list ${TILE_LIST_FILE} \
-                   --mask_type SV1_DESI_TARGET --targeting_mask LRG \
-                   --chi2_min 200 --chi2_max 300 \
-                   --petals 2 4 6 \
-                   --nmax_spectra 300
-    rm -f ${TILE_LIST_FILE}
 fi
 
 #- 12) Inspect "cumulative" data in iron release
@@ -282,4 +279,27 @@ if [[ $1 == 14 ]] || [[ $1 == '' ]]; then
                    -o ${OUTPUTDIR} \
                    --pixels 9557 --survey_program main dark \
                    --targeting_mask QSO --chi2_min 200
+fi
+
+#- 15) Inspect data in cascades release, a subsample of the SV0 LRG VI set
+#     Input tile list from file
+#     Stop creating pages after 300 spectra
+if [[ $1 == 15 ]] || [[ $1 == '' ]]; then
+    echo "------ Example/Test 15 ------"
+    DATADIR=${DESI_SPECTRO_REDUX}/cascades/tiles
+    OUTPUTDIR=${OUTPUT_ROOT}/15
+    [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
+    TILE_LIST_FILE=${TMPDIR}/tmp_tile_list.txt
+    echo -e '80609 \n 80607' > ${TILE_LIST_FILE}
+    prospect_pages --datadir ${DATADIR} \
+                   --dirtree_type pernight \
+                   -o ${OUTPUTDIR} \
+                   --with_zcatalog \
+                   --template_dir ${OLD_TEMPLATE_DIR} \
+                   --tile_list ${TILE_LIST_FILE} \
+                   --mask_type SV1_DESI_TARGET --targeting_mask LRG \
+                   --chi2_min 200 --chi2_max 300 \
+                   --petals 2 4 6 \
+                   --nmax_spectra 300
+    rm -f ${TILE_LIST_FILE}
 fi
