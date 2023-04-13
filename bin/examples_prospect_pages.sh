@@ -7,7 +7,7 @@
 #  ./examples_prospect_pages     => run all examples/tests
 #  ./examples_prospect_pages N   => run example/test N only
 
-# All of the 14 test cases can serve as examples.
+# All of the 15 test cases can serve as examples.
 # Suggestions to consider first:
 #  2) single input coadd + redrock files
 #  14) parse a healpix directory
@@ -214,7 +214,7 @@ if [[ $1 == 10 ]] || [[ $1 == '' ]]; then
                    --mask_type CMX_TARGET
 fi
 
-#- 10) Inspect deep coadds tiles/nights in blanc release
+#- 11) Inspect deep coadds tiles/nights in blanc release
 #     => Set dirtree_type = pernight and night = deep
 #     Select QSO in COSMOS + LYNX tiles
 if [[ $1 == 11 ]] || [[ $1 == '' ]]; then
