@@ -501,6 +501,7 @@ class ViewerWidgets(object):
                 fig = plots.fig,
                 xrange = [plots.xmin, plots.xmax],
                 imfig_source = plots.imfig_source,
+                crosshair_source = plots.crosshair_source,
                 imfig_urls = plots.imfig_urls,
                 model_select = self.model_select,
                 vi_comment_input = vi_widgets.vi_comment_input,

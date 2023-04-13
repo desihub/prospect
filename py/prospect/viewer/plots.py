@@ -22,13 +22,31 @@ import bokeh.layouts as bl
 import bokeh.events
 
 
-def _viewer_urls(spectra, zoom=13, layer='ls-dr9'):
-    """Return legacysurvey.org viewer URLs for all spectra.
+def _cross_hair_points(x_cross, y_cross):
+    '''
+    Points to make a cross-hair centered on x_cross,y_cross
+    Return (xs,ys) to be given to bokeh.plotting.figure.multi_line()
+    '''
+    xs = [[x_cross-15, x_cross-5], [x_cross+15, x_cross+5],
+          [x_cross, x_cross],[x_cross, x_cross]]
+    ys = [[y_cross, y_cross],[y_cross, y_cross],
+          [y_cross-15, y_cross-5],[y_cross+5, y_cross+15]]
+    return (xs, ys)
 
-    Note: `layer` does not apply to the JPEG cutout service.
+
+def _viewer_urls(spectra, pixscale=0.262, zoom=13, layer='ls-dr9'):
+    """Return legacysurvey.org viewer URLs + other infos for the imaging cutout, for all spectra.
+
+    Notes:
+        `layer` does not apply to the JPEG cutout service.
+        `pixscale` is in arcsec/pixel (default 0.262 is the native DECam scale)
     """
-    u = "https://www.legacysurvey.org/viewer/jpeg-cutout?ra={0:f}&dec={1:f}&zoom={2:d}"
+
+    #- Template for jpeg-cutout url
+    u = "https://www.legacysurvey.org/viewer/jpeg-cutout?ra={0:f}&dec={1:f}&pixscale={2:f}"
+    #- Template for on-click link to full viewer
     v = "https://www.legacysurvey.org/viewer/?ra={0:f}&dec={1:f}&zoom={2:d}&layer={3}&mark={0:f},{1:f}"
+
     if hasattr(spectra, 'fibermap'):
         try:
             ra = spectra.fibermap['RA_TARGET']
@@ -39,9 +57,26 @@ def _viewer_urls(spectra, zoom=13, layer='ls-dr9'):
     else:
         ra = spectra.meta['plugmap']['RA']
         dec = spectra.meta['plugmap']['DEC']
-    return [(u.format(ra[i], dec[i], zoom, layer),
+
+    #- Compute PM corrections
+    default_ref_epoch = 2015.5  # PM correction is set to zero at that epoch
+    pmcor_ra = (default_ref_epoch-spectra.fibermap['REF_EPOCH'])*spectra.fibermap['PMRA']/1e3  # PM in mas/yr
+    pmcor_dec = (default_ref_epoch-spectra.fibermap['REF_EPOCH'])*spectra.fibermap['PMDEC']/1e3
+    # avoid adding a second cross-hair when PM correction is smaller than 1 arcsec (ie. in most cases):
+    mask = ((np.abs(pmcor_ra)<1) & (np.abs(pmcor_dec)<1)) | (spectra.fibermap['REF_EPOCH']==0)
+    pmcor_ra[mask] = 0
+    pmcor_dec[mask] = 0
+    # convert PM correction to pixels in the jpeg cutout
+    npix_cutout = 256
+    x_pm = npix_cutout//2 - pmcor_ra/pixscale   # minus sign: RA decreases with x-coord in image
+    y_pm = npix_cutout//2 + pmcor_dec/pixscale
+    # return points to make a second cross-hair if PM correction is large
+    list_crosshairs = [ _cross_hair_points(x_pm[i], y_pm[i]) for i in range(len(ra)) ]
+
+    return [(u.format(ra[i], dec[i], pixscale),
              v.format(ra[i], dec[i], zoom, layer),
-             'RA, Dec = {0:.4f}, {1:+.4f}'.format(ra[i], dec[i]))
+             'RA, Dec = {0:.4f}, {1:+.4f}'.format(ra[i], dec[i]),
+             list_crosshairs[i][0], list_crosshairs[i][1])
             for i in range(len(ra))]
 
 
@@ -71,7 +106,7 @@ class ViewerPlots(object):
         self.zoomfig = None
         self.zoom_callback = None
         self.imfig = bl.Spacer(width=self.plot_height//2, height=self.plot_height//2)
-        self.imfig_source = self.imfig_urls = None
+        self.imfig_source = self.imfig_urls = self.crosshair_source = None
 
 
     def create_mainfig(self, spectra, title, viewer_cds, survey, with_noise=True, with_coaddcam=True):
@@ -216,8 +251,10 @@ class ViewerPlots(object):
     def create_imfig(self, spectra):
         #-----
         #- Targeting image
+        npix_cutout = 256  # size of legacysurvey JPEG cutouts
+
         self.imfig = bk.figure(width=self.plot_height//2, height=self.plot_height//2,
-                          x_range=(0, 256), y_range=(0, 256),
+                          x_range=(0, npix_cutout), y_range=(0, npix_cutout),
                           x_axis_location=None, y_axis_location=None,
                           output_backend="webgl",
                           toolbar_location=None, tools=[])
@@ -228,19 +265,26 @@ class ViewerPlots(object):
 
         self.imfig_urls = _viewer_urls(spectra)
         self.imfig_source = ColumnDataSource(data=dict(url=[self.imfig_urls[0][0]],
-                                                  txt=[self.imfig_urls[0][2]]))
-
+                                                       txt=[self.imfig_urls[0][2]]))
         imfig_img = self.imfig.image_url('url', source=self.imfig_source, x=1, y=1, w=256, h=256, anchor='bottom_left')
         imfig_txt = self.imfig.text(10, 256-30, text='txt', source=self.imfig_source,
                                text_color='yellow', text_font_size='8pt')
-        # cross-hair
-        self.imfig.multi_line([[129-15,129-5],[129+15,129+5],[129,129],[129,129]],
-                         [[129,129],[129,129],[129-15,129-5],[129+5,129+15]], line_width=1, line_color='yellow')
+
+        #- This cross-hair is visible if the estimated PM correction is larger than 1 arcsec
+        self.crosshair_source = ColumnDataSource(data=dict(xs=self.imfig_urls[0][3],
+                                                           ys=self.imfig_urls[0][4]))
+        pm_crosshair = self.imfig.multi_line('xs','ys', source=self.crosshair_source,
+                                             line_width=1, line_color='white')
+
+        #- Central cross-hair
+        xs_center, ys_center = _cross_hair_points(npix_cutout//2, npix_cutout//2)
+        central_crosshair = self.imfig.multi_line(xs_center, ys_center, line_width=1.5, line_color='yellow')
+
 
     def add_imfig_callback(self, viewer_widgets):
         #-----
         #- Targeting image callback
-        # This has to be called once the wisgets are done.. => fct separated from create_imfig()
+        # This has to be called once viewer_widgets are created => fct separated from create_imfig()
         self.imfig_callback = CustomJS(args = dict(
                                     urls = self.imfig_urls,
                                     ispectrumslider = viewer_widgets.ispectrumslider),

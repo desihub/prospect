@@ -94,6 +94,9 @@ if (cb_obj == ispectrumslider) {
         imfig_source.data.url[0] = imfig_urls[i_spectrum][0];
         imfig_source.data.txt[0] = imfig_urls[i_spectrum][2];
         imfig_source.change.emit();
+        crosshair_source.data.xs = imfig_urls[i_spectrum][3];
+        crosshair_source.data.ys = imfig_urls[i_spectrum][4];
+        crosshair_source.change.emit();
     }
     //
     // reset x-range
