@@ -195,7 +195,7 @@ class StandaloneThumbLayout(object):
         self.thumb_viewer = bl.column(
             bl.column( Div(text=
                            " <h3> Thumbnail gallery for DESI spectra in "+title+" </h3>" +
-                           " <p> Click <a href='specviewer_"+title+".html'>here</a> to access the spectral viewer corresponding to these spectra. </p>"
+                           " <p> Click <a href='"+title+".html'>here</a> to access the spectral viewer corresponding to these spectra. </p>"
                           ), width=plots.plot_width ),
             bl.column( self.thumb_grid )
         )

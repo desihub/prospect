@@ -5,7 +5,12 @@ prospect's Change Log
 1.2.5 (unreleased)
 ------------------
 
-* No changes yet.
+* Handle high-proper motion objects: a second cross-hair is shown (Issue `#84`_)
+* Adapt code and examples to recent DESI releases, up to iron (Issue `#82`_).
+* Minor bug fixes.
+
+.. _`#84`: https://github.com/desihub/prospect/issues/84
+.. _`#82`: https://github.com/desihub/prospect/issues/82
 
 1.2.4 (2023-01-09)
 ------------------

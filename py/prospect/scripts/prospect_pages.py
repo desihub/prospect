@@ -20,13 +20,14 @@ from desispec.io.util import healpix_subdirectory
 from desiutil.log import get_logger
 
 from ..viewer import plotspectra
-from ..utilities import (create_targetdb, create_subsetdb, match_catalog_to_spectra, match_rrdetails_to_spectra,
-                        load_spectra_zcat_from_targets, metadata_selection, get_subset_label, frames2spectra)
+from ..utilities import (create_targetdb, create_subsetdb, match_catalog_to_spectra, match_rrdetails_to_spectra, file_or_gz,
+                        file_or_gz_exists, load_spectra_zcat_from_targets, metadata_selection, get_subset_label, frames2spectra)
 
 def _parse():
 
-    parser = argparse.ArgumentParser(description='Create static html files to visually inspect DESI spectra.',
-                                    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(description='Create static html files to visually inspect DESI spectra. Spectra are selected from '
+                                     'either a list of files (Mode: Explicit input files), or a given DESI directory tree to be parsed by prospect '
+                                     ' (Mode: Scan directory tree)', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     
     #- Single file input
     parser.add_argument('--spectra_files', help='[Mode: Explicit input files] Absolute path of file(s) with DESI spectra. All input spectra files must have exactly the same format (fibermap, extra, scores...). Frames are not supported.', nargs='+', type=str, default=None)
@@ -37,14 +38,14 @@ def _parse():
     parser.add_argument('--redrock_details_file_list', help='[Mode: Explicit input files] ASCII file with list of detailed redrock files, one per row', type=str, default=None)
     
     #- "Multi" file input (can select some data subsets based on tiles, expids...)
-    parser.add_argument('--datadir', help='[Mode: Scan directory tree] Location of input directory tree', type=str, default=None)
+    parser.add_argument('--datadir', help='[Mode: Scan directory tree] Location of input directory tree (eg. $DESI_SPECTRO_REDUX/iron/healpix)', type=str, default=None)
     parser.add_argument('--dirtree_type', help='''[Mode: Scan directory tree] The following directory tree categories are supported:
                 dirtree_type='healpix': {datadir}/{survey}/{program}/{pixel//100}/{pixel}/{spectra_type}-{survey}-{program}-{pixel}.fits ;
                 dirtree_type='pernight': {datadir}/{tileid}/{night}/{spectra_type}-{petal}-{tile}-{night}.fits ;
                 dirtree_type='perexp': {datadir}/{tileid}/{expid}/{spectra_type}-{petal}-{tile}-exp{expid}.fits ;
                 dirtree_type='cumulative': {datadir}/{tileid}/{night}/{spectra_type}-{petal}-{tile}-thru{night}.fits ;
                 dirtree_type='exposures': {datadir}/{night}/{expid}/{spectra_type}-{band}{petal}-{expid}.fits ;
-            Note that 'perexp' and 'exposures' are different.
+            Note that 'perexp' and 'exposures' are different. Fits and fits.gz extensions are ok.
             To use blanc/cascades 'all' (resp 'deep') coadds, use dirtree_type='pernight' and nights=['all'] (resp ['deep'])''', type=str, default=None)
     parser.add_argument('--spectra_type', help='[Mode: Scan directory tree] Prefix of spectra files: frame, cframe, sframe, coadd, spectra. [c/s]frames are needed when dirtree_type=exposures.', type=str, default='coadd')
     parser.add_argument('--survey_program', help='[Mode: Scan directory tree] Set survey and program (eg. --survey_program sv3 dark) when dirtree_type=healpix', nargs='+', type=str, default=None)
@@ -168,20 +169,20 @@ def load_spectra_zcat_from_dbentry(db_entry, args, log, with_redrock_version=Tru
             #- Read a single Spectra file directly
             the_spec = desispec.io.read_spectra(os.path.join(the_dir, args.spectra_type+"-"+file_label+".fits"), single=True)
         if args.with_zcatalog:
-            if os.path.isfile(os.path.join(the_dir, "redrock-"+file_label+".fits")):
+            if file_or_gz_exists(os.path.join(the_dir, "redrock-"+file_label+".fits")):
                 redrock_is_pre_everest = False
-                the_zcat = Table.read(os.path.join(the_dir, "redrock-"+file_label+".fits"), 'REDSHIFTS')
+                the_zcat = Table.read(file_or_gz(os.path.join(the_dir, "redrock-"+file_label+".fits")), 'REDSHIFTS')
             else:  # pre-everest Redrock file nomenclature
                 redrock_is_pre_everest = True
-                the_zcat = Table.read(os.path.join(the_dir, "zbest-"+file_label+".fits"), 'ZBEST')
+                the_zcat = Table.read(file_or_gz(os.path.join(the_dir, "zbest-"+file_label+".fits")), 'ZBEST')
             if hasattr(the_zcat['SUBTYPE'], 'mask'):  # work around Table auto-masking in astropy 5
                 blanksubtype = the_zcat['SUBTYPE'].mask
                 the_zcat['SUBTYPE'][blanksubtype] = ''
             if with_redrock_version:
                 if redrock_is_pre_everest:
-                    hdulist = astropy.io.fits.open(os.path.join(the_dir, "zbest-"+file_label+".fits"))
+                    hdulist = astropy.io.fits.open(file_or_gz(os.path.join(the_dir, "zbest-"+file_label+".fits")))
                 else:
-                    hdulist = astropy.io.fits.open(os.path.join(the_dir, "redrock-"+file_label+".fits"))
+                    hdulist = astropy.io.fits.open(file_or_gz(os.path.join(the_dir, "redrock-"+file_label+".fits")))
                 the_zcat['RRVER'] = hdulist[hdulist.index_of('PRIMARY')].header['RRVER']
         else:
             the_zcat = None

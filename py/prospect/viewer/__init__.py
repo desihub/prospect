@@ -286,6 +286,8 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
         viewer_cds.init_coaddcam_spec(spectra, with_noise)
     if model is not None:
         viewer_cds.init_model(model)
+        if zcatalog is not None:
+            viewer_cds.init_othermodel(zcatalog)
     viewer_cds.load_std_templates(std_template_file=std_template_file)
 
     if redrock_cat is not None :
@@ -309,7 +311,6 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
             model_2ndfit = create_model(spectra, zcat_2ndfit, archetype_fit=archetype_fit,
                                         archetypes_dir=archetypes_dir, template_dir=template_dir)
             viewer_cds.init_model(model_2ndfit, second_fit=True)
-        viewer_cds.init_othermodel(zcatalog)
 
     viewer_cds.load_metadata(spectra, mask_type=mask_type, zcatalog=zcatalog, survey=survey)
     

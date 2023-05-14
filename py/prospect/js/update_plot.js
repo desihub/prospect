@@ -94,6 +94,9 @@ if (cb_obj == ispectrumslider) {
         imfig_source.data.url[0] = imfig_urls[i_spectrum][0];
         imfig_source.data.txt[0] = imfig_urls[i_spectrum][2];
         imfig_source.change.emit();
+        crosshair_source.data.xs = imfig_urls[i_spectrum][3];
+        crosshair_source.data.ys = imfig_urls[i_spectrum][4];
+        crosshair_source.change.emit();
     }
     //
     // reset x-range
@@ -211,12 +214,14 @@ if (othermodel) {
         othermodel.change.emit();
     } else if (cb_obj == ispectrumslider) {
         // Trick to trigger execution of select_model.js
-        // Reset othermodel to best fit. Smoothing is done in select_model.js
+        // Reset othermodel to best fit (if there is one). Smoothing is done in select_model.js
         var trigger_value = model_select.options[0];
         if (model_select.value == trigger_value) {
             trigger_value = model_select.options[1];
         }
         model_select.value = trigger_value;
-        model_select.value = 'Best fit';
+        if (model_select.options.includes('Best fit')) {
+            model_select.value = 'Best fit';
+        }
     }
 }

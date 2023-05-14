@@ -229,7 +229,8 @@ class ViewerCDS(object):
                 'plotwave' : self.dict_std_templates['wave_'+key_zero],
                 'origwave' : self.dict_std_templates['wave_'+key_zero],
                 'origflux' : self.dict_std_templates['flux_'+key_zero],
-                'plotflux' : self.dict_std_templates['flux_'+key_zero]
+                'plotflux' : self.dict_std_templates['flux_'+key_zero],
+                'zref' : np.zeros(len(self.dict_std_templates['flux_'+key_zero]))  # std templates have z=0
             })
 
 

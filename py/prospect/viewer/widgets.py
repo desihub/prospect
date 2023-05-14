@@ -438,16 +438,17 @@ class ViewerWidgets(object):
         #------
         #- Select secondary model to display
         model_options = []
+        if viewer_cds.cds_model is not None:
+            model_options = ['Best fit']
+        if with_full_2ndfit:
+            model_options.append('2nd best fit')
         if num_approx_fits is not None:
-            model_options = ['Best fit', '2nd best fit']
             for i in range(1,1+num_approx_fits) :
                 ith = 'th'
                 if i==1 : ith='st'
                 if i==2 : ith='nd'
                 if i==3 : ith='rd'
                 model_options.append(str(i)+ith+' fit (approx)')
-            if with_full_2ndfit is False :
-                model_options.remove('2nd best fit')
         if viewer_cds.dict_std_templates is not None:
             std_template_labels = [x[5:] for x in viewer_cds.dict_std_templates.keys() if x[:5]=='wave_']
             for std_template in std_template_labels:
@@ -500,6 +501,7 @@ class ViewerWidgets(object):
                 fig = plots.fig,
                 xrange = [plots.xmin, plots.xmax],
                 imfig_source = plots.imfig_source,
+                crosshair_source = plots.crosshair_source,
                 imfig_urls = plots.imfig_urls,
                 model_select = self.model_select,
                 vi_comment_input = vi_widgets.vi_comment_input,
