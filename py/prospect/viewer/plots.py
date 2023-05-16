@@ -60,12 +60,16 @@ def _viewer_urls(spectra, pixscale=0.262, zoom=13, layer='ls-dr9'):
 
     #- Compute PM corrections
     default_ref_epoch = 2015.5  # PM correction is set to zero at that epoch
-    pmcor_ra = (default_ref_epoch-spectra.fibermap['REF_EPOCH'])*spectra.fibermap['PMRA']/1e3  # PM in mas/yr
-    pmcor_dec = (default_ref_epoch-spectra.fibermap['REF_EPOCH'])*spectra.fibermap['PMDEC']/1e3
-    # avoid adding a second cross-hair when PM correction is smaller than 1 arcsec (ie. in most cases):
-    mask = ((np.abs(pmcor_ra)<1) & (np.abs(pmcor_dec)<1)) | (spectra.fibermap['REF_EPOCH']==0)
-    pmcor_ra[mask] = 0
-    pmcor_dec[mask] = 0
+    if hasattr(spectra, 'fibermap'):
+        pmcor_ra = (default_ref_epoch-spectra.fibermap['REF_EPOCH'])*spectra.fibermap['PMRA']/1e3  # PM in mas/yr
+        pmcor_dec = (default_ref_epoch-spectra.fibermap['REF_EPOCH'])*spectra.fibermap['PMDEC']/1e3
+        # avoid adding a second cross-hair when PM correction is smaller than 1 arcsec (ie. in most cases):
+        mask = ((np.abs(pmcor_ra)<1) & (np.abs(pmcor_dec)<1)) | (spectra.fibermap['REF_EPOCH']==0)
+        pmcor_ra[mask] = 0
+        pmcor_dec[mask] = 0
+    else:
+        pmcor_ra = spectra.meta['plugmap']['RA'] * 0.0
+        pmcor_dec = spectra.meta['plugmap']['DEC'] * 0.0
     # convert PM correction to pixels in the jpeg cutout
     npix_cutout = 256
     x_pm = npix_cutout//2 - pmcor_ra/pixscale   # minus sign: RA decreases with x-coord in image

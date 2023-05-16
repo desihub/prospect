@@ -60,7 +60,7 @@ class ViewerCDS(object):
     """
     Encapsulates Bokeh ColumnDataSource objects to be passed to js callback functions.
     """
-    
+
     def __init__(self):
         self.cds_spectra = None
         self.cds_median_spectra = None
@@ -73,10 +73,10 @@ class ViewerCDS(object):
         self.dict_fit_templates = None  # Special case: not a CDS
         self.dict_std_templates = None  # Special case: not a CDS
         self.dict_rrdetails = None  # Special case: not a CDS
-    
+
     def load_spectra(self, spectra, with_noise=True):
         """ Creates column data source for observed spectra """
-        
+
         self.cds_spectra = list()
         is_desispec = False
         if _specutils_imported and isinstance(spectra, SpectrumList):
@@ -89,7 +89,7 @@ class ViewerCDS(object):
             is_desispec = True
             s = spectra
             bands = spectra.bands
-        
+
         for j, band in enumerate(bands):
             input_wave = s.wave[band] if is_desispec else s[j].spectral_axis.value
             input_nspec = spectra.num_spectra() if is_desispec else s[j].flux.shape[0]
@@ -109,18 +109,35 @@ class ViewerCDS(object):
                     noise[w] = 1/np.sqrt(input_ivar[w])
                     cdsdata[key] = noise
             cdsdata['plotflux'] = cdsdata['origflux0']
-            if with_noise : 
+            if with_noise :
                 cdsdata['plotnoise'] = cdsdata['orignoise0']
             self.cds_spectra.append( ColumnDataSource(cdsdata, name=band) )
-    
+
     def compute_median_spectra(self, spectra):
         """ Stores the median value for each spectrum into CDS.
             Simple concatenation of all values from different bands.
         """
-                
+
         cdsdata = dict(median=[])
-        for i in range(spectra.num_spectra()):
-            flux_array = np.concatenate( tuple([spectra.flux[band][i] for band in spectra.bands]) )
+        is_desispec = False
+        if _specutils_imported and isinstance(spectra, SpectrumList):
+            s = spectra
+            bands = spectra.bands
+            nspec = spectra[0].flux.shape[0]
+        elif _specutils_imported and isinstance(spectra, Spectrum1D):
+            s = [spectra]
+            bands = ['coadd']
+            nspec = spectra.flux.shape[0]
+        else : # Assume desispec Spectra obj
+            is_desispec = True
+            s = spectra
+            bands = spectra.bands
+            nspec = spectra.num_spectra()
+        for i in range(nspec):
+            if is_desispec:
+                flux_array = np.concatenate( tuple([s.flux[band][i] for band in bands]) )
+            else:
+                flux_array = np.concatenate( tuple([s[j].flux[i, :].value for j, band in enumerate(bands)]) )
             w, = np.where( ~np.isnan(flux_array) )
             if len(w)==0 :
                 cdsdata['median'].append(1)
@@ -128,13 +145,13 @@ class ViewerCDS(object):
                 cdsdata['median'].append(np.median(flux_array[w]))
 
         self.cds_median_spectra = ColumnDataSource(cdsdata)
-        
+
     def init_coaddcam_spec(self, spectra, with_noise=True):
         """ Creates column data source for camera-coadded observed spectra
             Do NOT store all coadded spectra in CDS obj, to reduce size of html files
             Except for the first spectrum, coaddition is done later in javascript
         """
-        
+
         coadd_wave, coadd_flux, coadd_ivar = coaddcam_prospect(spectra)
         cds_coaddcam_data = dict(
             origwave = coadd_wave.copy(),
@@ -149,7 +166,7 @@ class ViewerCDS(object):
 
     def init_model(self, model, second_fit=False):
         """ Creates a CDS for model spectrum """
-        
+
         mwave, mflux = model
         cdsdata = dict(
             origwave = mwave.copy(),
@@ -160,7 +177,7 @@ class ViewerCDS(object):
             key = 'origflux'+str(i)
             cdsdata[key] = mflux[i]
         cdsdata['plotflux'] = cdsdata['origflux0']
-        
+
         if second_fit:
             self.cds_model_2ndfit = ColumnDataSource(cdsdata)
         else:
@@ -175,8 +192,8 @@ class ViewerCDS(object):
             'plotflux' : self.cds_model.data['origflux0'],
             'zref' : zcatalog['Z'][0]+np.zeros(len(self.cds_model.data['origflux0'])) # Track z reference in model
         })
-    
-    
+
+
     def load_fit_templates(self, template_dir=None, nbpts_templates=4000):
         """ Create dict for spectral templates used in Redrock fits.
             These are used to recompute Redrock's Nth best-fit spectra on-the-fly
@@ -247,9 +264,9 @@ class ViewerCDS(object):
 
     def load_metadata(self, spectra, mask_type=None, zcatalog=None, survey='DESI'):
         """ Creates column data source for target-related metadata,
-            from fibermap, zcatalog and VI files 
+            from fibermap, zcatalog and VI files
         """
-    
+
         if survey == 'DESI':
             nspec = spectra.num_spectra()
             # Optional metadata:
@@ -282,9 +299,9 @@ class ViewerCDS(object):
                                 'EBOSS_TARGET0', 'EBOSS_TARGET1', 'EBOSS_TARGET2']
         else:
             raise ValueError('Wrong survey')
-        
+
         self.cds_metadata = ColumnDataSource()
-        
+
         #- Generic metadata
         if survey == 'DESI':
             #- Special case for targetids: No int64 in js !!
@@ -317,7 +334,7 @@ class ViewerCDS(object):
         elif survey == 'SDSS':
             #- Set 'TARGETID' name to OBJID for convenience
             self.cds_metadata.add([str(x.tolist()) for x in spectra.meta['plugmap']['OBJID']], name='TARGETID')
-        
+
         #- Photometry
         for i, bandname in enumerate(self.phot_bands) :
             if survey == 'SDSS':
@@ -376,15 +393,15 @@ class ViewerCDS(object):
                 else :
                     data = zcatalog[zcat_key]
                 self.cds_metadata.add(data, name=zcat_key)
-        
+
         #- VI informations
         default_vi_info = [ (x[1],x[3]) for x in vi_file_fields if x[0][0:3]=="VI_" ]
         for vi_key, vi_value in default_vi_info:
             self.cds_metadata.add([vi_value for i in range(nspec)], name=vi_key)
-    
-    
-    def load_spectral_lines(self, z=0):    
-    
+
+
+    def load_spectral_lines(self, z=0):
+
         line_data = dict(
             restwave = [],
             plotwave = [],
