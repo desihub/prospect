@@ -2,13 +2,16 @@
 prospect's Change Log
 =====================
 
-1.2.5 (unreleased)
+1.2.5 (2023-06-14)
 ------------------
 
-* Handle high-proper motion objects: a second cross-hair is shown (Issue `#84`_)
+* Update spectrum service notebook to `NOIRLab SPARCL`_; ensure continued support
+  of both SDSS and BOSS spectra (PR `#87`_).
+* Handle high-proper motion objects: a second cross-hair is shown (Issue `#84`_).
 * Adapt code and examples to recent DESI releases, up to iron (Issue `#82`_).
 * Minor bug fixes.
 
+.. _`#87`: https://github.com/desihub/prospect/pull/87
 .. _`#84`: https://github.com/desihub/prospect/issues/84
 .. _`#82`: https://github.com/desihub/prospect/issues/82
 
