@@ -61,7 +61,7 @@ fi
 #- 3) Options to modify html pages, eg:
 #     Use --mask_type SV2_DESI_TARGET as this is SV2 data (needed to display targeting info)
 #     Use --top_metadata to highlight some metadata (from fibermap)
-#     Use --no-clean_fiberstatus => displays all 500 spectra
+#     Use --no_clean_fiberstatus => displays all 500 spectra
 if [[ $1 == 3 ]] || [[ $1 == '' ]]; then
     echo "------ Example/Test 3 ------"
     DATAPATH=${DESI_SPECTRO_REDUX}/iron/tiles/cumulative/81067/20210327
@@ -73,10 +73,10 @@ if [[ $1 == 3 ]] || [[ $1 == '' ]]; then
                    --mask_type SV2_DESI_TARGET \
                    --top_metadata TARGETID TILEID mag_G mag_R \
                    --titlepage_prefix prospect_example3 \
-                   --nspecperfile 20 \
+                   --nspec_per_page 20 \
                    --vi_countdown 5 \
                    --with_thumbnail_only_pages \
-                   --no-clean_fiberstatus
+                   --no_clean_fiberstatus
 fi
 
 #- 4) Filter spectra: from metadata
@@ -302,4 +302,20 @@ if [[ $1 == 15 ]] || [[ $1 == '' ]]; then
                    --petals 2 4 6 \
                    --nmax_spectra 300
     rm -f ${TILE_LIST_FILE}
+fi
+
+#- 16) Inspect bright stars in tiles/cumulative directories, iron
+#       Customize html page displays
+if [[ $1 == 16 ]] || [[ $1 == '' ]]; then
+    echo "------ Example/Test 16 ------"
+    DATADIR=${DESI_SPECTRO_REDUX}/iron/tiles/cumulative
+    OUTPUTDIR=${OUTPUT_ROOT}/16
+    [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
+    prospect_pages --datadir ${DATADIR} \
+                   --dirtree_type cumulative \
+                   --with_zcatalog \
+                   -o ${OUTPUTDIR} \
+                   --tiles 23937 24780 \
+                   --targeting_mask STD_BRIGHT \
+                   --no_imaging --no_noise --no_vi_widgets
 fi
