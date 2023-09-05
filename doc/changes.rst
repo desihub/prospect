@@ -5,8 +5,15 @@ prospect's Change Log
 1.2.6 (unreleased)
 ------------------
 
-* Added/renamed options to be run with `prospect_pages`: --no_imaging --no_noise --no_thumb_tab --no_vi_widgets --no_coaddcam (PR `#90`_).
-* Renamed option in prospect_pages: --nspecperfile is renamed --nspec_per_page.
+* Added/renamed options to be run with `prospect_pages`:
+  --no_imaging
+  --no_noise
+  --no_thumb_tab
+  --no_vi_widgets
+  --no_coaddcam (PR `#90`_).
+* Renamed options in prospect_pages: 
+  --nspecperfile is renamed --nspec_per_page
+  ----no-clean_fiberstatus is renamed --no_clean_fiberstatus
 
 .. _`#90`: https://github.com/desihub/prospect/pull/90
 
