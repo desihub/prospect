@@ -17,8 +17,8 @@
     {% for i_subset in subset_dict[specnum] %}
         {% set i_sub = i_subset | int %}
         {# Assigment of fiber numbers to spectrographs is still hard-coded #}
-        {% set fibermin = 500*(i_spec)+(i_sub-1)*nspecperfile %}
-        {% set fibermax = 500*(i_spec)+(i_sub)*nspecperfile-1 %}
+        {% set fibermin = 500*(i_spec)+(i_sub-1)*nspec_per_page %}
+        {% set fibermax = 500*(i_spec)+(i_sub)*nspec_per_page-1 %}
         {% if fibermax > 500*(i_spec+1)-1 %}
             {% set fibermax = 500*(i_spec+1)-1 %}
         {% endif %}

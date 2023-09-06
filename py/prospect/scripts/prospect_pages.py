@@ -29,7 +29,7 @@ def _parse():
                                      'either a list of files (Mode: Explicit input files), or a given DESI directory tree to be parsed by prospect '
                                      ' (Mode: Scan directory tree)', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     
-    #- Single file input
+    #- Explicit file input
     parser.add_argument('--spectra_files', help='[Mode: Explicit input files] Absolute path of file(s) with DESI spectra. All input spectra files must have exactly the same format (fibermap, extra, scores...). Frames are not supported.', nargs='+', type=str, default=None)
     parser.add_argument('--spectra_file_list', help='[Mode: Explicit input files] ASCII file with list of DESI spectra files, one per row', type=str, default=None)
     parser.add_argument('--zcat_files', help='[Mode: Explicit input files] Absolute path of redshift catalog fits file(s), matched one-by-one to spectra_files', nargs='+', type=str, default=None)
@@ -37,7 +37,7 @@ def _parse():
     parser.add_argument('--redrock_details_files', help='[Mode: Explicit input files] Absolute path of detailed redrock file(s) (.h5), matched one-by-one to spectra_files', nargs='+', type=str, default=None)
     parser.add_argument('--redrock_details_file_list', help='[Mode: Explicit input files] ASCII file with list of detailed redrock files, one per row', type=str, default=None)
     
-    #- "Multi" file input (can select some data subsets based on tiles, expids...)
+    #- Selection-based file input (select data subsets based on tiles, expids...)
     parser.add_argument('--datadir', help='[Mode: Scan directory tree] Location of input directory tree (eg. $DESI_SPECTRO_REDUX/iron/healpix)', type=str, default=None)
     parser.add_argument('--dirtree_type', help='''[Mode: Scan directory tree] The following directory tree categories are supported:
                 dirtree_type='healpix': {datadir}/{survey}/{program}/{pixel//100}/{pixel}/{spectra_type}-{survey}-{program}-{pixel}.fits ;
@@ -68,11 +68,7 @@ def _parse():
 
     #- Generic parameters. The only mandatory one is outputdir
     parser.add_argument('--outputdir', '-o', help='Directory where output html pages are writen', type=str)
-    parser.add_argument('--titlepage_prefix', help='Prefix for html page title', type=str, default='DESI_spectra')
-    parser.add_argument('--nspecperfile', help='Number of spectra in each html page', type=int, default=50)
-    parser.add_argument('--top_metadata', help="""List of fibermap's metadata to be highlighted (display in the most visible table).
-        Note: if fibermap contains FIRST/LAST/NUM_XX, then including XX in top_metadata will display all of FIRST/LAST/NUM_XX.""", nargs='+', type=str, default=None)
-    parser.add_argument('--vi_countdown', help='Countdown widget (in minutes)', type=int, default=-1)
+    parser.add_argument('--nspec_per_page', help='Number of spectra in each html page', type=int, default=50)
     parser.add_argument('--with_thumbnail_only_pages', help='Create independent html pages with a thumbnail gallery, in addition to the main prospect pages. These additional pages are much faster to download than the main pages.', action='store_true')
     parser.add_argument('--mask_type', help='Targeting mask type', type=str, default='DESI_TARGET')
     parser.add_argument('--template_dir', help='Redrock template directory', type=str, default=None)
@@ -81,11 +77,20 @@ def _parse():
                 The table associated to template TMPLT should contain two columns, named 'wave_TMPLT' and 'flux_TMPLT'.
                 Wavelength arrays should be regularly, linearly binned.
             Prospect default is in data/std_template.fits.''', type=str, default=None)
-    parser.add_argument('--clean_fiberstatus', dest='clean_fiberstatus', help='Filter out spectra with FIBERSTATUS!=0 (even if a target list is provided)', action='store_true')
-    parser.add_argument('--no-clean_fiberstatus', dest='clean_fiberstatus', action='store_false')
-    parser.set_defaults(clean_fiberstatus=True)
+    parser.add_argument('--no_clean_fiberstatus', dest='clean_fiberstatus', help='Do not filter out spectra with FIBERSTATUS!=0', action='store_false')
     parser.add_argument('--select_bad_fiberstatus', help='[For debugging] Select spectra with FIBERSTATUS!=0', action='store_true')
     parser.add_argument('--clean_bad_fibers_cmx', help='[Specific to CMX conditions] Remove list of known bad fibers at CMX time.', action='store_true')
+
+    #- VI page display parameters
+    parser.add_argument('--titlepage_prefix', help='Prefix for html page title', type=str, default='DESI_spectra')
+    parser.add_argument('--top_metadata', help="""List of fibermap's metadata to be highlighted (display in the most visible table).
+        Note: if fibermap contains FIRST/LAST/NUM_XX, then including XX in top_metadata will display all of FIRST/LAST/NUM_XX.""", nargs='+', type=str, default=None)
+    parser.add_argument('--no_imaging', dest='with_imaging', help='Do not include thumb images from https://www.legacysurvey.org/viewer', action='store_false')
+    parser.add_argument('--no_noise', dest='with_noise', help='Do not display noise vectors associated to spectra', action='store_false')
+    parser.add_argument('--no_thumb_tab', dest='with_thumb_tab', help='Do not include a tab with spectra thumbnails', action='store_false')
+    parser.add_argument('--no_vi_widgets', dest='with_vi_widgets', help='Do not include widgets used to enter VI information', action='store_false')
+    parser.add_argument('--no_coaddcam', dest='with_coaddcam', help='Do not include camera-coaddition (DESI only)', action='store_false')
+    parser.add_argument('--vi_countdown', help='Countdown widget (in minutes)', type=int, default=-1)
 
     #- Filtering at the spectra level
     parser.add_argument('--targeting_mask', help='Filter objects with a given targeting mask.', type=str, default=None)
@@ -228,7 +233,7 @@ def load_spectra_zcat_from_dbentry(db_entry, args, log, with_redrock_version=Tru
     return (spectra, zcat, redrock_cat)
 
 
-def page_subset(spectra, nspecperfile, titlepage_prefix, viewer_params, log,
+def page_subset(spectra, nspec_per_page, titlepage_prefix, viewer_params, log,
                 zcat=None, redrock_cat=None, sort_by_targetid=False):
     """ Make a set of prospect html pages from (spectra, zcat, redrock_cat)
         zcat and redrock_cat must be entry-matched to spectra
@@ -239,10 +244,10 @@ def page_subset(spectra, nspecperfile, titlepage_prefix, viewer_params, log,
         sort_indices = np.argsort(spectra.fibermap["TARGETID"])
     else:
         sort_indices = np.arange(nspec_tot)
-    nbpages = int(np.ceil((nspec_tot/nspecperfile)))
+    nbpages = int(np.ceil((nspec_tot/nspec_per_page)))
     for i_page in range(1,1+nbpages) :
         log.info(" * Page "+str(i_page)+" / "+str(nbpages))
-        the_indices = sort_indices[(i_page-1)*nspecperfile:i_page*nspecperfile]
+        the_indices = sort_indices[(i_page-1)*nspec_per_page:i_page*nspec_per_page]
         thespec = spectra[the_indices]
         if zcat is not None:
             the_zcat = zcat[the_indices]
@@ -255,12 +260,7 @@ def page_subset(spectra, nspecperfile, titlepage_prefix, viewer_params, log,
         titlepage = titlepage_prefix
         if nbpages>1: titlepage += ("_"+str(i_page))
         plotspectra(thespec, zcatalog=the_zcat, redrock_cat=the_rrtable,
-                    title=titlepage, html_dir=viewer_params['html_dir'],
-                    mask_type=viewer_params['mask_type'], top_metadata=viewer_params['top_metadata'],
-                    template_dir=viewer_params['template_dir'], num_approx_fits=viewer_params['num_approx_fits'],
-                    with_full_2ndfit=viewer_params['with_full_2ndfit'], vi_countdown=viewer_params['vi_countdown'],
-                    with_thumb_only_page=viewer_params['with_thumb_only_page'],
-                    std_template_file=viewer_params['std_template_file'])
+                    title=titlepage, **viewer_params)
 
     return nspec_tot
 
@@ -295,7 +295,12 @@ def main():
         'num_approx_fits': None,
         'with_full_2ndfit': False,
         'with_thumb_only_page': args.with_thumbnail_only_pages,
-        'std_template_file': args.std_template_file
+        'std_template_file': args.std_template_file,
+        'with_imaging': args.with_imaging,
+        'with_noise': args.with_noise,
+        'with_thumb_tab': args.with_thumb_tab,
+        'with_vi_widgets': args.with_vi_widgets,
+        'with_coaddcam': args.with_coaddcam
     }
 
 
@@ -380,7 +385,7 @@ def main():
 
         #- Run viewer.plotspectra()
         log.info('Prospect_pages: start creating html page(s)')
-        n_done = page_subset(spectra, args.nspecperfile, args.titlepage_prefix, viewer_params, log, zcat=zcat, redrock_cat=redrock_cat)
+        n_done = page_subset(spectra, args.nspec_per_page, args.titlepage_prefix, viewer_params, log, zcat=zcat, redrock_cat=redrock_cat)
 
 
     ############################
@@ -427,7 +432,7 @@ def main():
                                                     dirtree_type=args.dirtree_type, with_redrock_details=False)
                 redrock_cat = None
             log.info('Prospect_pages: start creating html page(s)')
-            n_done = page_subset(spectra, args.nspecperfile, args.titlepage_prefix, viewer_params, log, zcat=zcat, redrock_cat=redrock_cat)
+            n_done = page_subset(spectra, args.nspec_per_page, args.titlepage_prefix, viewer_params, log, zcat=zcat, redrock_cat=redrock_cat)
         
         #- All spectra, possibly filtered based on some metadata
         else:
@@ -451,7 +456,7 @@ def main():
                 viewer_params['html_dir'] = os.path.join(args.outputdir, html_subdir)
                 os.makedirs(viewer_params['html_dir'], exist_ok=True)
                 titlepage_prefix = args.titlepage_prefix + '_' + html_subdir
-                nspec = page_subset(spectra, args.nspecperfile, titlepage_prefix, viewer_params, log, zcat=zcat, redrock_cat=redrock_cat)
+                nspec = page_subset(spectra, args.nspec_per_page, titlepage_prefix, viewer_params, log, zcat=zcat, redrock_cat=redrock_cat)
                 n_done += nspec
                 if args.nmax_spectra is not None:
                     if n_done >= args.nmax_spectra:

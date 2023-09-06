@@ -2,10 +2,20 @@
 prospect's Change Log
 =====================
 
-1.2.6 (unreleased)
+1.3.0 (unreleased)
 ------------------
 
-* No changes yet.
+* Added/renamed options to be run with `prospect_pages`:
+  --no_imaging
+  --no_noise
+  --no_thumb_tab
+  --no_vi_widgets
+  --no_coaddcam (PR `#90`_).
+* Renamed options in prospect_pages: 
+  --nspecperfile is renamed --nspec_per_page
+  --no-clean_fiberstatus is renamed --no_clean_fiberstatus
+
+.. _`#90`: https://github.com/desihub/prospect/pull/90
 
 1.2.5 (2023-06-14)
 ------------------
