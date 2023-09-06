@@ -78,7 +78,6 @@ def _parse():
                 Wavelength arrays should be regularly, linearly binned.
             Prospect default is in data/std_template.fits.''', type=str, default=None)
     parser.add_argument('--no_clean_fiberstatus', dest='clean_fiberstatus', help='Do not filter out spectra with FIBERSTATUS!=0', action='store_false')
-    parser.set_defaults(clean_fiberstatus=True)
     parser.add_argument('--select_bad_fiberstatus', help='[For debugging] Select spectra with FIBERSTATUS!=0', action='store_true')
     parser.add_argument('--clean_bad_fibers_cmx', help='[Specific to CMX conditions] Remove list of known bad fibers at CMX time.', action='store_true')
 
@@ -87,15 +86,10 @@ def _parse():
     parser.add_argument('--top_metadata', help="""List of fibermap's metadata to be highlighted (display in the most visible table).
         Note: if fibermap contains FIRST/LAST/NUM_XX, then including XX in top_metadata will display all of FIRST/LAST/NUM_XX.""", nargs='+', type=str, default=None)
     parser.add_argument('--no_imaging', dest='with_imaging', help='Do not include thumb images from https://www.legacysurvey.org/viewer', action='store_false')
-    parser.set_defaults(with_imaging=True)
     parser.add_argument('--no_noise', dest='with_noise', help='Do not display noise vectors associated to spectra', action='store_false')
-    parser.set_defaults(with_noise=True)
     parser.add_argument('--no_thumb_tab', dest='with_thumb_tab', help='Do not include a tab with spectra thumbnails', action='store_false')
-    parser.set_defaults(with_thumb_tab=True)
     parser.add_argument('--no_vi_widgets', dest='with_vi_widgets', help='Do not include widgets used to enter VI information', action='store_false')
-    parser.set_defaults(with_vi_widgets=True)
     parser.add_argument('--no_coaddcam', dest='with_coaddcam', help='Do not include camera-coaddition (DESI only)', action='store_false')
-    parser.set_defaults(with_coaddcam=True)
     parser.add_argument('--vi_countdown', help='Countdown widget (in minutes)', type=int, default=-1)
 
     #- Filtering at the spectra level
