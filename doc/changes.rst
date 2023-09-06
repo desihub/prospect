@@ -2,7 +2,7 @@
 prospect's Change Log
 =====================
 
-1.3.0 (unreleased)
+1.3.0 (2023-09-06)
 ------------------
 
 * Added/renamed options to be run with `prospect_pages`:
