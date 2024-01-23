@@ -5,20 +5,22 @@ prospect's Change Log
 1.3.1 (unreleased)
 ------------------
 
-* No changes yet.
+* Don't use mask information when marking bad pixels in SDSS data (PR `#94`_).
+
+.. _`#94`: https://github.com/desihub/prospect/pull/94
 
 1.3.0 (2023-09-06)
 ------------------
 
-* Added/renamed options to be run with `prospect_pages`:
-  --no_imaging
-  --no_noise
-  --no_thumb_tab
-  --no_vi_widgets
-  --no_coaddcam (PR `#90`_).
-* Renamed options in prospect_pages: 
-  --nspecperfile is renamed --nspec_per_page
-  --no-clean_fiberstatus is renamed --no_clean_fiberstatus
+* Added/renamed options to be run with :command:`prospect_pages` (PR `#90`_):
+  - ``--no_imaging``
+  - ``--no_noise``
+  - ``--no_thumb_tab``
+  - ``--no_vi_widgets``
+  - ``--no_coaddcam``
+* Renamed options in prospect_pages:
+  - ``--nspecperfile`` is renamed ``--nspec_per_page``
+  - ``--no-clean_fiberstatus`` is renamed ``--no_clean_fiberstatus``
 
 .. _`#90`: https://github.com/desihub/prospect/pull/90
 
