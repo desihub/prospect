@@ -135,30 +135,6 @@ def create_model(spectra, zcat, archetype_fit=False, archetypes_dir=None, templa
     mflux = np.concatenate(
         [ model_flux[band][:, keep[band]] for band in sorted_bands ],
     axis=1)
-    
-#     if spectra.bands == ['brz'] :
-#         model_wave = spectra.wave['brz']
-#         mflux = model_flux['brz']
-
-#     elif np.all([ band in spectra.bands for band in ['b','r','z'] ]) :
-#         br_split = 0.5*(spectra.wave['b'][-1] + spectra.wave['r'][0])
-#         rz_split = 0.5*(spectra.wave['r'][-1] + spectra.wave['z'][0])
-#         keep = dict()
-#         keep['b'] = (spectra.wave['b'] < br_split)
-#         keep['r'] = (br_split <= spectra.wave['r']) & (spectra.wave['r'] < rz_split)
-#         keep['z'] = (rz_split <= spectra.wave['z'])
-#         model_wave = np.concatenate( [
-#             spectra.wave['b'][keep['b']],
-#             spectra.wave['r'][keep['r']],
-#             spectra.wave['z'][keep['z']],
-#         ] )
-#         mflux = np.concatenate( [
-#             model_flux['b'][:, keep['b']],
-#             model_flux['r'][:, keep['r']],
-#             model_flux['z'][:, keep['z']],
-#         ], axis=1 )
-#     else :
-#         raise RuntimeError("create_model: Set of bands for spectra not supported")
 
     return model_wave, mflux
 
