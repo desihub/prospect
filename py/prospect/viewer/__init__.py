@@ -227,6 +227,8 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
         survey = 'DESI'
         nspec = spectra[0].flux.shape[0]
         for s in spectra:
+            # For DESI, anything that has a non-zero mask should also already
+            # have ivar == 0, so this may be redundant, but should also be harmless.
             bad = (s.uncertainty.array == 0.0) | s.mask
             s.flux[bad] = np.nan
     else:
@@ -247,6 +249,8 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
                     "    _specutils_imported = "+str(_specutils_imported)+"\n"+
                     "    _desispec_imported = "+str(_desispec_imported))
         for band in spectra.bands:
+            # For DESI, anything that has a non-zero mask should also already
+            # have ivar == 0, so this may be redundant, but should also be harmless.
             bad = (spectra.ivar[band] == 0.0) | (spectra.mask[band] != 0)
             spectra.flux[band][bad] = np.nan
         #- No coaddition if spectra is already single-band
