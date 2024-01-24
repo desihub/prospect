@@ -132,8 +132,8 @@ for (var i=0; i<spectra.length; i++) {
     var data = spectra[i].data;
     var origflux = data['origflux'+String(i_spectrum)];
     if (origflux.filter(isFinite).length == 0) {
-        alert("Spectrum " + (i+1) + " (of " + spectra.length + ") of object " + i_spectrum + " has no valid data!");
-        data["plotflux"] = (function(){ var foo = []; for (var j=0; j<origflux.length; j++) foo.push(1.0); return foo;})();
+        //alert("Spectrum " + (i+1) + " (of " + spectra.length + ") of object " + i_spectrum + " has no valid data!");
+        data["plotflux"] = new Array(origflux.length).fill(0.0);
         if ("plotnoise" in data) data["plotnoise"] = data["plotflux"].slice();
     } else {
         if ('plotnoise' in data) {

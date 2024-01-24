@@ -134,8 +134,9 @@ class ViewerPlots(object):
                 else:
                     sp_flux = spectra.flux[band][0]
                     sp_wave = spectra.wave[band]
-                self.ymin = min(self.ymin, np.nanmin(sp_flux))
-                self.ymax = max(self.ymax, np.nanmax(sp_flux))
+                if np.isfinite(sp_flux).any():
+                    self.ymin = min(self.ymin, np.nanmin(sp_flux))
+                    self.ymax = max(self.ymax, np.nanmax(sp_flux))
                 self.xmin = min(self.xmin, np.min(sp_wave))
                 self.xmax = max(self.xmax, np.max(sp_wave))
         self.xmin -= self.xmargin_left
