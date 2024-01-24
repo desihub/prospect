@@ -176,7 +176,7 @@ if (coaddcam_spec) {
     var wave_in = [];
     var flux_in = [];
     var noise_in = [];
-    for (var i=0; i<3; i++) {
+    for (var i=0; i<spectra.length; i++) {
         var data = spectra[i].data;
         wave_in.push(data['plotwave'].slice());
         flux_in.push(data['plotflux'].slice());

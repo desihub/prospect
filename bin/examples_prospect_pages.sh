@@ -319,3 +319,22 @@ if [[ $1 == 16 ]] || [[ $1 == '' ]]; then
                    --targeting_mask STD_BRIGHT \
                    --no_imaging --no_noise --no_vi_widgets
 fi
+
+# -------------------------
+# Some other tests
+#  (those are more tests than useful examples)
+# -------------------------
+
+#- 17) Inspect a single spectrum from daily spectra
+#      Which turns out to have a missing 'r' band
+if [[ $1 == 17 ]] || [[ $1 == '' ]]; then
+    echo "------ Example/Test 17 ------"
+    DATAPATH=${DESI_SPECTRO_REDUX}/daily/tiles/cumulative/1823/20210616
+    OUTPUTDIR=${OUTPUT_ROOT}/17
+    [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
+    prospect_pages --spectra_files ${DATAPATH}/coadd-9-1823-thru20210616.fits \
+                   --zcat_files ${DATAPATH}/zbest-9-1823-thru20210616.fits \
+                   --redrock_details_files ${DATAPATH}/redrock-9-1823-thru20210616.h5 \
+                   --targets 39627747886112324 \
+                   --outputdir ${OUTPUTDIR}
+fi
