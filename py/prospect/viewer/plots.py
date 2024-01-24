@@ -121,8 +121,13 @@ class ViewerPlots(object):
         self.xmin = 100000.
         if survey == 'SDSS':
             bands = ['coadd']
-            self.ymin = np.nanmin(spectra.flux.value[0])
-            self.ymax = np.nanmax(spectra.flux.value[0])
+            try:
+                self.ymin = np.nanmin(spectra.flux.value[0, :])
+                self.ymax = np.nanmax(spectra.flux.value[0, :])
+            except IndexError:
+                # Catch case where, e.g., flux.shape == (3000, ).
+                self.ymin = np.nanmin(spectra.flux.value)
+                self.ymax = np.nanmax(spectra.flux.value)
             self.xmin = np.min(spectra.spectral_axis.value)
             self.xmax = np.max(spectra.spectral_axis.value)
         else:
