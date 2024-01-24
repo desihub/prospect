@@ -19,8 +19,8 @@ to create (standalone) HTML pages.
     :target: https://github.com/desihub/prospect/actions
     :alt: GitHub Actions CI Status
 
-.. |Coveralls Status| image:: https://coveralls.io/repos/desihub/prospect/badge.svg?branch=pip-installable-package
-    :target: https://coveralls.io/github/desihub/prospect?branch=pip-installable-package
+.. |Coveralls Status| image:: https://coveralls.io/repos/desihub/prospect/badge.svg?branch=main
+    :target: https://coveralls.io/github/desihub/prospect?branch=main
     :alt: Test Coverage Status
 
 .. |Documentation Status| image:: https://readthedocs.org/projects/desi-prospect/badge/?version=latest
