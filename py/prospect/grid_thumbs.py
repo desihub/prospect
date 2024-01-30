@@ -40,7 +40,7 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400,10000), thumb_height=None, r
     for i_spec in range(spectra.num_spectra()) :
         x_vals = (thumb_wave[::resamp_factor])[resamp_factor:-resamp_factor]
         # Use astropy convolution : handles NaNs
-        y_vals = astropy.convolution.convolve(thumb_flux[i_spec,:], kernel)
+        y_vals = astropy.convolution.convolve(thumb_flux[i_spec,:], kernel, nan_treatment='fill')
         y_vals = (y_vals[::resamp_factor])[resamp_factor:-resamp_factor]
         x_vals = x_vals[~np.isnan(y_vals)] # Needed to avoid 'ValueError: Out of range float values are not JSON compliant'
         y_vals = y_vals[~np.isnan(y_vals)]

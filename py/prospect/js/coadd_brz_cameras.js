@@ -3,8 +3,24 @@
 
 function coadd_brz_cameras(wave_in, flux_in, noise_in) {
     // Camera-coadd brz spectra.
-    // each "_in" must have 3 entries (brz)
+    // Coaddition is done only when each "_in" has 3 entries (brz)
     // TODO handle case of no noise
+    var wave_out = []
+    var flux_out = []
+    var noise_out = []
+
+    // Special case of a missing arm (or two)
+    // in that case: just concatenate the data.
+    if (wave_in.length <= 2) {
+        for (var i_cam=0; i_cam<wave_in.length; i_cam++) {
+            for (var i=0; i<wave_in[i_cam].length; i++) {
+                wave_out.push(wave_in[i_cam][i])
+                flux_out.push(flux_in[i_cam][i])
+                noise_out.push(noise_in[i_cam][i])
+            }
+        }
+        return [wave_out, flux_out, noise_out]
+    }
 
     // Find b,r,z ordering in input arrays
     var wave_start = [wave_in[0][0], wave_in[1][0], wave_in[2][0]]
@@ -15,9 +31,6 @@ function coadd_brz_cameras(wave_in, flux_in, noise_in) {
         if ( (i_b != i) && (i_z != i) ) i_r = i
     }
 
-    var wave_out = []
-    var flux_out = []
-    var noise_out = []
     var margin = 20
     for (var i=0; i<wave_in[i_b].length; i++) { // b
         if (wave_in[i_b][i] < wave_in[i_b][wave_in[i_b].length-1] - margin) {

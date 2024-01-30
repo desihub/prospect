@@ -319,3 +319,37 @@ if [[ $1 == 16 ]] || [[ $1 == '' ]]; then
                    --targeting_mask STD_BRIGHT \
                    --no_imaging --no_noise --no_vi_widgets
 fi
+
+# -------------------------
+# Some other tests
+#  (those are more tests than useful examples)
+# -------------------------
+
+#- 17) Inspect a single spectrum from daily spectra
+#      Which turns out to have a missing 'r' band (spectra.bands = ['b', 'z'])
+if [[ $1 == 17 ]] || [[ $1 == '' ]]; then
+    echo "------ Example/Test 17 ------"
+    DATAPATH=${DESI_SPECTRO_REDUX}/daily/tiles/cumulative/1823/20210616
+    OUTPUTDIR=${OUTPUT_ROOT}/17
+    [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
+    prospect_pages --spectra_files ${DATAPATH}/coadd-9-1823-thru20210616.fits \
+                   --zcat_files ${DATAPATH}/zbest-9-1823-thru20210616.fits \
+                   --redrock_details_files ${DATAPATH}/redrock-9-1823-thru20210616.h5 \
+                   --targets 39627747886112324 \
+                   --outputdir ${OUTPUTDIR}
+fi
+
+#- 18) A single spectrum from iron spectra
+#      With a completely masked, though existing, 'r' band
+if [[ $1 == 18 ]] || [[ $1 == '' ]]; then
+    echo "------ Example/Test 18 ------"
+    DATAPATH=${DESI_SPECTRO_REDUX}/iron/healpix/main/dark/134/13455
+    OUTPUTDIR=${OUTPUT_ROOT}/18
+    [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
+    prospect_pages --spectra_files ${DATAPATH}/coadd-main-dark-13455.fits \
+                   --zcat_files ${DATAPATH}/redrock-main-dark-13455.fits \
+                   --redrock_details_files ${DATAPATH}/rrdetails-main-dark-13455.h5 \
+                   --targets 39628472435347978 \
+                   --no_clean_fiberstatus \
+                   --outputdir ${OUTPUTDIR}
+fi

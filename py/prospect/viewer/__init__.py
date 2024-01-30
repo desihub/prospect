@@ -114,30 +114,27 @@ def create_model(spectra, zcat, archetype_fit=False, archetypes_dir=None, templa
                 mx                  = resample_flux(spectra.wave[band], tx.wave*(1+zb['Z']), model)
                 model_flux[band][i] = spectra.R[band][i].dot(mx)
 
-    #- Now combine, if needed, to a single wavelength grid across all cameras
-    if spectra.bands == ['brz'] :
-        model_wave = spectra.wave['brz']
-        mflux = model_flux['brz']
-
-    elif np.all([ band in spectra.bands for band in ['b','r','z'] ]) :
-        br_split = 0.5*(spectra.wave['b'][-1] + spectra.wave['r'][0])
-        rz_split = 0.5*(spectra.wave['r'][-1] + spectra.wave['z'][0])
-        keep = dict()
-        keep['b'] = (spectra.wave['b'] < br_split)
-        keep['r'] = (br_split <= spectra.wave['r']) & (spectra.wave['r'] < rz_split)
-        keep['z'] = (rz_split <= spectra.wave['z'])
-        model_wave = np.concatenate( [
-            spectra.wave['b'][keep['b']],
-            spectra.wave['r'][keep['r']],
-            spectra.wave['z'][keep['z']],
-        ] )
-        mflux = np.concatenate( [
-            model_flux['b'][:, keep['b']],
-            model_flux['r'][:, keep['r']],
-            model_flux['z'][:, keep['z']],
-        ], axis=1 )
-    else :
-        raise RuntimeError("create_model: Set of bands for spectra not supported")
+    #- Combine, if needed, to a single wavelength grid across all cameras
+    # The following works for any given set of bands
+    keep = dict()
+    meanwaves = [ np.mean(spectra.wave[band]) for band in spectra.bands]  # sort bands by increasing wave
+    sorted_bands = [ x for _,x in sorted(zip(meanwaves, spectra.bands)) ]
+    for i_band, band in enumerate(sorted_bands):
+        wavecut_low = 0
+        wavecut_up = 1.e10
+        if i_band>0:
+            band_low = sorted_bands[i_band-1]
+            wavecut_low = 0.5*(spectra.wave[band_low][-1] + spectra.wave[band][0])
+        if i_band<len(sorted_bands)-1:
+            band_up = sorted_bands[i_band+1]
+            wavecut_up = 0.5*(spectra.wave[band][-1] + spectra.wave[band_up][0])
+        keep[band] = (spectra.wave[band]>wavecut_low) & (spectra.wave[band]<wavecut_up)
+    model_wave = np.concatenate(
+        [ spectra.wave[band][keep[band]] for band in sorted_bands ]
+    )
+    mflux = np.concatenate(
+        [ model_flux[band][:, keep[band]] for band in sorted_bands ],
+    axis=1)
 
     return model_wave, mflux
 
