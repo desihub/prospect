@@ -124,14 +124,14 @@ class ViewerLayout(object):
                                 bl.column(bl.Spacer(width=30)),
                                 bl.column(widgets.waveframe_buttons, width=120)
                               )
-        else :
+        else:
             waveframe_block = bl.column(widgets.waveframe_buttons, width=120)
         self.plot_widget_set.children.append(waveframe_block)
         if widgets.model_select is not None :
             self.plot_widget_set.children.insert(4, bl.column(widgets.model_select, width=200))
-        
+
         #- Assemble all widgets
-        if with_vi_widgets :
+        if with_vi_widgets:
             self.full_widget_set = bl.column(
                 bl.row(
                     self.vi_widget_set,
@@ -140,7 +140,12 @@ class ViewerLayout(object):
                 ),
                 bl.column(vi_widgets.vi_guideline_div, width=2*widgets.plot_widget_width)
             )
-        else : self.full_widget_set = self.plot_widget_set
+        else:
+            N = len(self.plot_widget_set.children) // 2
+            self.full_widget_set = bl.row(
+                bl.column(self.plot_widget_set.children[0:N]),
+                bl.column(self.plot_widget_set.children[N:])
+            )
 
         self.main_bokehlayout = bl.column(
             bl.row(plots.fig, bl.column(plots.imfig, plots.zoomfig), bl.Spacer(width=20)),
