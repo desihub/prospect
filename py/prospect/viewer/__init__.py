@@ -140,7 +140,7 @@ def create_model(spectra, zcat, archetype_fit=False, archetypes_dir=None, templa
 
 
 def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_dir=None, title=None,
-                with_imaging=True, with_noise=True, with_thumb_tab=True, with_vi_widgets=True,
+                colors=None, with_imaging=True, with_noise=True, with_thumb_tab=True, with_vi_widgets=True,
                 top_metadata=None, vi_countdown=-1, with_thumb_only_page=False,
                 with_coaddcam=True, mask_type='DESI_TARGET',
                 model_from_zcat=True, model=None, num_approx_fits=None, with_full_2ndfit=True,
@@ -165,6 +165,9 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
         Directory to store the HTML page if `notebook` is ``False``.
     title : :class:`str`, optional
         Title used to name the HTML page / the bokeh figure / the VI file.
+    colors : :class:`list`, optional
+        Customize the curve's colors: 3 colors should be given, associated respectively to
+        the coadded data, the model and the noise.
     with_imaging : :class:`bool`, optional
         If ``False``, don't include thumb image from https://www.legacysurvey.org/viewer.
     with_noise : :class:`bool`, optional
@@ -320,7 +323,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     #-- Graphical objects --
     #-------------------------
 
-    viewer_plots = ViewerPlots()
+    viewer_plots = ViewerPlots(colors=colors)
     viewer_plots.create_mainfig(spectra, title, viewer_cds, survey,
                                 with_noise=with_noise, with_coaddcam=with_coaddcam)
     viewer_plots.create_zoomfig(viewer_cds,
