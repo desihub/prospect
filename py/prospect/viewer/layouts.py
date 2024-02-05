@@ -33,7 +33,9 @@ class ViewerLayout(object):
         self.navigator = bl.row(
             bl.column(widgets.prev_button, width=widgets.navigation_button_width+15),
             bl.column(widgets.next_button, width=widgets.navigation_button_width+20),
-            bl.column(widgets.ispectrumslider, width=plots.plot_width+(plots.plot_height//2)-(60*len(vi_widgets.vi_quality_labels)+2*widgets.navigation_button_width+35))
+            bl.column(widgets.ispectrumslider, width=plots.plot_width+(plots.plot_height//2)-(60*len(vi_widgets.vi_quality_labels)+2*widgets.navigation_button_width+35+100)),
+            bl.column(widgets.ispec_input, width=100),
+            background='#ffebe6'
         )
         
         #- Redshift widgets

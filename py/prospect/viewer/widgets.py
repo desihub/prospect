@@ -77,7 +77,8 @@ class ViewerWidgets(object):
         # Ispectrumslider's value controls which spectrum is displayed
         # These two widgets call update_plot(), later defined
         slider_end = nspec-1 if nspec > 1 else 0.5 # Slider cannot have start=end
-        self.ispectrumslider = Slider(start=0, end=slider_end, value=0, step=1, title='Spectrum (0 to '+str(nspec-1)+')')
+        slidertitle = 'Spectrum number (0 to '+str(nspec-1)+')'
+        self.ispectrumslider = Slider(start=0, end=slider_end, value=0, step=1, title=slidertitle)
         self.smootherslider = Slider(start=0, end=26, value=0, step=1.0, title='Gaussian Sigma Smooth')
         self.coaddcam_buttons = None
         self.model_select = None
@@ -102,14 +103,28 @@ class ViewerWidgets(object):
             }
             """)
         self.next_callback = CustomJS(
-            args=dict(ispectrumslider=self.ispectrumslider, nspec=nspec),
-            code="""
+            args = dict(ispectrumslider=self.ispectrumslider, nspec=nspec),
+            code = """
             if(ispectrumslider.value<nspec-1 && ispectrumslider.end>=1) {
                 ispectrumslider.value++
             }
             """)
         self.prev_button.js_on_event('button_click', self.prev_callback)
         self.next_button.js_on_event('button_click', self.next_callback)
+        #- Input spectrum number
+        self.ispec_input = TextInput(value=str(self.ispectrumslider.value))
+        self.ispec_input_callback = CustomJS(
+            args = dict(ispec_input=self.ispec_input, ispectrumslider=self.ispectrumslider, nspec=nspec),
+            code = """
+            var i_spec = parseInt(ispec_input.value) ;
+            if (Number.isInteger(i_spec) && i_spec>=0 && i_spec<nspec) {
+                // Avoid recursive call
+                if (i_spec != ispectrumslider.value) {
+                    ispectrumslider.value = i_spec ;
+                }
+            }
+            """)
+        self.ispec_input.js_on_change('value', self.ispec_input_callback)
 
     def add_resetrange(self, viewer_cds, plots):
         #-----
@@ -495,6 +510,7 @@ class ViewerWidgets(object):
                 shortcds_table_c = self.shortcds_table_c,
                 shortcds_table_d = self.shortcds_table_d,
                 ispectrumslider = self.ispectrumslider,
+                ispec_input = self.ispec_input,
                 smootherslider = self.smootherslider,
                 z_input = self.z_input,
                 widgetinfos = self.cds_widgetinfos,
