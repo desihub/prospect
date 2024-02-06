@@ -112,7 +112,7 @@ class ViewerWidgets(object):
         self.prev_button.js_on_event('button_click', self.prev_callback)
         self.next_button.js_on_event('button_click', self.next_callback)
         #- Input spectrum number
-        self.ispec_input = TextInput(value=str(self.ispectrumslider.value))
+        self.ispec_input = TextInput(value=str(self.ispectrumslider.value), width=50)
         self.ispec_input_callback = CustomJS(
             args = dict(ispec_input=self.ispec_input, ispectrumslider=self.ispectrumslider, nspec=nspec),
             code = """

@@ -29,13 +29,13 @@ class ViewerLayout(object):
         vi_widgets : :class:`ViewerVIWidgets`
         '''
 
-        #- Main 'navigator'
+        #- Main spectrum 'navigator'
         self.navigator = bl.row(
             bl.column(widgets.prev_button, width=widgets.navigation_button_width+15),
             bl.column(widgets.next_button, width=widgets.navigation_button_width+20),
             bl.column(widgets.ispectrumslider, width=plots.plot_width+(plots.plot_height//2)-(60*len(vi_widgets.vi_quality_labels)+2*widgets.navigation_button_width+35+100)),
             bl.column(widgets.ispec_input, width=100),
-            background='#ffebe6'
+            background='#ececf9'
         )
         
         #- Redshift widgets
@@ -72,9 +72,12 @@ class ViewerLayout(object):
 
         #- VI widgets
         if with_vi_widgets :
-            self.navigator.children.insert(1, bl.column(vi_widgets.vi_quality_input, width=60*len(vi_widgets.vi_quality_labels)) )
+            self.navigator.children.insert(1, bl.column(
+                vi_widgets.vi_quality_input,
+                width=60*len(vi_widgets.vi_quality_labels)
+            ) )
             if vi_widgets.vi_countdown_toggle is None :
-                vi_header_block = bl.column( Div(text="VI optional indications :"), width=300 )
+                vi_header_block = bl.column( Div(text="VI optional indications:"), width=300 )
             else :
                 vi_header_block = bl.row(
                     bl.column( Div(text="VI optional indications :"), width=300 ),
@@ -160,6 +163,7 @@ class ViewerLayout(object):
                 bl.column(widgets.oii_undo_button, width=50),
             ),
             self.navigator,
+            bl.column(bl.Spacer(height=10)),
             self.full_widget_set,
             sizing_mode='stretch_width'
         )
