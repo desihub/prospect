@@ -5,11 +5,12 @@ prospect's Change Log
 1.3.1 (unreleased)
 ------------------
 
-* Added a Text widget to enter a spectrum number by hand.
-* Added ``-colors`` option for the main plot's curves.
+* Added a Text widget to enter a spectrum number by hand (PR `#97`_).
+* Added ``-colors`` option for the main plot's curves (PR `#97`_).
 * Handling the case of a missing spectrograph arm (PR `#95`_).
 * Don't use mask information when marking bad pixels in SDSS data (PR `#94`_).
 
+.. _`#97`: https://github.com/desihub/prospect/pull/97
 .. _`#95`: https://github.com/desihub/prospect/pull/95
 .. _`#94`: https://github.com/desihub/prospect/pull/94
 
