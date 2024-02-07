@@ -29,11 +29,13 @@ class ViewerLayout(object):
         vi_widgets : :class:`ViewerVIWidgets`
         '''
 
-        #- Main 'navigator'
+        #- Main spectrum 'navigator'
         self.navigator = bl.row(
             bl.column(widgets.prev_button, width=widgets.navigation_button_width+15),
             bl.column(widgets.next_button, width=widgets.navigation_button_width+20),
-            bl.column(widgets.ispectrumslider, width=plots.plot_width+(plots.plot_height//2)-(60*len(vi_widgets.vi_quality_labels)+2*widgets.navigation_button_width+35))
+            bl.column(widgets.ispectrumslider, width=plots.plot_width+(plots.plot_height//2)-(60*len(vi_widgets.vi_quality_labels)+2*widgets.navigation_button_width+35+100)),
+            bl.column(widgets.ispec_input, width=100),
+            background='#ececf9'
         )
         
         #- Redshift widgets
@@ -70,9 +72,12 @@ class ViewerLayout(object):
 
         #- VI widgets
         if with_vi_widgets :
-            self.navigator.children.insert(1, bl.column(vi_widgets.vi_quality_input, width=60*len(vi_widgets.vi_quality_labels)) )
+            self.navigator.children.insert(1, bl.column(
+                vi_widgets.vi_quality_input,
+                width=60*len(vi_widgets.vi_quality_labels)
+            ) )
             if vi_widgets.vi_countdown_toggle is None :
-                vi_header_block = bl.column( Div(text="VI optional indications :"), width=300 )
+                vi_header_block = bl.column( Div(text="VI optional indications:"), width=300 )
             else :
                 vi_header_block = bl.row(
                     bl.column( Div(text="VI optional indications :"), width=300 ),
@@ -124,14 +129,14 @@ class ViewerLayout(object):
                                 bl.column(bl.Spacer(width=30)),
                                 bl.column(widgets.waveframe_buttons, width=120)
                               )
-        else :
+        else:
             waveframe_block = bl.column(widgets.waveframe_buttons, width=120)
         self.plot_widget_set.children.append(waveframe_block)
         if widgets.model_select is not None :
             self.plot_widget_set.children.insert(4, bl.column(widgets.model_select, width=200))
-        
+
         #- Assemble all widgets
-        if with_vi_widgets :
+        if with_vi_widgets:
             self.full_widget_set = bl.column(
                 bl.row(
                     self.vi_widget_set,
@@ -140,7 +145,12 @@ class ViewerLayout(object):
                 ),
                 bl.column(vi_widgets.vi_guideline_div, width=2*widgets.plot_widget_width)
             )
-        else : self.full_widget_set = self.plot_widget_set
+        else:
+            N = len(self.plot_widget_set.children) // 2
+            self.full_widget_set = bl.row(
+                bl.column(self.plot_widget_set.children[0:N]),
+                bl.column(self.plot_widget_set.children[N:])
+            )
 
         self.main_bokehlayout = bl.column(
             bl.row(plots.fig, bl.column(plots.imfig, plots.zoomfig), bl.Spacer(width=20)),
@@ -153,6 +163,7 @@ class ViewerLayout(object):
                 bl.column(widgets.oii_undo_button, width=50),
             ),
             self.navigator,
+            bl.column(bl.Spacer(height=10)),
             self.full_widget_set,
             sizing_mode='stretch_width'
         )

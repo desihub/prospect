@@ -89,7 +89,7 @@ class ViewerPlots(object):
     Encapsulates Bokeh plot-like objects that are part of prospect's GUI.
     """
 
-    def __init__(self):
+    def __init__(self, colors=None):
         # "Hardcoded" plotting parameters here:
         self.legend_outside_plot = True
         if (self.legend_outside_plot):
@@ -102,9 +102,15 @@ class ViewerPlots(object):
         self.plot_height=400
         self.colors = dict(b='#1f77b4', r='#d62728', z='maroon', coadd='#d62728', brz='#d62728')
         self.noise_colors = dict(b='greenyellow', r='green', z='forestgreen', coadd='green', brz='green')
+        self.model_color = 'black'
         ## overlap wavelengths are hardcoded, from 1907.10688 (Table 1)
         self.overlap_waves = [ [5660, 5930], [7470, 7720] ]
         self.alpha_overlapband = 0.03
+        if colors is not None:
+            assert len(colors)==3
+            self.colors['coadd'] = self.colors['brz'] = colors[0]
+            self.model_color = colors[1]
+            self.noise_colors['coadd'] = self.noise_colors['brz'] = colors[2]
 
         self.fig = None
         self.zoomfig = None
@@ -193,12 +199,16 @@ class ViewerPlots(object):
 
         self.model_lines = list()
         if viewer_cds.cds_model is not None:
-            lx = self.fig.line('plotwave', 'plotflux', source=viewer_cds.cds_model, line_color='black')
+            lx = self.fig.line('plotwave', 'plotflux',
+                               source=viewer_cds.cds_model,
+                               line_color=self.model_color)
             self.model_lines.append(lx)
 
         self.othermodel_lines = list()
         if viewer_cds.cds_othermodel is not None :
-            lx = self.fig.line('plotwave', 'plotflux', source=viewer_cds.cds_othermodel, line_color='black', line_dash='dashed')
+            lx = self.fig.line('plotwave', 'plotflux',
+                               source=viewer_cds.cds_othermodel,
+                               line_color=self.model_color, line_dash='dashed')
             self.othermodel_lines.append(lx)
 
         legend_items = [("data", self.data_lines[-1::-1])] #- reversed to get blue as lengend entry
@@ -244,9 +254,9 @@ class ViewerPlots(object):
                 self.zoom_noise_lines.append(lx)
 
         if viewer_cds.cds_model is not None:
-            lx = self.zoomfig.line('plotwave', 'plotflux', source=viewer_cds.cds_model, line_color='black')
+            lx = self.zoomfig.line('plotwave', 'plotflux', source=viewer_cds.cds_model, line_color=self.model_color)
         if viewer_cds.cds_othermodel is not None :
-            lx = self.zoomfig.line('plotwave', 'plotflux', source=viewer_cds.cds_othermodel, line_color='black', line_dash='dashed')
+            lx = self.zoomfig.line('plotwave', 'plotflux', source=viewer_cds.cds_othermodel, line_color=self.model_color, line_dash='dashed')
 
         #- Callback to update zoom window x-range
         self.zoom_callback = CustomJS(

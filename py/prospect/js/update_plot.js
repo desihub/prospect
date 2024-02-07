@@ -15,6 +15,13 @@ var nsmooth = smootherslider.value;
 //
 if (cb_obj == ispectrumslider) {
     //
+    // Update ispec_input, avoiding recursive call
+    //
+    if (i_spectrum != parseInt(ispec_input.value)) {
+        ispec_input.value = String(i_spectrum);
+    }
+
+    //
     // Update metadata using "shortcds" objects.
     //
     var shortcds_list = [shortcds_table_a, shortcds_table_b, shortcds_table_c]
