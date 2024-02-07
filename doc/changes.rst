@@ -2,7 +2,7 @@
 prospect's Change Log
 =====================
 
-1.3.1 (unreleased)
+1.3.1 (2024-02-07)
 ------------------
 
 * Added a Text widget to enter a spectrum number by hand (PR `#97`_).
