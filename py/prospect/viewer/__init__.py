@@ -139,11 +139,13 @@ def create_model(spectra, zcat, archetype_fit=False, archetypes_dir=None, templa
     return model_wave, mflux
 
 
-def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_dir=None, title=None,
+def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False,
+                html_dir=None, outfile=None, title=None,
                 colors=None, with_imaging=True, with_noise=True, with_thumb_tab=True, with_vi_widgets=True,
                 top_metadata=None, vi_countdown=-1, with_thumb_only_page=False,
                 with_coaddcam=True, mask_type='DESI_TARGET',
-                model_from_zcat=True, model=None, num_approx_fits=None, with_full_2ndfit=True,
+                model_from_zcat=True, model=None, with_other_model=True,
+                num_approx_fits=None, with_full_2ndfit=True,
                 template_dir=None, archetype_fit=False, archetypes_dir=None,
                 std_template_file=None):
     '''Main prospect routine. From a set of spectra, creates a bokeh document
@@ -163,6 +165,8 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
         If ``True``, bokeh outputs the viewer to a Jupyter notebook.
     html_dir : :class:`str`, optional
         Directory to store the HTML page if `notebook` is ``False``.
+    outfile : :class:`str`, optional
+        Output filename to write, including path
     title : :class:`str`, optional
         Title used to name the HTML page / the bokeh figure / the VI file.
     colors : :class:`list`, optional
@@ -291,9 +295,11 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
         viewer_cds.init_coaddcam_spec(spectra, with_noise)
     if model is not None:
         viewer_cds.init_model(model)
-        if zcatalog is not None:
+        if zcatalog is not None and with_other_model:
             viewer_cds.init_othermodel(zcatalog)
-    viewer_cds.load_std_templates(std_template_file=std_template_file)
+
+    if with_other_model:
+        viewer_cds.load_std_templates(std_template_file=std_template_file)
 
     if redrock_cat is not None :
         if np.any(redrock_cat['TARGETID'] != spectra.fibermap['TARGETID']) :
@@ -362,7 +368,8 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
     viewer_widgets.add_metadata_tables(viewer_cds, top_metadata=top_metadata,
                                        show_zcat=show_zcat)
     viewer_widgets.add_specline_toggles(viewer_cds, viewer_plots)
-    viewer_widgets.add_model_select(viewer_cds, num_approx_fits, with_full_2ndfit=with_full_2ndfit)
+    if (num_approx_fits is not None and num_approx_fits>0) or with_full_2ndfit:
+        viewer_widgets.add_model_select(viewer_cds, num_approx_fits, with_full_2ndfit=with_full_2ndfit)
 
     #-----
     #- VI-related widgets
@@ -399,9 +406,13 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False, html_d
         bk.output_notebook()
         bk.show(bokeh_layout.full_viewer)
     else:
-        if html_dir is None : raise RuntimeError("Need html_dir")
-        html_page = os.path.join(html_dir, title+".html")
-        bk.output_file(html_page, title='DESI spectral viewer')
+        if html_dir is None and outfile is None:
+            raise RuntimeError("Need html_dir or outfile")
+
+        if outfile is None:
+            outfile = os.path.join(html_dir, title+".html")
+
+        bk.output_file(outfile, title='DESI spectral viewer')
         bk.save(bokeh_layout.full_viewer)
 
     #-----
