@@ -353,3 +353,14 @@ if [[ $1 == 18 ]] || [[ $1 == '' ]]; then
                    --no_clean_fiberstatus \
                    --outputdir ${OUTPUTDIR}
 fi
+
+#- 19) Do not display the 'other model' curve when displaying only spectra
+if [[ $1 == 19 ]] || [[ $1 == '' ]]; then
+    echo "------ Example/Test 19 ------"
+    DATAPATH=${DESI_SPECTRO_REDUX}/iron/tiles/cumulative/81067/20210327
+    OUTPUTDIR=${OUTPUT_ROOT}/19
+    [ ! -d ${OUTPUTDIR} ] && mkdir ${OUTPUTDIR}
+    prospect_pages --spectra_files ${DATAPATH}/coadd-5-81067-thru20210327.fits \
+                   --no_other_model \
+                   -o ${OUTPUTDIR}
+fi

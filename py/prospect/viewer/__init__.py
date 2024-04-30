@@ -368,7 +368,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False,
     viewer_widgets.add_metadata_tables(viewer_cds, top_metadata=top_metadata,
                                        show_zcat=show_zcat)
     viewer_widgets.add_specline_toggles(viewer_cds, viewer_plots)
-    if (num_approx_fits is not None and num_approx_fits>0) or with_full_2ndfit:
+    if with_other_model:
         viewer_widgets.add_model_select(viewer_cds, num_approx_fits, with_full_2ndfit=with_full_2ndfit)
 
     #-----

@@ -88,6 +88,7 @@ def _parse():
     parser.add_argument('--colors', help="""Customize the curve's colors: 3 colors should be given, associated respectively to the coadded data, the model and the noise.""", nargs='+', type=str, default=None)
     parser.add_argument('--no_imaging', dest='with_imaging', help='Do not include thumb images from https://www.legacysurvey.org/viewer', action='store_false')
     parser.add_argument('--no_noise', dest='with_noise', help='Do not display noise vectors associated to spectra', action='store_false')
+    parser.add_argument('--no_other_model', dest='with_other_model', help="""Do not display the 'other model' curve""", action='store_false')
     parser.add_argument('--no_thumb_tab', dest='with_thumb_tab', help='Do not include a tab with spectra thumbnails', action='store_false')
     parser.add_argument('--no_vi_widgets', dest='with_vi_widgets', help='Do not include widgets used to enter VI information', action='store_false')
     parser.add_argument('--no_coaddcam', dest='with_coaddcam', help='Do not include camera-coaddition (DESI only)', action='store_false')
@@ -300,6 +301,7 @@ def main():
         'colors': args.colors,
         'with_imaging': args.with_imaging,
         'with_noise': args.with_noise,
+        'with_other_model': args.with_other_model,
         'with_thumb_tab': args.with_thumb_tab,
         'with_vi_widgets': args.with_vi_widgets,
         'with_coaddcam': args.with_coaddcam
