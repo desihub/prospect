@@ -2,10 +2,17 @@
 prospect's Change Log
 =====================
 
-1.3.2 (unreleased)
+1.3.3 (unreleased)
 ------------------
 
 * No changes yet.
+
+1.3.2 (2024-05-01)
+------------------
+
+* Add plotspectra "outfile" and "with_other_model" options (PR `#99`_).
+
+.. _`#99`: https://github.com/desihub/prospect/pull/99
 
 1.3.1 (2024-02-07)
 ------------------
