@@ -93,6 +93,8 @@ def _parse():
     parser.add_argument('--no_vi_widgets', dest='with_vi_widgets', help='Do not include widgets used to enter VI information', action='store_false')
     parser.add_argument('--no_coaddcam', dest='with_coaddcam', help='Do not include camera-coaddition (DESI only)', action='store_false')
     parser.add_argument('--vi_countdown', help='Countdown widget (in minutes)', type=int, default=-1)
+    parser.add_argument('--no_full_2ndfit', dest='with_full_2ndfit', help='Compute and display the second best-fit model without approximation (when available)', action='store_false')
+    parser.add_argument('--num_approx_fits', help='Number of best-fit models to display', type=int, default=4)
 
     #- Filtering at the spectra level
     parser.add_argument('--targeting_mask', help='Filter objects with a given targeting mask.', type=str, default=None)
@@ -294,8 +296,8 @@ def main():
         'top_metadata': args.top_metadata,
         'template_dir': args.template_dir,
         'vi_countdown': args.vi_countdown,
-        'num_approx_fits': None,
-        'with_full_2ndfit': False,
+        'num_approx_fits': args.num_approx_fits,
+        'with_full_2ndfit': args.with_full_2ndfit,
         'with_thumb_only_page': args.with_thumbnail_only_pages,
         'std_template_file': args.std_template_file,
         'colors': args.colors,
@@ -326,8 +328,6 @@ def main():
             if len(zcat_files)!=n_specfiles:
                 raise ValueError('Number of zcat_files does not match number of input spectra_files')
         if redrock_details_files is not None :
-            viewer_params['num_approx_fits'] = 4 # TODO un-hardcode ?
-            viewer_params['with_full_2ndfit'] = True # TODO un-hardcode ?
             if len(redrock_details_files)!=n_specfiles:
                 raise ValueError('Number of redrock_details_files does not match number of input spectra_files')
 
@@ -429,8 +429,6 @@ def main():
             if args.with_multiple_models:
                 spectra, zcat, redrock_cat = load_spectra_zcat_from_targets(targetids, args.datadir, target_db,
                                                     dirtree_type=args.dirtree_type, with_redrock_details=True)
-                viewer_params['num_approx_fits'] = 4 # TODO un-hardcode ?
-                viewer_params['with_full_2ndfit'] = True # TODO un-hardcode ?
             else:
                 spectra, zcat = load_spectra_zcat_from_targets(targetids, args.datadir, target_db,
                                                     dirtree_type=args.dirtree_type, with_redrock_details=False)
@@ -452,9 +450,6 @@ def main():
                 if spectra is None:
                     log.info('No spectra found for this subset')
                     continue
-                if redrock_cat is not None:
-                    viewer_params['num_approx_fits'] = 4 # TODO un-hardcode ?
-                    viewer_params['with_full_2ndfit'] = True # TODO un-hardcode ?
                 #- Associate a subdirectory for each individual subset:
                 html_subdir = dataset+'-'+get_subset_label(db_entry['subset'], args.dirtree_type)
                 viewer_params['html_dir'] = os.path.join(args.outputdir, html_subdir)
