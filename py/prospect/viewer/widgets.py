@@ -449,13 +449,12 @@ class ViewerWidgets(object):
         self.majorline_checkbox.js_on_click(self.speclines_callback)
 
 
-    def add_model_select(self, viewer_cds, num_approx_fits, with_full_2ndfit=True):
+    def add_model_select(self, viewer_cds, num_approx_fits):
         #------
         #- Select secondary model to display
         model_options = []
         if viewer_cds.cds_model is not None:
             model_options = ['Best fit']
-        # if with_full_2ndfit:
         if viewer_cds.cds_model_2ndfit is not None:
             model_options.append('2nd best fit')
         if num_approx_fits is not None:
