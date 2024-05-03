@@ -221,14 +221,17 @@ if (othermodel) {
         othermodel.change.emit();
     } else if (cb_obj == ispectrumslider) {
         // Trick to trigger execution of select_model.js
-        // Reset othermodel to best fit (if there is one). Smoothing is done in select_model.js
+        // Reset othermodel to best fit (if there is one; else dont change it). Smoothing is done in select_model.js
+        var previous_value = model_select.value;
         var trigger_value = model_select.options[0];
-        if (model_select.value == trigger_value) {
+        if (previous_value == trigger_value) {
             trigger_value = model_select.options[1];
         }
         model_select.value = trigger_value;
         if (model_select.options.includes('Best fit')) {
             model_select.value = 'Best fit';
+        } else {
+            model_select.value = previous_value;
         }
     }
 }
