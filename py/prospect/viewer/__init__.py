@@ -369,7 +369,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False,
                                        show_zcat=show_zcat)
     viewer_widgets.add_specline_toggles(viewer_cds, viewer_plots)
     if with_other_model:
-        viewer_widgets.add_model_select(viewer_cds, num_approx_fits, with_full_2ndfit=with_full_2ndfit)
+        viewer_widgets.add_model_select(viewer_cds, num_approx_fits)
 
     #-----
     #- VI-related widgets

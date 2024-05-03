@@ -22,14 +22,14 @@ from ..utilities import get_resources
 
 def _metadata_table(table_keys, viewer_cds, table_width=500, shortcds_name='shortcds', selectable=False):
     """ Returns bokeh's (ColumnDataSource, DataTable) needed to display a set of metadata given by table_keys.
-    
+
     """
-    special_cell_width = { 'TARGETID':150, 'MORPHTYPE':70, 'SPECTYPE':70, 'SUBTYPE':60, 
+    special_cell_width = { 'TARGETID':150, 'MORPHTYPE':70, 'SPECTYPE':70, 'SUBTYPE':60,
                          'Z':50, 'ZERR':50, 'Z_ERR':50, 'ZWARN':50, 'ZWARNING':50, 'DELTACHI2':70 }
     for x in viewer_cds.phot_bands:
         special_cell_width['mag_'+x] = 40
     special_cell_title = { 'DELTACHI2': 'Δχ2(N+1/N)' }
-    
+
     table_columns = []
     cdsdata = dict()
     for key in table_keys:
@@ -58,20 +58,20 @@ def _metadata_table(table_keys, viewer_cds, table_width=500, shortcds_name='shor
                              index_position=None, selectable=selectable, editable=editable, width=table_width)
     output_table.height = 2 * output_table.row_height
     return (shortcds, output_table)
-    
-    
+
+
 class ViewerWidgets(object):
-    """ 
+    """
     Encapsulates Bokeh widgets, and related callbacks, that are part of prospect's GUI.
         Except for VI widgets
     """
-    
+
     def __init__(self, plots, nspec):
         self.js_files = get_resources('js')
         self.navigation_button_width = 30
         self.z_button_width = 30
         self.plot_widget_width = (plots.plot_width+(plots.plot_height//2))//2 - 40 # used for widgets scaling
-    
+
         #-----
         #- Ispectrumslider and smoothing widgets
         # Ispectrumslider's value controls which spectrum is displayed
@@ -319,15 +319,15 @@ class ViewerWidgets(object):
             """
         )
         self.coaddcam_buttons.js_on_click(self.coaddcam_callback)
-    
-    
+
+
     def add_metadata_tables(self, viewer_cds, show_zcat=True,
                            top_metadata=['TARGETID', 'EXPID', 'COADD_NUMEXP', 'COADD_EXPTIME']):
         """ Display object-related informations
                 top_metadata: metadata to be highlighted in table_a
-            
+
             Note: "short" CDS, with a single row, are used to fill these bokeh tables.
-            When changing object, js code modifies these short CDS so that tables are updated.  
+            When changing object, js code modifies these short CDS so that tables are updated.
         """
 
         #- Sorted list of potential metadata:
@@ -343,10 +343,10 @@ class ViewerWidgets(object):
                     table_keys.append(prefix+'_'+key)
                     if key in top_metadata:
                         top_metadata.append(prefix+'_'+key)
-        
+
         #- Table a: "top metadata"
         table_a_keys = [ x for x in table_keys if x in top_metadata ]
-        self.shortcds_table_a, self.table_a = _metadata_table(table_a_keys, viewer_cds, table_width=600, 
+        self.shortcds_table_a, self.table_a = _metadata_table(table_a_keys, viewer_cds, table_width=600,
                                                               shortcds_name='shortcds_table_a', selectable=True)
         #- Table b: Targeting information
         self.shortcds_table_b, self.table_b = _metadata_table(['Targeting masks'], viewer_cds, table_width=self.plot_widget_width,
@@ -449,15 +449,16 @@ class ViewerWidgets(object):
         self.majorline_checkbox.js_on_click(self.speclines_callback)
 
 
-    def add_model_select(self, viewer_cds, num_approx_fits, with_full_2ndfit=True):
+    def add_model_select(self, viewer_cds, num_approx_fits):
         #------
         #- Select secondary model to display
         model_options = []
         if viewer_cds.cds_model is not None:
             model_options = ['Best fit']
-        if with_full_2ndfit:
+        if viewer_cds.cds_model_2ndfit is not None:
             model_options.append('2nd best fit')
-        if num_approx_fits is not None:
+        if num_approx_fits is not None and viewer_cds.dict_rrdetails is not None:
+            # NB approx fits are computed from coefs in detailled redrock file
             for i in range(1,1+num_approx_fits) :
                 ith = 'th'
                 if i==1 : ith='st'

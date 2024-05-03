@@ -2,10 +2,12 @@
 prospect's Change Log
 =====================
 
-1.3.3 (unreleased)
+1.3.3 (2024-05-03)
 ------------------
 
-* No changes yet.
+* Fix bug when plotting spectra that don't have a 2nd best fit model (PR `#100`_).
+
+.. _`#100`: https://github.com/desihub/prospect/pull/100
 
 1.3.2 (2024-05-01)
 ------------------
