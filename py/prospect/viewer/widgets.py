@@ -457,7 +457,8 @@ class ViewerWidgets(object):
             model_options = ['Best fit']
         if viewer_cds.cds_model_2ndfit is not None:
             model_options.append('2nd best fit')
-        if num_approx_fits is not None:
+        if num_approx_fits is not None and viewer_cds.dict_rrdetails is not None:
+            # NB approx fits are computed from coefs in detailled redrock file
             for i in range(1,1+num_approx_fits) :
                 ith = 'th'
                 if i==1 : ith='st'
