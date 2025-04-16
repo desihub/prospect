@@ -5,7 +5,6 @@
 import unittest
 import re
 import sys
-from pkg_resources import resource_filename
 from ..utilities import vi_file_fields, get_resources
 
 
@@ -37,9 +36,3 @@ class TestUtilities(unittest.TestCase):
             bad = get_resources('foo')
 
 
-def test_suite():
-    """Allows testing of only this module with the command::
-
-        python setup.py test -m <modulename>
-    """
-    return unittest.defaultTestLoader.loadTestsFromName(__name__)

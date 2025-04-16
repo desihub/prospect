@@ -9,7 +9,7 @@ Utility functions for prospect.
 """
 
 import os, glob, sys
-from pkg_resources import resource_string, resource_listdir
+import importlib.resources
 
 import numpy as np
 import astropy.io.fits
@@ -159,9 +159,11 @@ def get_resources(filetype):
         raise ValueError("Unknown filetype '{0}' for get_resources()!".format(filetype))
     if _resource_cache[filetype] is None:
         _resource_cache[filetype] = dict()
-        for f in resource_listdir('prospect', filetype):
-            if not f.startswith("."):
-                _resource_cache[filetype][f] = resource_string('prospect', filetype + '/' + f).decode('utf-8')
+        for f in importlib.resources.files('prospect').joinpath(filetype).iterdir():
+            if not f.name.startswith('.'):
+                with open(f) as fp:
+                    _resource_cache[filetype][f] = fp.read()
+
     return _resource_cache[filetype]
 
 

@@ -33,9 +33,3 @@ class TestTopLevel(unittest.TestCase):
         self.assertRegex(theVersion, self.versionre)
 
 
-def test_suite():
-    """Allows testing of only this module with the command::
-
-        python setup.py test -m <modulename>
-    """
-    return unittest.defaultTestLoader.loadTestsFromName(__name__)

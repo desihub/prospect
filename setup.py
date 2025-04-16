@@ -69,7 +69,6 @@ setup_keywords['cmdclass'] = {'sdist': DistutilsSdist}
 if have_desiutil:
     setup_keywords['cmdclass']['module_file'] = ds.DesiModule
     setup_keywords['cmdclass']['version'] = ds.DesiVersion
-    setup_keywords['cmdclass']['test'] = ds.DesiTest
     setup_keywords['cmdclass']['api'] = ds.DesiAPI
 setup_keywords['test_suite']='{name}.test.{name}_test_suite'.format(**setup_keywords)
 #
