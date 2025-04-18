@@ -5,7 +5,10 @@ prospect's Change Log
 1.3.4 (unreleased)
 ------------------
 
-* No changes yet.
+* Updating testing framework for compatibility with desiutil 3.5.x and pytest.
+  Requires using ``pytest`` instead of ``python setup.py test``.  (PR `#105`_).
+
+.. _`#105`: https://github.com/desihub/prospect/pull/105
 
 1.3.3 (2024-05-03)
 ------------------
