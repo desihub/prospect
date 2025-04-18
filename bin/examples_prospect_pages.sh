@@ -249,7 +249,8 @@ if [[ $1 == 12 ]] || [[ $1 == '' ]]; then
                    --tiles 81062 80654 \
                    --target_list ${TARGET_LIST_FILE} \
                    --mask_type DESI_TARGET \
-                   --top_metadata TARGETID TILEID COADD_EXPTIME
+                   --top_metadata TARGETID TILEID COADD_EXPTIME \
+                   --zmax_slider 3.5
     rm -f ${TARGET_LIST_FILE}
 fi
 

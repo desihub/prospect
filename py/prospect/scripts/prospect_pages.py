@@ -95,6 +95,7 @@ def _parse():
     parser.add_argument('--vi_countdown', help='Countdown widget (in minutes)', type=int, default=-1)
     parser.add_argument('--no_full_2ndfit', dest='with_full_2ndfit', help='Compute and display the second best-fit model without approximation (when available)', action='store_false')
     parser.add_argument('--num_approx_fits', help='Number of best-fit models to display', type=int, default=4)
+    parser.add_argument('--zmax_slider', help='Maximum range of the redshift slider widget', type=float, default=5.0)
 
     #- Filtering at the spectra level
     parser.add_argument('--targeting_mask', help='Filter objects with a given targeting mask.', type=str, default=None)
@@ -306,7 +307,8 @@ def main():
         'with_other_model': args.with_other_model,
         'with_thumb_tab': args.with_thumb_tab,
         'with_vi_widgets': args.with_vi_widgets,
-        'with_coaddcam': args.with_coaddcam
+        'with_coaddcam': args.with_coaddcam,
+        'zmax_slider': args.zmax_slider
     }
 
 
