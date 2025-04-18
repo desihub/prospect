@@ -5,7 +5,6 @@
 import unittest
 import re
 import sys
-from pkg_resources import resource_filename
 from ..utilities import vi_file_fields, get_resources
 
 
@@ -32,14 +31,14 @@ class TestUtilities(unittest.TestCase):
         """Test caching of resource files.
         """
         foo = get_resources('templates')
+        self.assertIn('template_index.html', foo.keys())
+        self.assertIsInstance(foo['template_index.html'], str)
+
         bar = get_resources('js')
+        self.assertIn('FileSaver.js', bar.keys())
+        self.assertIsInstance(bar['FileSaver.js'], str)
+
         with self.assertRaises(ValueError):
             bad = get_resources('foo')
 
 
-def test_suite():
-    """Allows testing of only this module with the command::
-
-        python setup.py test -m <modulename>
-    """
-    return unittest.defaultTestLoader.loadTestsFromName(__name__)
