@@ -31,7 +31,13 @@ class TestUtilities(unittest.TestCase):
         """Test caching of resource files.
         """
         foo = get_resources('templates')
+        self.assertIn('template_index.html', foo.keys())
+        self.assertIsInstance(foo['template_index.html'], str)
+
         bar = get_resources('js')
+        self.assertIn('FileSaver.js', bar.keys())
+        self.assertIsInstance(bar['FileSaver.js'], str)
+
         with self.assertRaises(ValueError):
             bad = get_resources('foo')
 
