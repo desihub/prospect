@@ -162,7 +162,7 @@ def get_resources(filetype):
         for f in importlib.resources.files('prospect').joinpath(filetype).iterdir():
             if not f.name.startswith('.'):
                 with open(f) as fp:
-                    _resource_cache[filetype][f] = fp.read()
+                    _resource_cache[filetype][f.name] = fp.read()
 
     return _resource_cache[filetype]
 
