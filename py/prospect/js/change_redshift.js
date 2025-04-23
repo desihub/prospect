@@ -5,7 +5,7 @@
 //           line_labels, zlines, zline_labels, overlap_waves, overlap_bands, fig.
 
 var z = parseFloat(z_input.value)
-if ( z >=-0.1 && z <= 5.0 ) {
+if ( z >= zslider.start && z <= zslider.end ) {
     // update zsliders only if needed (avoid recursive call)
     z_input.value = parseFloat(z_input.value).toFixed(4)
     var z1 = Math.floor(z*100) / 100
@@ -14,8 +14,8 @@ if ( z >=-0.1 && z <= 5.0 ) {
     if ( Math.abs(z1-zslider.value) >= 0.00999999 ) zslider.value = parseFloat(parseFloat(z1).toFixed(2))
     if ( Math.abs(z2-dzslider.value) >= 0.00009999 ) dzslider.value = parseFloat(parseFloat(z2).toFixed(4))
 } else {
-    if (z_input.value < -0.1) z_input.value = (-0.1).toFixed(4)
-    if (z_input.value > 5) z_input.value = (5.0).toFixed(4)
+    if (z_input.value < zslider.start) z_input.value = (zslider.start).toFixed(4)
+    if (z_input.value > zslider.end) z_input.value = (zslider.end).toFixed(4)
 }
 z = parseFloat(z_input.value)
 

@@ -140,20 +140,19 @@ class ViewerWidgets(object):
             code = reset_plotrange_code)
         self.reset_plotrange_button.js_on_event('button_click', self.reset_plotrange_callback)
 
-    def add_redshift_widgets(self, z, viewer_cds, plots):
+    def add_redshift_widgets(self, z, viewer_cds, plots, zmax_slider):
         ## TODO handle "z" (same issue as viewerplots TBD)
 
         #-----
         #- Redshift / wavelength scale widgets
         z1 = np.floor(z*100)/100
         dz = z-z1
-        self.zslider = Slider(start=-0.1, end=5.0, value=z1, step=0.01, title='Redshift rough tuning')
+        self.zslider = Slider(start=-0.1, end=round(zmax_slider, 2), value=z1, step=0.01, title='Redshift rough tuning')
         self.dzslider = Slider(start=0.0, end=0.0099, value=dz, step=0.0001, title='Redshift fine-tuning')
         self.zslider.format = "0[.]00" # default bokeh value, for record
         self.dzslider.format = "0[.]0000"
         self.z_input = TextInput(value="{:.4f}".format(z), title="Redshift value:")
         self.cds_widgetinfos.data['z_input_value'][0] = self.z_input.value
-
         #- Observer vs. Rest frame wavelengths
         self.waveframe_buttons = RadioButtonGroup(
             labels=["Obs", "Rest"], active=0)
@@ -165,7 +164,7 @@ class ViewerWidgets(object):
             //   2) out-of-range zslider values (should never happen in principle)
             var z1 = Math.floor(parseFloat(z_input.value)*100) / 100
             if ( (Math.abs(zslider.value-z1) >= 0.01) &&
-                 (zslider.value >= -0.1) && (zslider.value <= 5.0) ){
+                 (zslider.value >= zslider.start) && (zslider.value <= zslider.end) ){
                  var new_z = zslider.value + dzslider.value
                  z_input.value = new_z.toFixed(4)
                 }
@@ -190,19 +189,19 @@ class ViewerWidgets(object):
         self.z_minus_button = Button(label="<", width=self.z_button_width)
         self.z_plus_button = Button(label=">", width=self.z_button_width)
         self.z_minus_callback = CustomJS(
-            args=dict(z_input=self.z_input),
+            args=dict(z_input=self.z_input, zslider=self.zslider),
             code="""
             var z = parseFloat(z_input.value)
-            if(z >= -0.09) {
+            if(z >= zslider.start + 0.01) {
                 z -= 0.01
                 z_input.value = z.toFixed(4)
             }
             """)
         self.z_plus_callback = CustomJS(
-            args=dict(z_input=self.z_input),
+            args=dict(z_input=self.z_input, zslider=self.zslider),
             code="""
             var z = parseFloat(z_input.value)
-            if(z <= 4.99) {
+            if(z <= zslider.end - 0.01) {
                 z += 0.01
                 z_input.value = z.toFixed(4)
             }

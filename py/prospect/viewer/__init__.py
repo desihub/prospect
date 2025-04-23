@@ -147,7 +147,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False,
                 model_from_zcat=True, model=None, with_other_model=True,
                 num_approx_fits=None, with_full_2ndfit=True,
                 template_dir=None, archetype_fit=False, archetypes_dir=None,
-                std_template_file=None):
+                std_template_file=None, zmax_slider=5.0):
     '''Main prospect routine. From a set of spectra, creates a bokeh document
     used for VI, to be displayed as an HTML page or within a Jupyter notebook.
 
@@ -215,6 +215,8 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False,
         Directory path for archetypes if not :envvar:`RR_ARCHETYPE_DIR`.
     std_template_file : :class:`str`, optional
         File containing standard templates to display in viewer.
+    zmax_slider : :class:`float`, optional
+        Maximum range of the redshift slider widget.
     '''
 
     #- Check input spectra.
@@ -353,7 +355,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False,
     viewer_widgets.add_navigation(nspec)
     viewer_widgets.add_resetrange(viewer_cds, viewer_plots)
 
-    viewer_widgets.add_redshift_widgets(z, viewer_cds, viewer_plots)
+    viewer_widgets.add_redshift_widgets(z, viewer_cds, viewer_plots, zmax_slider)
     viewer_widgets.add_oii_widgets(viewer_plots)
 
     viewer_plots.add_imfig_callback(viewer_widgets)
