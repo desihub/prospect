@@ -191,18 +191,24 @@ def file_or_gz_exists(fname):
     return one_exists
 
 
-def load_redrock_templates(template_dir=None) :
+def load_redrock_templates(template_dir=None, zcat_header=None) :
     '''
     Load redrock templates; redirect stdout because redrock is chatty
+
+    Optional zcat_header is header from redrock output with TEMNAMnn/TEMVERnn
+    keywords indicating the template versions used at the time of the fit.
     '''
     assert _redrock_imported
     saved_stdout = sys.stdout
     sys.stdout = open('/dev/null', 'w')
     try:
-        templates = dict()
-        for filename in redrock.templates.find_templates(template_path=template_dir):
-            tx = redrock.templates.Template(filename)
-            templates[(tx.template_type, tx.sub_type)] = tx
+        if zcat_header is not None:
+            #- Load the version of the templates that match the versions recorded in the header
+            templates = redrock.templates.load_templates_from_header(zcat_header, template_dir=template_dir, asdict=True)
+        else:
+            #- Load the default versions
+            templates = redrock.templates.load_templates(template_dir, asdict=True)
+
     except Exception as err:
         sys.stdout = saved_stdout
         raise(err)
