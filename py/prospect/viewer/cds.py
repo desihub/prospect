@@ -194,16 +194,18 @@ class ViewerCDS(object):
         })
 
 
-    def load_fit_templates(self, template_dir=None, nbpts_templates=4000):
+    def load_fit_templates(self, template_dir=None, nbpts_templates=4000, zcat_header=None):
         """ Create dict for spectral templates used in Redrock fits.
             These are used to recompute Redrock's Nth best-fit spectra on-the-fly
             in javascript.
             Templates are resampled in order to limit the size of html pages (and the
             browser's CPU usage).
             This resampling is dictated by parameter nbpts_templates.
+            zcat_header is header from Redrock output with TEMNAMnn/TEMVERnn keywords
+            indicating the version of the templates used at the time of the fit.
         """
         assert _desispec_imported # for resample_flux
-        rr_templts = load_redrock_templates(template_dir=template_dir)
+        rr_templts = load_redrock_templates(template_dir=template_dir, zcat_header=zcat_header)
         self.dict_fit_templates = dict()
         for key,templt in rr_templts.items():
             fulltype_key = "_".join(key)   # merge redrock's (TYPE, SUBTYPE)

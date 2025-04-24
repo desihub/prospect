@@ -77,10 +77,16 @@ def create_model(spectra, zcat, archetype_fit=False, archetypes_dir=None, templa
     if np.any(zcat['TARGETID'] != spectra.fibermap['TARGETID']) :
         raise ValueError('zcatalog and spectra do not match (different targetids)')
 
+    #- Get template versions from header if possible
+    if hasattr(zcat, 'meta') and ('TEMNAM00' in zcat.meta):
+        zcat_header = zcat.meta
+    else:
+        zcat_header = None
+
     if archetype_fit:
         archetypes = All_archetypes(archetypes_dir=archetypes_dir).archetypes
     else:
-        templates = load_redrock_templates(template_dir=template_dir)
+        templates = load_redrock_templates(template_dir=template_dir, zcat_header=zcat_header)
 
     #- Empty model flux arrays per band to fill
     model_flux = dict()
@@ -309,9 +315,15 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False,
         if zcatalog is None :
             raise ValueError('Redrock_cat was provided but not zcatalog.')
 
+        #- Get template versions from header if possible
+        if hasattr(redrock_cat, 'meta') and ('TEMNAM00' in redrock_cat.meta):
+            zcat_header = redrock_cat.meta
+        else:
+            zcat_header = None
+
         if num_approx_fits!=0 :
             # TODO un-hardcode nbpts_templates ?
-            viewer_cds.load_fit_templates(template_dir=template_dir, nbpts_templates=4000)
+            viewer_cds.load_fit_templates(template_dir=template_dir, nbpts_templates=4000, zcat_header=zcat_header)
         viewer_cds.load_rrdetails(redrock_cat)
         #- define num_approx_fits, used in the "model_select" widget:
         nfits_redrock_cat = viewer_cds.dict_rrdetails['Nfit']
