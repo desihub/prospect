@@ -7,8 +7,10 @@ prospect's Change Log
 
 * Updating testing framework for compatibility with desiutil 3.5.x and pytest.
   Requires using ``pytest`` instead of ``python setup.py test``.  (PR `#105`_).
+* Option to change the maximal redshift of the slider widget (PR `#106`_).
 
 .. _`#105`: https://github.com/desihub/prospect/pull/105
+.. _`#106`: https://github.com/desihub/prospect/pull/106
 
 1.3.3 (2024-05-03)
 ------------------
