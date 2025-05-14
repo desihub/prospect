@@ -1,11 +1,11 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # -*- coding: utf-8 -*-
 """
+==================
 prospect.specutils
 ==================
 
 Conversions of DESI & SDSS spectra into specutils-compatible objects.
-
 """
 import os
 import re

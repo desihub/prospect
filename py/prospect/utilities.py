@@ -339,15 +339,34 @@ def create_zcat_from_redrock_cat(redrock_cat, fit_num=0):
 
 
 def get_subset_label(subset, dirtree_type):
-    if dirtree_type=='cumulative':
-        label = 'thru'+subset
-    elif dirtree_type=='perexp':
-        label = 'exp'+subset
-    elif dirtree_type=='pernight':
+    """Determine the label to give `subset` depending on `dirtree_type`.
+
+    Parameters
+    ----------
+    subset : :class:`str`
+        A subset name.
+    dirtree_type : :class:`str`
+        The type of data, *e.g.* 'cumulative'.
+
+    Returns
+    -------
+    :class:`str`
+        The label for `subset`.
+
+    Raises
+    ------
+    ValueError
+        If `dirtree_type` is unknown.
+    """
+    if dirtree_type == 'cumulative':
+        label = 'thru' + subset
+    elif dirtree_type == 'perexp':
+        label = 'exp' + subset
+    elif dirtree_type == 'pernight':
         label = subset
-    elif dirtree_type=='exposures':
+    elif dirtree_type == 'exposures':
         label = subset
-    elif dirtree_type=='healpix':
+    elif dirtree_type == 'healpix':
         label = subset
     else:
         raise ValueError("Unrecognized value for dirtree_type.")

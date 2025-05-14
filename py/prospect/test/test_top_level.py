@@ -4,7 +4,6 @@
 """
 import unittest
 import re
-import sys
 from .. import __version__ as theVersion
 
 

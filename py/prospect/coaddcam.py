@@ -1,9 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # -*- coding: utf-8 -*-
 """
-===================
+=================
 prospect.coaddcam
-===================
+=================
 
 Python routines which translate the simple camera-coaddition algorithms
 used in prospect webpages (js code in js/interp_grid.js and js/coadd_brz_cameras.js).

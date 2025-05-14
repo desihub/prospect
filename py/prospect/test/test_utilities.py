@@ -3,9 +3,7 @@
 """Test prospect.utilities.
 """
 import unittest
-import re
-import sys
-from ..utilities import vi_file_fields, get_resources
+from ..utilities import vi_file_fields, get_resources, get_subset_label
 
 
 class TestUtilities(unittest.TestCase):
@@ -41,4 +39,13 @@ class TestUtilities(unittest.TestCase):
         with self.assertRaises(ValueError):
             bad = get_resources('foo')
 
-
+    def test_get_subset_label(self):
+        """Test subset labels.
+        """
+        with self.assertRaises(ValueError):
+            bad = get_subset_label('20250514', 'unknown')
+        self.assertEqual(get_subset_label('20250514', 'cumulative'), 'thru20250514')
+        self.assertEqual(get_subset_label('20250514', 'perexp'), 'exp20250514')
+        self.assertEqual(get_subset_label('20250514', 'pernight'), '20250514')
+        self.assertEqual(get_subset_label('20250514', 'exposures'), '20250514')
+        self.assertEqual(get_subset_label('20250514', 'healpix'), '20250514')
