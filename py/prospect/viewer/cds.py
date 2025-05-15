@@ -8,9 +8,8 @@ prospect.viewer.cds
 Class containing all bokeh's ColumnDataSource objects needed in viewer.py
 
 """
-
+import importlib.resources
 import numpy as np
-from pkg_resources import resource_filename
 from astropy.io import fits
 from astropy.table import Table
 
@@ -224,7 +223,7 @@ class ViewerCDS(object):
         """
         self.dict_std_templates = dict()
         if std_template_file is None:
-            std_template_file = resource_filename('prospect', "data/std_templates.fits")
+            std_template_file = importlib.resources.files('prospect').joinpath("data", "std_templates.fits")
         hdul = fits.open(std_template_file)
         nhdu = len(hdul)
         hdul.close()
@@ -416,7 +415,7 @@ class ViewerCDS(object):
         )
         for line_category in ('emission', 'absorption'):
             # encoding=utf-8 is needed to read greek letters
-            line_array = np.genfromtxt(resource_filename('prospect', "data/{0}_lines.txt".format(line_category)),
+            line_array = np.genfromtxt(importlib.resources.files('prospect').joinpath("data", "{0}_lines.txt".format(line_category)),
                                        delimiter=",",
                                        dtype=[("name", "|U20"),
                                               ("longname", "|U20"),
@@ -437,7 +436,3 @@ class ViewerCDS(object):
             line_data['major'].extend(line_array['major'])
 
         self.cds_spectral_lines = ColumnDataSource(line_data)
-
-
-
-

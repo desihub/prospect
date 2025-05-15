@@ -8,13 +8,12 @@ prospect.utilities
 Utility functions for prospect.
 """
 
-import os, glob, sys
+import os, sys
 import importlib.resources
 
 import numpy as np
 import astropy.io.fits
 from astropy.table import Table, vstack, hstack
-import scipy.ndimage.filters
 
 _desiutil_imported = True
 try:

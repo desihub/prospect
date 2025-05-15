@@ -16,12 +16,10 @@ Spectra can be:
 
 """
 
-import os, sys
-from pkg_resources import resource_filename
+import os
 
 import numpy as np
 from numpy.ma.core import MaskedConstant
-import scipy.ndimage.filters
 
 from astropy.table import Table
 import astropy.io.fits
