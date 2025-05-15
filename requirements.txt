@@ -1,4 +1,7 @@
-specutils
 bokeh
-jinja2
-desiutil
+specutils
+# Optional dependencies:
+# desiutil
+# desitarget
+# desispec
+# redrock

@@ -122,7 +122,7 @@ napoleon_include_private_with_doc = True
 # building process.
 autodoc_mock_imports = []
 for missing in ('astropy', 'bokeh', 'desiutil', 'desispec', 'desitarget',
-                'jinja2', 'numpy', 'scipy', 'specutils'):
+                'numpy', 'specutils'):
     try:
         foo = import_module(missing)
     except ImportError:

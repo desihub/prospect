@@ -134,4 +134,4 @@ jobs:
             - name: Test the style; failures are allowed
               # This is equivalent to an allowed falure.
               continue-on-error: true
-              run: pycodestyle --count py/prospect
+              run: pycodestyle --statistics --count py/prospect

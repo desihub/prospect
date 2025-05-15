@@ -1,12 +1,13 @@
 ========
 prospect
 ========
+
 Digging into DESI spectra, looking for stuff.
 ---------------------------------------------
 
 |Actions Status| |Coveralls Status| |Documentation Status|
 
-Prospect provides a tool to visually inspect DESI spectra, especially in order to 
+Prospect provides a tool to visually inspect DESI spectra, especially in order to
 carry out coordinated visual inspection campaigns of specific datasets.
 
 The software can be used within Jupyter notebooks, or can be used as a standalone code
@@ -72,4 +73,4 @@ Creating standalone HTML pages: see example scripts in `bin/example_prospect_pag
 
 :Eric Armengaud: Saclay - CEA
 :Stephen Bailey: Lawrence Berkeley National Lab
-:Benjamin Weaver: NSF's National Optical-Infrared Astronomy Research Laboratory
+:Benjamin Weaver: NSF NOIRLab
