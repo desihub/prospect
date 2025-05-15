@@ -13,8 +13,7 @@ class TestTopLevel(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.versionre = re.compile(
-                r'([0-9]+!)?([0-9]+)(\.[0-9]+)*((a|b|rc|\.post|\.dev)[0-9]+)?')
+        cls.versionre = re.compile(r'([0-9]+!)?([0-9]+)(\.[0-9]+)*((a|b|rc|\.post|\.dev)[0-9]+)?')
 
     @classmethod
     def tearDownClass(cls):
@@ -30,5 +29,3 @@ class TestTopLevel(unittest.TestCase):
         """Ensure the version conforms to PEP386/PEP440.
         """
         self.assertRegex(theVersion, self.versionre)
-
-

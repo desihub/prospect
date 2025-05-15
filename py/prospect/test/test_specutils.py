@@ -23,4 +23,3 @@ class TestSpecutils(unittest.TestCase):
 
     def tearDown(self):
         pass
-

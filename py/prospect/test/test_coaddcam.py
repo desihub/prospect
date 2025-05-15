@@ -23,4 +23,3 @@ class TestCoaddcam(unittest.TestCase):
 
     def tearDown(self):
         pass
-

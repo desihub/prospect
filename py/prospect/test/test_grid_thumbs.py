@@ -23,4 +23,3 @@ class TestGridThumbs(unittest.TestCase):
 
     def tearDown(self):
         pass
-
