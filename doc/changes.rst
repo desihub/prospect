@@ -2,15 +2,29 @@
 prospect's Change Log
 =====================
 
-1.3.4 (unreleased)
+2.0.0 (unreleased)
 ------------------
 
-* Updating testing framework for compatibility with desiutil 3.5.x and pytest.
-  Requires using ``pytest`` instead of ``python setup.py test``.  (PR `#105`_).
-* Option to change the maximal redshift of the slider widget (PR `#106`_).
+*Planned:*
 
+* Support Bokeh 3 and NumPy 2.
+* Updated package infrastructure with minimalist ``setup.py``.
+* Remove as much cruft as possible.
+
+1.3.4 (2025-05-15)
+------------------
+
+* Load template information from input data header keywords, instead of
+  assuming that :envvar:`RR_TEMPLATE_DIR` is set (PR `#107_`).
+* Option to change the maximal redshift of the slider widget (PR `#106`_).
+* Updating testing framework for compatibility with desiutil 3.5.x and pytest.
+  Requires using ``pytest`` instead of ``python setup.py test`` (PR `#105`_).
+* Update documentation configuration (PR `#104`_).
+
+.. _`#104`: https://github.com/desihub/prospect/pull/104
 .. _`#105`: https://github.com/desihub/prospect/pull/105
 .. _`#106`: https://github.com/desihub/prospect/pull/106
+.. _`#107`: https://github.com/desihub/prospect/pull/107
 
 1.3.3 (2024-05-03)
 ------------------
