@@ -3,7 +3,13 @@
 """Test prospect.utilities.
 """
 import unittest
-from ..utilities import vi_file_fields, get_resources, get_subset_label
+from ..utilities import (vi_file_fields, get_resources, file_or_gz,
+                         file_or_gz_exists, load_redrock_templates,
+                         match_catalog_to_spectra, match_rrdetails_to_spectra,
+                         create_zcat_from_redrock_cat, get_subset_label,
+                         create_subsetdb, create_targetdb,
+                         load_spectra_zcat_from_targets, frames2spectra,
+                         metadata_selection, _coadd, coadd_targets)
 
 
 class TestUtilities(unittest.TestCase):

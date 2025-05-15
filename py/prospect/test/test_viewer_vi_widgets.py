@@ -1,13 +1,13 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # -*- coding: utf-8 -*-
-"""Test prospect.coaddcam.
+"""Test prospect.viewer.vi_widgets.
 """
 import unittest
-from ..coaddcam import index_dichotomy, interp_grid, coadd_brz_cameras, coaddcam_prospect
+from ..viewer.vi_widgets import ViewerVIWidgets
 
 
-class TestCoaddcam(unittest.TestCase):
-    """Test prospect.coaddcam.
+class TestViewerVIWidgets(unittest.TestCase):
+    """Test prospect.viewer.vi_widgets.
     """
 
     @classmethod
@@ -28,7 +28,4 @@ class TestCoaddcam(unittest.TestCase):
         """Force pytest to recognize this file as a test module, and
         therefore import the objects above.
         """
-        self.assertTrue(callable(index_dichotomy))
-        self.assertTrue(callable(interp_grid))
-        self.assertTrue(callable(coadd_brz_cameras))
-        self.assertTrue(callable(coaddcam_prospect))
+        self.assertTrue(issubclass(ViewerVIWidgets, object))

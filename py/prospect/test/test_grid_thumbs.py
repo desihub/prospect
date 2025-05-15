@@ -23,3 +23,9 @@ class TestGridThumbs(unittest.TestCase):
 
     def tearDown(self):
         pass
+
+    def test_imports(self):
+        """Force pytest to recognize this file as a test module, and
+        therefore import the objects above.
+        """
+        self.assertTrue(callable(grid_thumbs))
