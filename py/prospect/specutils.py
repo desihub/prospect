@@ -149,7 +149,8 @@ class Spectra(SpectrumList):
                 band_meta['R'] = None
             else:
                 band_meta['resolution_data'] = np.copy(resolution_data[b].astype(self._ftype))
-                band_meta['R'] = np.array([Resolution(r) for r in resolution_data[b]])
+                band_meta['R'] = None
+                # band_meta['R'] = np.array([Resolution(r) for r in resolution_data[b]])
             if extra is None:
                 band_meta['extra'] = None
             else:
