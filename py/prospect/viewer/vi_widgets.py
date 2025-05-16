@@ -11,17 +11,17 @@ Class containing bokeh widgets related to visual inspection
 
 from bokeh.models import CustomJS
 from bokeh.models.widgets import (
-    TextInput, CheckboxGroup, Select, RadioButtonGroup, Div, 
+    TextInput, CheckboxGroup, Select, RadioButtonGroup, Div,
     TableColumn, DataTable, Toggle, Button)
 
 from ..utilities import get_resources, vi_flags, vi_file_fields, vi_spectypes, vi_std_comments
 
 
 class ViewerVIWidgets(object):
-    """ 
+    """
     Encapsulates Bokeh widgets, and related callbacks, used for VI
     """
-    
+
     def __init__(self, title, viewer_cds):
         self.vi_quality_labels = [ x["label"] for x in vi_flags if x["type"]=="quality" ]
         self.vi_issue_labels = [ x["label"] for x in vi_flags if x["type"]=="issue" ]
@@ -30,7 +30,7 @@ class ViewerVIWidgets(object):
         self.title = title
         self.vi_countdown_toggle = None
 
-        #- List of fields to be recorded in output csv file, contains for each field: 
+        #- List of fields to be recorded in output csv file, contains for each field:
         # [ field name (in VI file header), associated variable in viewer_cds.cds_metadata ]
         self.output_file_fields = []
         for file_field in vi_file_fields:
@@ -70,7 +70,11 @@ class ViewerVIWidgets(object):
                       vi_issue_slabels = self.vi_issue_slabels,
                       title = self.title, output_file_fields = self.output_file_fields),
                       code = vi_issue_code )
-        self.vi_issue_input.js_on_click(self.vi_issue_callback)
+        try:
+            self.vi_issue_input.js_on_click(self.vi_issue_callback)
+        except AttributeError:
+            # Bokeh 3
+            self.vi_issue_input.js_on_event('button_click', self.vi_issue_callback)
 
 
     def add_vi_z(self, viewer_cds, widgets):
@@ -115,7 +119,7 @@ class ViewerVIWidgets(object):
             cds_metadata.change.emit()
             """
         self.vi_category_callback = CustomJS(
-            args=dict(cds_metadata=viewer_cds.cds_metadata, 
+            args=dict(cds_metadata=viewer_cds.cds_metadata,
                       ispectrumslider = widgets.ispectrumslider,
                       vi_category_select=self.vi_category_select,
                       title=self.title, output_file_fields=self.output_file_fields),
@@ -192,7 +196,11 @@ class ViewerVIWidgets(object):
                         ispectrumslider = widgets.ispectrumslider,
                         title=self.title, output_file_fields = self.output_file_fields),
             code=vi_quality_code )
-        self.vi_quality_input.js_on_click(self.vi_quality_callback)
+        try:
+            self.vi_quality_input.js_on_click(self.vi_quality_callback)
+        except AttributeError:
+            # Bokeh 3
+            self.vi_quality_input.js_on_event('button_click', self.vi_quality_callback)
 
     def add_vi_scanner(self, viewer_cds):
         #- VI scanner name
@@ -303,4 +311,4 @@ class ViewerVIWidgets(object):
         """)
         self.vi_countdown_toggle = Toggle(label='Start countdown ('+str(vi_countdown)+' min)', active=False, button_type="success")
         self.vi_countdown_toggle.js_on_change('active', self.vi_countdown_callback)
-    
+

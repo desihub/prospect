@@ -249,7 +249,11 @@ class ViewerWidgets(object):
         self.waveframe_callback = CustomJS(
             args = waveframe_args,
             code = self.js_files["shift_wave.js"] + self.js_files["change_waveframe.js"])
-        self.waveframe_buttons.js_on_click(self.waveframe_callback)
+        try:
+            self.waveframe_buttons.js_on_click(self.waveframe_callback)
+        except AttributeError:
+            # Bokeh 3
+            self.waveframe_buttons.js_on_event('button_click', self.waveframe_callback)
 
     def add_oii_widgets(self, plots):
         #------
@@ -444,8 +448,16 @@ class ViewerWidgets(object):
             }
             """
         )
-        self.speclines_button_group.js_on_click(self.speclines_callback)
-        self.majorline_checkbox.js_on_click(self.speclines_callback)
+        try:
+            self.speclines_button_group.js_on_click(self.speclines_callback)
+        except AttributeError:
+            # Bokeh 3
+            self.speclines_button_group.js_on_event('button_click', self.speclines_callback)
+        try:
+            self.majorline_checkbox.js_on_click(self.speclines_callback)
+        except AttributeError:
+            # Bokeh 3
+            self.majorline_checkbox.js_on_event('button_click', self.speclines_callback)
 
 
     def add_model_select(self, viewer_cds, num_approx_fits):

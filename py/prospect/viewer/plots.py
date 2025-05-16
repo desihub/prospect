@@ -330,12 +330,19 @@ class ViewerPlots(object):
             of the figure for absorption lines.
         """
 
-        if figure=='main' : bk_figure = self.fig
-        elif figure=='zoom' : bk_figure = self.zoomfig
-        else :
+        if figure == 'main':
+            bk_figure = self.fig
+        elif figure == 'zoom':
+            bk_figure = self.zoomfig
+        else:
             raise ValueError("Unknown input figure type.")
 
-        fig_height = bk_figure.plot_height
+        try:
+            fig_height = bk_figure.plot_height
+        except AttributeError:
+            # Bokeh 3
+            fig_height = bk_figure.height
+
         if self.legend_outside_plot and figure=='main':
             label_offset_top += 10
 
