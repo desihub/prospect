@@ -321,7 +321,11 @@ class ViewerWidgets(object):
             }
             """
         )
-        self.coaddcam_buttons.js_on_click(self.coaddcam_callback)
+        try:
+            self.coaddcam_buttons.js_on_click(self.coaddcam_callback)
+        except AttributeError:
+            # Bokeh 3
+            self.coaddcam_buttons.js_on_event('button_click', self.coaddcam_callback)
 
 
     def add_metadata_tables(self, viewer_cds, show_zcat=True,
