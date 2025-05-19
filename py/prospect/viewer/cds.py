@@ -423,8 +423,8 @@ class ViewerCDS(object):
             major = [k == 'True' for k in major]
             # vacuum_wavelength = wavelength.copy()
             vacuum_wavelength = np.array([float(w) if vacuum[i] else _airtovac(float(w)) for i, w in enumerate(wavelength)])
-            line_data['restwave'].extend(vacuum_wavelength)
-            line_data['plotwave'].extend(vacuum_wavelength * (1 + z))
+            line_data['restwave'].extend(vacuum_wavelength.tolist())
+            line_data['plotwave'].extend((vacuum_wavelength * (1 + z)).tolist())
             line_data['name'].extend(name)
             line_data['longname'].extend(longname)
             line_data['plotname'].extend(name)
