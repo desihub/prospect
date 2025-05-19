@@ -54,7 +54,7 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400, 10000), thumb_height=None,
         plot_title = None
         if titles is not None:
             plot_title = titles[i_spec]
-        mini_plot = bk.figure(plot_width=thumb_width, plot_height=thumb_height, x_range=x_range, y_range=(ymin,ymax), title=plot_title)
+        mini_plot = bk.figure(width=thumb_width, height=thumb_height, x_range=x_range, y_range=(ymin,ymax), title=plot_title)
         if len(x_vals) != 0:
             mini_plot.line(x_vals, y_vals, line_color='red')
         mini_plot.xaxis.visible = False
