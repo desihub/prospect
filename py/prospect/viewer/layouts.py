@@ -10,7 +10,7 @@ Full bokeh layouts for prospect
 """
 
 import bokeh.layouts as bl
-from bokeh.models import CustomJS, Tabs, Panel
+from bokeh.models import CustomJS, Tabs, TabPanel
 from bokeh.models.widgets import Div
 import bokeh.events
 
@@ -37,7 +37,7 @@ class ViewerLayout(object):
             bl.column(widgets.ispec_input, width=100),
             background='#ececf9'
         )
-        
+
         #- Redshift widgets
         redshift_set_a = bl.row(
             bl.column(widgets.z_minus_button, width=widgets.z_button_width+15),
@@ -180,8 +180,8 @@ class ViewerLayout(object):
         self.thumb_grid = grid_thumbs(spectra, self.miniplot_width,
                 x_range=(plots.xmin,plots.xmax),
                 ncols_grid=self.ncols_grid, titles=titles)
-        tab1 = Panel(child = self.main_bokehlayout, title='Main viewer')
-        tab2 = Panel(child = self.thumb_grid, title='Gallery')
+        tab1 = TabPanel(child = self.main_bokehlayout, title='Main viewer')
+        tab2 = TabPanel(child = self.thumb_grid, title='Gallery')
         self.full_viewer.tabs=[ tab1, tab2 ]
 
         # Dirty trick : callback functions on thumbs need to be defined AFTER the full_viewer is implemented
@@ -197,7 +197,7 @@ class ViewerLayout(object):
 
 class StandaloneThumbLayout(object):
     ## Standalone grid of simple thumbs (to make lightweight pages showing all spectra)
-    
+
     def __init__(self, spectra, plots, title):
         self.ncols_grid = 5 # TODO un-hardcode
         titles = None # TODO define
