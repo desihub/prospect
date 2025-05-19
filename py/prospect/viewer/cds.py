@@ -139,9 +139,9 @@ class ViewerCDS(object):
                 flux_array = np.concatenate( tuple([s[j].flux[i, :].value for j, band in enumerate(bands)]) )
             w, = np.where( ~np.isnan(flux_array) )
             if len(w)==0 :
-                cdsdata['median'].append(1)
+                cdsdata['median'].append(1.0)
             else :
-                cdsdata['median'].append(np.median(flux_array[w]))
+                cdsdata['median'].append(np.median(flux_array[w]).tolist())
 
         self.cds_median_spectra = ColumnDataSource(cdsdata)
 
