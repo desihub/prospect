@@ -91,7 +91,7 @@ class ViewerPlots(object):
 
     def __init__(self, colors=None):
         # "Hardcoded" plotting parameters here:
-        self.legend_outside_plot = False
+        self.legend_outside_plot = True
         if (self.legend_outside_plot):
             self.xmargin_left = 100.
             self.xmargin_right = 100.
@@ -158,7 +158,9 @@ class ViewerPlots(object):
         self.fig = bk.figure(height=self.plot_height, width=self.plot_width, title=title,
             tools=tools, toolbar_location='above', tooltips=tooltips_fig,
             y_range=(self.ymin, self.ymax), x_range=(self.xmin, self.xmax))
-        self.fig.sizing_mode = 'stretch_width'
+        # Bokeh 3: sizing_mode should only applied to 'outer' objects in complex layouts.
+        # See, e.g., https://github.com/bokeh/bokeh/issues/13077
+        # self.fig.sizing_mode = 'stretch_width'
         self.fig.toolbar.active_drag = self.fig.tools[0]    #- pan zoom (previously box)
         self.fig.toolbar.active_scroll = self.fig.tools[2]  #- wheel zoom
         self.fig.xaxis.axis_label = 'Wavelength [Å]'
