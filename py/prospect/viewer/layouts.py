@@ -180,6 +180,7 @@ class ViewerLayout(object):
         self.thumb_grid = grid_thumbs(spectra, self.miniplot_width,
                 x_range=(plots.xmin,plots.xmax),
                 ncols_grid=self.ncols_grid, titles=titles)
+        # Bokeh 3: Panel --> TabPanel
         tab1 = TabPanel(child = self.main_bokehlayout, title='Main viewer')
         tab2 = TabPanel(child = self.thumb_grid, title='Gallery')
         self.full_viewer.tabs=[ tab1, tab2 ]
