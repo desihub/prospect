@@ -436,4 +436,4 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False,
         thumb_grid = StandaloneThumbLayout(spectra, viewer_plots, title)
         bk.save(thumb_grid.thumb_viewer)
 
-    return viewer_cds
+    return (viewer_cds, bokeh_layout)
