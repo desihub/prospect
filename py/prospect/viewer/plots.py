@@ -91,7 +91,7 @@ class ViewerPlots(object):
 
     def __init__(self, colors=None):
         # "Hardcoded" plotting parameters here:
-        self.legend_outside_plot = True
+        self.legend_outside_plot = False
         if (self.legend_outside_plot):
             self.xmargin_left = 100.
             self.xmargin_right = 100.
