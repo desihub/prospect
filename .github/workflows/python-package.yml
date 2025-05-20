@@ -52,7 +52,8 @@ jobs:
             - name: Install Python dependencies
               run: |
                 python -m pip install --upgrade pip setuptools wheel
-                python -m pip install --editable .[coverage]
+                python -m pip install numpy<2 specutils<1.15
+                python -m pip install --upgrade-strategy only-if-needed --editable .[coverage]
             - name: Install additional DESI software
               env:
                 DESITARGET_VERSION: 2.9.0
