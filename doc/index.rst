@@ -8,7 +8,7 @@ Introduction
 prospect is a spectrum visualization tool for DESI_ spectra.
 Other spectroscopic surveys can also be supported.
 
-.. _DESI: https://desi.lbl.gov
+.. _DESI: https://www.desi.lbl.gov
 
 Contents
 ========
