@@ -402,6 +402,13 @@ class ViewerCDS(object):
 
 
     def load_spectral_lines(self, z=0):
+        """Load known emission and absorption line data from files.
+
+        Parameters
+        ----------
+        z : array-like
+            Redshift(s) to shift to rest frame.
+        """
 
         line_data = dict(
             restwave = [],
