@@ -5,17 +5,31 @@ prospect's Change Log
 2.0.0 (unreleased)
 ------------------
 
-*Planned:*
+* Support Bokeh 3 and NumPy 2 (PR `#111`_).
 
-* Support Bokeh 3 and NumPy 2.
-* Updated package infrastructure with minimalist ``setup.py``.
-* Remove as much cruft as possible.
+  - Bokeh 3: Keyword arguments ``plot_width`` and ``plot_height`` need to be replaced with
+    ``width`` and ``height`` respectively.
+  - Bokeh 3: Keyword argument ``sizing_mode`` can only be applied to the "outermost"
+    object in a complex layout. See, *e.g.*, `bokeh/bokeh#13077`_.
+  - Bokeh 3: ``bokeh.models.Panel`` is now :class:`bokeh.models.TabPanel`.
+  - Bokeh 3: The method ``.js_on_click(callback)`` must be replaced with
+    ``.js_on_event("button_click", callback)``, but both methods must be
+    available for backward compatibility. See *e.g.* :mod:`prospect.viewer.widgets`.
+  - NumPy 2: :func:`numpy.genfromtxt` was giving odd results when reading
+    spectral line data. Replaced with more generic text processing before converting
+    to numeric values. See :meth:`~prospect.viewer.cds.ViewerCDS.load_spectral_lines`.
+
+* Updated package infrastructure with minimalist ``setup.py`` (PR `#111`_).
+* Old templates are marked as deprecated (PR `#111`_).
+
+.. _`#111`: https://github.com/desihub/prospect/pull/111
+.. _`bokeh/bokeh#13077`: https://github.com/bokeh/bokeh/issues/13077
 
 1.3.4 (2025-05-15)
 ------------------
 
 * Load template information from input data header keywords, instead of
-  assuming that :envvar:`RR_TEMPLATE_DIR` is set (PR `#107_`).
+  assuming that :envvar:`RR_TEMPLATE_DIR` is set (PR `#107`_).
 * Option to change the maximal redshift of the slider widget (PR `#106`_).
 * Updating testing framework for compatibility with desiutil 3.5.x and pytest.
   Requires using ``pytest`` instead of ``python setup.py test`` (PR `#105`_).
@@ -206,7 +220,7 @@ be expected.  See PR `#54`_ for details.
 
 * Fix some data handling issues related to Andes release (`dbcde2f`_).
 
-.. _`dbcde2f`: https://github.com/desihub/prospect/commit/dbcde2f0be2b13e96138a9fbac036f083e2f7b24)
+.. _`dbcde2f`: https://github.com/desihub/prospect/commit/dbcde2f0be2b13e96138a9fbac036f083e2f7b24
 
 0.2.0 (2020-06-12)
 ------------------

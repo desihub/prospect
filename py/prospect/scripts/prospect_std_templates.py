@@ -16,7 +16,7 @@ from astropy.table import Table
 from astropy.io import fits
 
 from desispec.interpolation import resample_flux
-from prospect.utilities import load_redrock_templates
+from ..utilities import load_redrock_templates
 
 # Log of previous versions:
 #  std_templates_v0.fits : old Redrock templates only

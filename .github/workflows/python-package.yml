@@ -17,22 +17,19 @@ jobs:
             fail-fast: true
             matrix:
                 os: [ubuntu-latest]
-                python-version: ['3.10', '3.12']
+                python-version: ['3.11', '3.12', '3.13']
 
         steps:
             - name: Checkout code
-              uses: actions/checkout@v2
-              with:
-                fetch-depth: 0
+              uses: actions/checkout@v4
             - name: Set up Python ${{ matrix.python-version }}
-              uses: actions/setup-python@v2
+              uses: actions/setup-python@v5
               with:
                 python-version: ${{ matrix.python-version }}
             - name: Install Python dependencies
               run: |
                 python -m pip install --upgrade pip setuptools wheel
-                python -m pip install pytest
-                if [ -f requirements.txt ]; then python -m pip install -r requirements.txt; fi
+                python -m pip install --editable .[test]
             - name: Run the test
               run: pytest
 
@@ -43,22 +40,29 @@ jobs:
             fail-fast: true
             matrix:
                 os: [ubuntu-latest]
-                python-version: ['3.9']
+                python-version: ['3.10']
 
         steps:
             - name: Checkout code
-              uses: actions/checkout@v2
-              with:
-                fetch-depth: 0
+              uses: actions/checkout@v4
             - name: Set up Python ${{ matrix.python-version }}
-              uses: actions/setup-python@v2
+              uses: actions/setup-python@v5
               with:
                 python-version: ${{ matrix.python-version }}
             - name: Install Python dependencies
               run: |
                 python -m pip install --upgrade pip setuptools wheel
-                python -m pip install pytest pytest-cov coveralls
-                if [ -f requirements.txt ]; then python -m pip install -r requirements.txt; fi
+                python -m pip install numpy\<2.0 specutils\<1.15 bokeh\<3.0
+                python -m pip install --upgrade-strategy only-if-needed --editable .[coverage]
+            - name: Install additional DESI software
+              env:
+                DESITARGET_VERSION: 2.9.0
+                DESISPEC_VERSION: 0.69.0
+                REDROCK_VERSION: 0.20.4
+              run: |
+                python -m pip install git+https://github.com/desihub/desitarget.git@${DESITARGET_VERSION}
+                python -m pip install git+https://github.com/desihub/desispec.git@${DESISPEC_VERSION}
+                python -m pip install git+https://github.com/desihub/redrock.git@${REDROCK_VERSION}
             - name: Run the test with coverage
               run: pytest --cov
             - name: Coveralls
@@ -74,21 +78,50 @@ jobs:
             fail-fast: false
             matrix:
                 os: [ubuntu-latest]
-                python-version: ['3.9']
+                python-version: ['3.12']
 
         steps:
             - name: Checkout code
-              uses: actions/checkout@v2
-              with:
-                fetch-depth: 0
+              uses: actions/checkout@v4
             - name: Set up Python ${{ matrix.python-version }}
-              uses: actions/setup-python@v2
+              uses: actions/setup-python@v5
               with:
                 python-version: ${{ matrix.python-version }}
             - name: Install Python dependencies
-              run: python -m pip install --upgrade pip setuptools wheel Sphinx sphinx-rtd-theme
+              run: |
+                python -m pip install --upgrade pip setuptools wheel
+                python -m pip install --editable .[doc]
             - name: Test the documentation
               run: sphinx-build -W --keep-going -b html doc doc/_build/html
+
+    api:
+        name: API doc completeness test
+        runs-on: ${{ matrix.os }}
+        strategy:
+            fail-fast: false
+            matrix:
+                os: [ubuntu-latest]
+                python-version: ['3.13']
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+              with:
+                fetch-depth: 0
+            - name: Set up Python ${{ matrix.python-version }}
+              uses: actions/setup-python@v5
+              with:
+                python-version: ${{ matrix.python-version }}
+            - name: Install Python dependencies
+              run: python -m pip install --upgrade pip setuptools wheel
+            - name: Install DESI dependencies
+              env:
+                DESIUTIL_VERSION: 3.5.2
+              run: python -m pip install desiutil==${DESIUTIL_VERSION}
+            - name: Generate api.rst
+              run: desi_api_file --api ./api.rst prospect
+            - name: Compare generated api.rst to checked-in version
+              run: diff --ignore-space-change --ignore-blank-lines ./api.rst ./doc/api.rst
 
     style:
         name: Style check
@@ -97,15 +130,13 @@ jobs:
             fail-fast: false
             matrix:
                 os: [ubuntu-latest]
-                python-version: ['3.9']
+                python-version: ['3.12']
 
         steps:
             - name: Checkout code
-              uses: actions/checkout@v2
-              with:
-                fetch-depth: 0
+              uses: actions/checkout@v4
             - name: Set up Python ${{ matrix.python-version }}
-              uses: actions/setup-python@v2
+              uses: actions/setup-python@v5
               with:
                 python-version: ${{ matrix.python-version }}
             - name: Install Python dependencies
@@ -113,4 +144,4 @@ jobs:
             - name: Test the style; failures are allowed
               # This is equivalent to an allowed falure.
               continue-on-error: true
-              run: pycodestyle --count py/prospect
+              run: pycodestyle --statistics --count py/prospect

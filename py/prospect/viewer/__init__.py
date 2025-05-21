@@ -16,12 +16,10 @@ Spectra can be:
 
 """
 
-import os, sys
-from pkg_resources import resource_filename
+import os
 
 import numpy as np
 from numpy.ma.core import MaskedConstant
-import scipy.ndimage.filters
 
 from astropy.table import Table
 import astropy.io.fits
@@ -437,3 +435,5 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False,
         bk.output_file(thumb_page, title='DESI spectral viewer - thumbnail gallery')
         thumb_grid = StandaloneThumbLayout(spectra, viewer_plots, title)
         bk.save(thumb_grid.thumb_viewer)
+
+    return (viewer_cds, bokeh_layout)
