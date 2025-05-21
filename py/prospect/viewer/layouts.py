@@ -9,6 +9,7 @@ Full bokeh layouts for prospect
 
 """
 
+import bokeh
 import bokeh.layouts as bl
 from bokeh.models import CustomJS, Tabs
 try:
@@ -158,8 +159,26 @@ class ViewerLayout(object):
                 bl.column(self.plot_widget_set.children[N:])
             )
 
+        # Let primary spectra plot expand to fit browser width,
+        # while fixing imaging thumbnail and zoom sizes.
+        # Note: container row/column/Tabs also need to have stretch_width to work.
+        plots.fig.sizing_mode = 'stretch_width'
+
+        # create top layout row of plots; set sizing mode depending upon bokeh version
+        row_of_plots = bl.row(
+            plots.fig,
+            bl.column(plots.imfig, plots.zoomfig,
+                      sizing_mode='fixed', width=200, height=400),
+            bl.Spacer(width=20),
+        )
+
+        if bokeh.__version__.startswith('2'):
+            pass # do not set row_of_plots.sizing_mode for bokeh 2.x
+        else:
+            row_of_plots.sizing_mode = 'stretch_width'
+
         self.main_bokehlayout = bl.column(
-            bl.row(plots.fig, bl.column(plots.imfig, plots.zoomfig), bl.Spacer(width=20)),
+            row_of_plots,
             bl.row(
                 bl.column(widgets.table_a, width=600), # plot_width - 200
                 bl.column(bl.Spacer(width=20)),
@@ -181,7 +200,7 @@ class ViewerLayout(object):
         self.ncols_grid = 5 # TODO un-hardcode
         self.miniplot_width = ( plots.plot_width + (plots.plot_height//2) ) // self.ncols_grid
 
-        self.full_viewer = Tabs()
+        self.full_viewer = Tabs(sizing_mode='stretch_width')
         titles = None # TODO define
         self.thumb_grid = grid_thumbs(spectra, self.miniplot_width,
                 x_range=(plots.xmin,plots.xmax),
