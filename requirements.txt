@@ -1,7 +1,0 @@
-bokeh
-specutils
-# Optional dependencies:
-# desiutil
-# desitarget
-# desispec
-# redrock
