@@ -7,6 +7,8 @@
 var z = parseFloat(z_input.value)
 console.log("" + Object.getOwnPropertyNames(cb_obj))
 console.log("cb_obj.active == " + cb_obj.active)
+console.log("cb_obj.origin.active == " + cb_obj.originactive)
+
 // Change x-axis
 if (cb_obj.active == 0) {
     fig.x_range.start = fig.x_range.start * (1+z) ;
