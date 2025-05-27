@@ -253,7 +253,7 @@ class ViewerWidgets(object):
             self.waveframe_buttons.js_on_click(self.waveframe_callback)
         except AttributeError:
             # Bokeh 3
-            self.waveframe_buttons.js_on_event('button_click', self.waveframe_callback)
+            self.waveframe_buttons.js_on_change('active', self.waveframe_callback)
 
     def add_oii_widgets(self, plots):
         #------
