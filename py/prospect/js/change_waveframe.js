@@ -5,9 +5,9 @@
 //           line_labels, zlines, zline_labels, overlap_waves, overlap_bands, fig.
 
 var z = parseFloat(z_input.value)
-console.log("" + Object.getOwnPropertyNames(cb_obj.origin))
+// console.log("" + Object.getOwnPropertyNames(cb_obj.origin))
 console.log("cb_obj.active == " + cb_obj.active)
-console.log("cb_obj.origin.active == " + cb_obj.originactive)
+// console.log("cb_obj.origin.active == " + cb_obj.origin.active)
 
 // Change x-axis
 if (cb_obj.active == 0) {
