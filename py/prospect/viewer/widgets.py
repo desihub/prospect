@@ -20,7 +20,7 @@ from bokeh.models.widgets import (
 from ..utilities import get_resources
 
 
-def _metadata_table(table_keys, viewer_cds, table_width=500, shortcds_name='shortcds', selectable=False):
+def _metadata_table(table_keys, viewer_cds, table_width=500, shortcds_name='shortcds', selectable=False, reorderable=False):
     """ Returns bokeh's (ColumnDataSource, DataTable) needed to display a set of metadata given by table_keys.
 
     """
@@ -54,8 +54,10 @@ def _metadata_table(table_keys, viewer_cds, table_width=500, shortcds_name='shor
     # In order to be able to copy-paste the metadata in browser,
     #   the combination selectable=True, editable=True is needed:
     editable = True if selectable else False
-    output_table = DataTable(source = shortcds, columns=table_columns,
-                             index_position=None, selectable=selectable, editable=editable, width=table_width)
+    output_table = DataTable(source=shortcds, columns=table_columns,
+                             index_position=None, selectable=selectable,
+                             editable=editable, reorderable=reorderable,
+                             width=table_width)
     output_table.height = 2 * output_table.row_height
     return (shortcds, output_table)
 
@@ -423,21 +425,13 @@ class ViewerWidgets(object):
                         lines_button_group = self.speclines_button_group,
                         majorline_checkbox = self.majorline_checkbox),
             code="""
-            console.log("lines_button_group.active == " + lines_button_group.active);
-            console.log("lines_button_group.active == " + lines_button_group.active);
-            console.log("majorline_checkbox.active == " + majorline_checkbox.active);
-            // var show_emission = false;
-            // var show_absorption = false;
-            // if (lines_button_group.active.indexOf(0) >= 0) {  // index 0=Emission in active list
-            //     show_emission = true;
-            // }
-            // if (lines_button_group.active.indexOf(1) >= 0) {  // index 1=Absorption in active list
-            //     show_absorption = true;
-            // }
+            // console.log("lines_button_group.active == " + lines_button_group.active);
+            // console.log("lines_button_group.active == " + lines_button_group.active);
+            // console.log("majorline_checkbox.active == " + majorline_checkbox.active);
             var show_emission = (lines_button_group.active.indexOf(0) >= 0);
             var show_absorption = (lines_button_group.active.indexOf(1) >= 0);
             for (var i = 0; i < lines.length; i++) {
-                if ( !(line_data.data['major'][i]) && (majorline_checkbox.active.indexOf(0)>=0) ) {
+                if ( !(line_data.data['major'][i]) && (majorline_checkbox.active.indexOf(0) >= 0) ) {
                     lines[i].visible = false;
                     line_labels[i].visible = false;
                     zlines[i].visible = false;

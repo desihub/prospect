@@ -74,7 +74,7 @@ class ViewerVIWidgets(object):
             self.vi_issue_input.js_on_click(self.vi_issue_callback)
         except AttributeError:
             # Bokeh 3
-            self.vi_issue_input.js_on_event('button_click', self.vi_issue_callback)
+            self.vi_issue_input.js_on_change('active', self.vi_issue_callback)
 
 
     def add_vi_z(self, viewer_cds, widgets):
@@ -200,7 +200,7 @@ class ViewerVIWidgets(object):
             self.vi_quality_input.js_on_click(self.vi_quality_callback)
         except AttributeError:
             # Bokeh 3
-            self.vi_quality_input.js_on_event('button_click', self.vi_quality_callback)
+            self.vi_quality_input.js_on_change('active', self.vi_quality_callback)
 
     def add_vi_scanner(self, viewer_cds):
         #- VI scanner name
@@ -226,16 +226,16 @@ class ViewerVIWidgets(object):
 
     def add_guidelines(self):
         #- Guidelines for VI flags
-        vi_guideline_txt = "<B> VI guidelines </B>"
-        vi_guideline_txt += "<BR /> <B> Classification flags: </B>"
+        vi_guideline_txt = "<h3>VI guidelines</h3>"
+        vi_guideline_txt += "<h4>Classification flags:</h4>"
         for flag in vi_flags :
-            if flag['type'] == 'quality' : vi_guideline_txt += ("<BR />&emsp;&emsp;[&emsp;"+flag['label']+"&emsp;] "+flag['description'])
-        vi_guideline_txt += "<BR /> <B> Optional indications: </B>"
+            if flag['type'] == 'quality' : vi_guideline_txt += ("<p>&emsp;&emsp;[&emsp;"+flag['label']+"&emsp;] "+flag['description']+"</p>")
+        vi_guideline_txt += "<h4>Optional indications:</h4>"
         for flag in vi_flags :
             if flag['type'] == 'issue' :
-                vi_guideline_txt += ( "<BR />&emsp;&emsp;[&emsp;" + flag['label'] +
-                                     "&emsp;(" + flag['shortlabel'] + ")&emsp;] " + flag['description'] )
-        vi_guideline_txt += "<BR /> <B> Comments: </B> <BR /> 100 characters max, avoid commas (automatically replaced by semi-columns), ASCII only."
+                vi_guideline_txt += ( "<p>&emsp;&emsp;[&emsp;" + flag['label'] +
+                                     "&emsp;(" + flag['shortlabel'] + ")&emsp;] " + flag['description'] + "</p>")
+        vi_guideline_txt += "<h4>Comments:</h4><p>100 characters max, avoid commas (automatically replaced by semi-columns), ASCII only.</p>"
         self.vi_guideline_div = Div(text=vi_guideline_txt)
 
     def add_vi_storage(self, viewer_cds, widgets):
