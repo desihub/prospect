@@ -423,31 +423,35 @@ class ViewerWidgets(object):
                         lines_button_group = self.speclines_button_group,
                         majorline_checkbox = self.majorline_checkbox),
             code="""
-            var show_emission = false
-            var show_absorption = false
-            if (lines_button_group.active.indexOf(0) >= 0) {  // index 0=Emission in active list
-                show_emission = true
-            }
-            if (lines_button_group.active.indexOf(1) >= 0) {  // index 1=Absorption in active list
-                show_absorption = true
-            }
-
-            for(var i=0; i<lines.length; i++) {
+            console.log("lines_button_group.active.indexOf(0) == " + lines_button_group.active.indexOf(0));
+            console.log("lines_button_group.active.indexOf(1) == " + lines_button_group.active.indexOf(1));
+            console.log("majorline_checkbox.active.indexOf(0) == " + majorline_checkbox.active.indexOf(0));
+            // var show_emission = false;
+            // var show_absorption = false;
+            // if (lines_button_group.active.indexOf(0) >= 0) {  // index 0=Emission in active list
+            //     show_emission = true;
+            // }
+            // if (lines_button_group.active.indexOf(1) >= 0) {  // index 1=Absorption in active list
+            //     show_absorption = true;
+            // }
+            var show_emission = (lines_button_group.active.indexOf(0) >= 0);
+            var show_absorption = (lines_button_group.active.indexOf(1) >= 0);
+            for (var i = 0; i < lines.length; i++) {
                 if ( !(line_data.data['major'][i]) && (majorline_checkbox.active.indexOf(0)>=0) ) {
-                    lines[i].visible = false
-                    line_labels[i].visible = false
-                    zlines[i].visible = false
-                    zline_labels[i].visible = false
+                    lines[i].visible = false;
+                    line_labels[i].visible = false;
+                    zlines[i].visible = false;
+                    zline_labels[i].visible = false;
                 } else if (line_data.data['emission'][i]) {
-                    lines[i].visible = show_emission
-                    line_labels[i].visible = show_emission
-                    zlines[i].visible = show_emission
-                    zline_labels[i].visible = show_emission
+                    lines[i].visible = show_emission;
+                    line_labels[i].visible = show_emission;
+                    zlines[i].visible = show_emission;
+                    zline_labels[i].visible = show_emission;
                 } else {
-                    lines[i].visible = show_absorption
-                    line_labels[i].visible = show_absorption
-                    zlines[i].visible = show_absorption
-                    zline_labels[i].visible = show_absorption
+                    lines[i].visible = show_absorption;
+                    line_labels[i].visible = show_absorption;
+                    zlines[i].visible = show_absorption;
+                    zline_labels[i].visible = show_absorption;
                 }
             }
             """
