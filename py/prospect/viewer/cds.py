@@ -362,7 +362,7 @@ class ViewerCDS(object):
             if survey == 'DESI':
                 target_info = ['DESI_TARGET (DUMMY)'] * len(spectra.fibermap)
             elif survey == 'SDSS':
-                target_info = ['PRIMTARGET (DUMMY)'] * len(spectra.fibermap)
+                target_info = ['PRIMTARGET (DUMMY)'] * len(spectra.meta['plugmap'])
         else:
             if survey == 'DESI':
                 if mask_type not in spectra.fibermap.keys():
