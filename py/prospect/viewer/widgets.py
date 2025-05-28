@@ -20,7 +20,7 @@ from bokeh.models.widgets import (
 from ..utilities import get_resources
 
 
-def _metadata_table(table_keys, viewer_cds, table_width=500, shortcds_name='shortcds', selectable=False, sortable=False):
+def _metadata_table(table_keys, viewer_cds, table_width=500, shortcds_name='shortcds', selectable=False):
     """ Returns bokeh's (ColumnDataSource, DataTable) needed to display a set of metadata given by table_keys.
 
     """
@@ -56,8 +56,7 @@ def _metadata_table(table_keys, viewer_cds, table_width=500, shortcds_name='shor
     editable = True if selectable else False
     output_table = DataTable(source=shortcds, columns=table_columns,
                              index_position=None, selectable=selectable,
-                             editable=editable, sortable=sortable,
-                             width=table_width)
+                             editable=editable, width=table_width)
     output_table.height = 2 * output_table.row_height
     return (shortcds, output_table)
 

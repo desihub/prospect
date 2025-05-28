@@ -66,4 +66,4 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400, 10000), thumb_height=None,
         mini_plot.min_border_bottom = 0
         thumb_plots.append(mini_plot)
 
-    return bl.gridplot(thumb_plots, ncols=ncols_grid, toolbar_location=None, sizing_mode='scale_width')
+    return bl.gridplot(thumb_plots, ncols=ncols_grid, toolbar_location=None, sizing_mode='stretch_width')
