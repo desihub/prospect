@@ -358,7 +358,12 @@ class ViewerCDS(object):
             self.cds_metadata.add(mag, name='mag_'+bandname)
 
         #- Targeting masks
-        if mask_type is not None:
+        if mask_type is None:
+            if survey == 'DESI':
+                target_info = ['DESI_TARGET (DUMMY)'] * len(spectra.fibermap)
+            elif survey == 'SDSS':
+                target_info = ['PRIMTARGET (DUMMY)'] * len(spectra.fibermap)
+        else:
             if survey == 'DESI':
                 if mask_type not in spectra.fibermap.keys():
                     mask_candidates = [x for x in spectra.fibermap.keys() if '_TARGET' in x]
@@ -369,7 +374,7 @@ class ViewerCDS(object):
             elif survey == 'SDSS':
                 assert mask_type in supported_masks
                 target_info = [ mask_type + ' (DUMMY)' for x in spectra.meta['plugmap'] ] # placeholder
-            self.cds_metadata.add(target_info, name='Targeting masks')
+        self.cds_metadata.add(target_info, name='Targeting masks')
 
         #- Software versions
         #- TODO : get template version (from zcatalog...)
