@@ -423,9 +423,9 @@ class ViewerWidgets(object):
                         lines_button_group = self.speclines_button_group,
                         majorline_checkbox = self.majorline_checkbox),
             code="""
-            console.log("lines_button_group.active.indexOf(0) == " + lines_button_group.active.indexOf(0));
-            console.log("lines_button_group.active.indexOf(1) == " + lines_button_group.active.indexOf(1));
-            console.log("majorline_checkbox.active.indexOf(0) == " + majorline_checkbox.active.indexOf(0));
+            console.log("lines_button_group.active == " + lines_button_group.active);
+            console.log("lines_button_group.active == " + lines_button_group.active);
+            console.log("majorline_checkbox.active == " + majorline_checkbox.active);
             // var show_emission = false;
             // var show_absorption = false;
             // if (lines_button_group.active.indexOf(0) >= 0) {  // index 0=Emission in active list
@@ -460,12 +460,12 @@ class ViewerWidgets(object):
             self.speclines_button_group.js_on_click(self.speclines_callback)
         except AttributeError:
             # Bokeh 3
-            self.speclines_button_group.js_on_event('button_click', self.speclines_callback)
+            self.speclines_button_group.js_on_change('active', self.speclines_callback)
         try:
             self.majorline_checkbox.js_on_click(self.speclines_callback)
         except AttributeError:
             # Bokeh 3
-            self.majorline_checkbox.js_on_event('button_click', self.speclines_callback)
+            self.majorline_checkbox.js_on_change('active', self.speclines_callback)
 
 
     def add_model_select(self, viewer_cds, num_approx_fits):
