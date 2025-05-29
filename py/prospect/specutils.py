@@ -1,11 +1,11 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # -*- coding: utf-8 -*-
 """
+==================
 prospect.specutils
 ==================
 
 Conversions of DESI & SDSS spectra into specutils-compatible objects.
-
 """
 import os
 import re
@@ -21,7 +21,6 @@ from specutils import SpectrumList, Spectrum1D
 _desiutil_imported = True
 try:
     from desiutil.depend import add_dependencies
-    from desiutil.io import encode_table
 except ImportError:
     _desiutil_imported = False
 
@@ -29,7 +28,7 @@ _desispec_imported = True
 try:
     from desispec.maskbits import specmask
     from desispec.resolution import Resolution
-    from desispec.io.util import fitsheader, native_endian, add_columns
+    from desispec.io.util import fitsheader, add_columns
     from desispec.io.frame import read_frame
     from desispec.io.fibermap import fibermap_comments
 except ImportError:
@@ -149,7 +148,9 @@ class Spectra(SpectrumList):
                 band_meta['R'] = None
             else:
                 band_meta['resolution_data'] = np.copy(resolution_data[b].astype(self._ftype))
-                band_meta['R'] = np.array([Resolution(r) for r in resolution_data[b]])
+                band_meta['R'] = None
+                # TO DO: do we need to restore a full Resolution object? What functionality is missing?
+                # band_meta['R'] = np.array([Resolution(r) for r in resolution_data[b]])
             if extra is None:
                 band_meta['extra'] = None
             else:
@@ -509,8 +510,9 @@ class Spectra(SpectrumList):
             newfmap = other.fibermap.copy()
         else:
             nold = len(self.fibermap)
-            newfmap = encode_table(np.zeros( (nold + nnew, ),
-                                   dtype=self.fibermap.dtype))
+            newfmap = Table(np.zeros( (nold + nnew, ), dtype=self.fibermap.dtype))
+            # newfmap = encode_table(np.zeros( (nold + nnew, ),
+            #                        dtype=self.fibermap.dtype))
 
         if self.scores is None:
             if other.scores is None:
@@ -518,8 +520,9 @@ class Spectra(SpectrumList):
             else:
                 newscores = other.scores.copy()
         else:
-            newscores = encode_table(np.zeros( (nold + nnew, ),
-                                     dtype=self.scores.dtype))
+            newscores = Table(np.zeros( (nold + nnew, ), dtype=self.scores.dtype))
+            # newscores = encode_table(np.zeros( (nold + nnew, ),
+            #                          dtype=self.scores.dtype))
 
         newwave = {}
         newflux = {}
@@ -760,7 +763,8 @@ def write_spectra(outfile, spec, units=None):
                 all_hdus.append(hdu)
 
     if spec.scores is not None :
-        scores_tbl = encode_table(spec.scores)  #- unicode -> bytes
+        scores_tbl = spec.scores.copy()
+        # scores_tbl = encode_table(spec.scores)  #- unicode -> bytes
         scores_tbl.meta['EXTNAME'] = 'SCORES'
         all_hdus.append( fits.convenience.table_to_hdu(scores_tbl) )
         if spec.scores_comments is not None : # add comments in header
@@ -827,9 +831,12 @@ def read_spectra(infile, single=False, coadd=None):
         for h in range(1, nhdu):
             name = hdulist[h].header["EXTNAME"]
             if name == "FIBERMAP":
-                fmap = encode_table(Table(hdulist[h].data, copy=True).as_array())
+                fmap = Table(hdulist[h].data, copy=True)
+            elif name == "EXP_FIBERMAP":
+                # capture but do not pass for now
+                exp_fibermap = Table(hdulist[h].data, copy=True)
             elif name == "SCORES":
-                scores = encode_table(Table(hdulist[h].data, copy=True).as_array())
+                scores = Table(hdulist[h].data, copy=True).as_array()
             else:
                 # Find the band based on the name
                 mat = re.match(r"(.*)_(.*)", name)
@@ -842,30 +849,30 @@ def read_spectra(infile, single=False, coadd=None):
                 if type == "WAVELENGTH":
                     if wave is None:
                         wave = {}
-                    wave[band] = native_endian(hdulist[h].data.astype(ftype))
+                    wave[band] = hdulist[h].data.astype(ftype)
                 elif type == "FLUX":
                     if flux is None:
                         flux = {}
-                    flux[band] = native_endian(hdulist[h].data.astype(ftype))
+                    flux[band] = hdulist[h].data.astype(ftype)
                 elif type == "IVAR":
                     if ivar is None:
                         ivar = {}
-                    ivar[band] = native_endian(hdulist[h].data.astype(ftype))
+                    ivar[band] = hdulist[h].data.astype(ftype)
                 elif type == "MASK":
                     if mask is None:
                         mask = {}
-                    mask[band] = native_endian(hdulist[h].data.astype(np.uint32))
+                    mask[band] = hdulist[h].data.astype(np.uint32)
                 elif type == "RESOLUTION":
                     if res is None:
                         res = {}
-                    res[band] = native_endian(hdulist[h].data.astype(ftype))
+                    res[band] = hdulist[h].data.astype(ftype)
                 else:
                     # this must be an "extra" HDU
                     if extra is None:
                         extra = {}
                     if band not in extra:
                         extra[band] = {}
-                    extra[band][type] = native_endian(hdulist[h].data.astype(ftype))
+                    extra[band][type] = hdulist[h].data.astype(ftype)
 
     if coadd is not None:
         uniq, indices = np.unique(coadd, return_index=True)
@@ -1041,7 +1048,7 @@ def read_frame_as_spectra(filename, night=None, expid=None, band=None, single=Fa
                        [np.int32(night), np.int32(expid), np.int32(fr.meta['TILEID'])],
                        )
 
-    fmap = encode_table(fmap)
+    # fmap = encode_table(fmap)
 
     bands = [ band ]
 

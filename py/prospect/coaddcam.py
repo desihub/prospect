@@ -1,16 +1,16 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # -*- coding: utf-8 -*-
 """
-===================
+=================
 prospect.coaddcam
-===================
+=================
 
 Python routines which translate the simple camera-coaddition algorithms
 used in prospect webpages (js code in js/interp_grid.js and js/coadd_brz_cameras.js).
 """
-
 import numpy as np
 from math import floor
+
 
 def index_dichotomy(point, grid):
     """Find nearest index in `grid`, left from `point`; use dichotomy method.
@@ -111,8 +111,9 @@ def coadd_brz_cameras(wave_in, flux_in, noise_in) :
     i_b = wave_start.index(np.amin(wave_start))
     i_z = wave_start.index(np.amax(wave_start))
     i_r = 1
-    for i in [0,1,2] :
-        if ( (i_b != i) and (i_z != i) ) : i_r = i
+    for i in range(3):
+        if i_b != i and i_z != i:
+            i_r = i
 
     margin = 20
     for i in range(len(wave_in[i_b])) : # b

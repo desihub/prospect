@@ -1,9 +1,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 # -*- coding: utf-8 -*-
 """
-====================================
+===============================
 prospect.scripts.prospect_pages
-====================================
+===============================
 
 Create static html files to visually inspect DESI spectra.
 """
@@ -28,7 +28,7 @@ def _parse():
     parser = argparse.ArgumentParser(description='Create static html files to visually inspect DESI spectra. Spectra are selected from '
                                      'either a list of files (Mode: Explicit input files), or a given DESI directory tree to be parsed by prospect '
                                      ' (Mode: Scan directory tree)', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    
+
     #- Explicit file input
     parser.add_argument('--spectra_files', help='[Mode: Explicit input files] Absolute path of file(s) with DESI spectra. All input spectra files must have exactly the same format (fibermap, extra, scores...). Frames are not supported.', nargs='+', type=str, default=None)
     parser.add_argument('--spectra_file_list', help='[Mode: Explicit input files] ASCII file with list of DESI spectra files, one per row', type=str, default=None)
@@ -36,7 +36,7 @@ def _parse():
     parser.add_argument('--zcat_file_list', help='[Mode: Explicit input files] ASCII file with list of redshift catalog files, one per row', type=str, default=None)
     parser.add_argument('--redrock_details_files', help='[Mode: Explicit input files] Absolute path of detailed redrock file(s) (.h5), matched one-by-one to spectra_files', nargs='+', type=str, default=None)
     parser.add_argument('--redrock_details_file_list', help='[Mode: Explicit input files] ASCII file with list of detailed redrock files, one per row', type=str, default=None)
-    
+
     #- Selection-based file input (select data subsets based on tiles, expids...)
     parser.add_argument('--datadir', help='[Mode: Scan directory tree] Location of input directory tree (eg. $DESI_SPECTRO_REDUX/iron/healpix)', type=str, default=None)
     parser.add_argument('--dirtree_type', help='''[Mode: Scan directory tree] The following directory tree categories are supported:
@@ -119,7 +119,7 @@ def _parse():
 
 def _filter_list(args, filter_name):
     """ Make list of 'filter_name'
-        from either args.filter_names (values are explicitely given to parser) 
+        from either args.filter_names (values are explicitely given to parser)
         or args.filter_name_list (read file)
     """
     list_output = None
@@ -234,7 +234,7 @@ def load_spectra_zcat_from_dbentry(db_entry, args, log, with_redrock_version=Tru
         zcat = vstack(ztables)
     if args.with_multiple_models:
         redrock_cat = vstack(rrtables)
-        
+
     return (spectra, zcat, redrock_cat)
 
 
@@ -271,9 +271,11 @@ def page_subset(spectra, nspec_per_page, titlepage_prefix, viewer_params, log,
 
 
 def main():
+    """Entry-point for :command:`prospect_pages`.
+    """
     args = _parse()
     log = get_logger()
-    
+
     #- Two ways to provide input files
     if (args.spectra_files is None) and (args.spectra_file_list is None):
         input_mode = 'scan-dirtree'
@@ -437,7 +439,7 @@ def main():
                 redrock_cat = None
             log.info('Prospect_pages: start creating html page(s)')
             n_done = page_subset(spectra, args.nspec_per_page, args.titlepage_prefix, viewer_params, log, zcat=zcat, redrock_cat=redrock_cat)
-        
+
         #- All spectra, possibly filtered based on some metadata
         else:
             log.info('Prospect_pages: start reading data [mode: Scan directory tree]')
@@ -468,5 +470,5 @@ def main():
     return 0
 
 
-    
+
 
