@@ -17,20 +17,9 @@ Spectra can be:
 """
 
 import os
-
 import numpy as np
 from numpy.ma.core import MaskedConstant
-
-from astropy.table import Table
-import astropy.io.fits
-
 import bokeh.plotting as bk
-from bokeh.models import ColumnDataSource, CDSView, IndexFilter
-from bokeh.models import CustomJS, LabelSet, Label, Span, Legend, Panel, Tabs, BoxAnnotation
-from bokeh.models.widgets import (
-    Slider, Button, Div, CheckboxGroup, CheckboxButtonGroup, RadioButtonGroup,
-    TextInput, Select, DataTable, TableColumn, Toggle)
-import bokeh.layouts as bl
 
 _specutils_imported = True
 try:
@@ -436,4 +425,4 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False,
         thumb_grid = StandaloneThumbLayout(spectra, viewer_plots, title)
         bk.save(thumb_grid.thumb_viewer)
 
-    return (viewer_cds, bokeh_layout)
+    return

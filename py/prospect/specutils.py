@@ -21,7 +21,6 @@ from specutils import SpectrumList, Spectrum1D
 _desiutil_imported = True
 try:
     from desiutil.depend import add_dependencies
-    from desiutil.io import encode_table
 except ImportError:
     _desiutil_imported = False
 
@@ -29,7 +28,7 @@ _desispec_imported = True
 try:
     from desispec.maskbits import specmask
     from desispec.resolution import Resolution
-    from desispec.io.util import fitsheader, native_endian, add_columns
+    from desispec.io.util import fitsheader, add_columns
     from desispec.io.frame import read_frame
     from desispec.io.fibermap import fibermap_comments
 except ImportError:
@@ -150,6 +149,7 @@ class Spectra(SpectrumList):
             else:
                 band_meta['resolution_data'] = np.copy(resolution_data[b].astype(self._ftype))
                 band_meta['R'] = None
+                # TO DO: do we need to restore a full Resolution object? What functionality is missing?
                 # band_meta['R'] = np.array([Resolution(r) for r in resolution_data[b]])
             if extra is None:
                 band_meta['extra'] = None
@@ -849,27 +849,22 @@ def read_spectra(infile, single=False, coadd=None):
                 if type == "WAVELENGTH":
                     if wave is None:
                         wave = {}
-                    # wave[band] = native_endian(hdulist[h].data.astype(ftype))
                     wave[band] = hdulist[h].data.astype(ftype)
                 elif type == "FLUX":
                     if flux is None:
                         flux = {}
-                    # flux[band] = native_endian(hdulist[h].data.astype(ftype))
                     flux[band] = hdulist[h].data.astype(ftype)
                 elif type == "IVAR":
                     if ivar is None:
                         ivar = {}
-                    # ivar[band] = native_endian(hdulist[h].data.astype(ftype))
                     ivar[band] = hdulist[h].data.astype(ftype)
                 elif type == "MASK":
                     if mask is None:
                         mask = {}
-                    # mask[band] = native_endian(hdulist[h].data.astype(np.uint32))
                     mask[band] = hdulist[h].data.astype(np.uint32)
                 elif type == "RESOLUTION":
                     if res is None:
                         res = {}
-                    # res[band] = native_endian(hdulist[h].data.astype(ftype))
                     res[band] = hdulist[h].data.astype(ftype)
                 else:
                     # this must be an "extra" HDU
@@ -877,7 +872,6 @@ def read_spectra(infile, single=False, coadd=None):
                         extra = {}
                     if band not in extra:
                         extra[band] = {}
-                    # extra[band][type] = native_endian(hdulist[h].data.astype(ftype))
                     extra[band][type] = hdulist[h].data.astype(ftype)
 
     if coadd is not None:

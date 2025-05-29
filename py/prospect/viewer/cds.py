@@ -13,7 +13,6 @@ import numpy as np
 from astropy.io import fits
 from astropy.table import Table
 
-import bokeh.plotting as bk
 from bokeh.models import ColumnDataSource
 
 _specutils_imported = True
@@ -405,7 +404,6 @@ class ViewerCDS(object):
         for vi_key, vi_value in default_vi_info:
             self.cds_metadata.add([vi_value for i in range(nspec)], name=vi_key)
 
-
     def load_spectral_lines(self, z=0):
         """Load known emission and absorption line data from files.
 
@@ -414,17 +412,8 @@ class ViewerCDS(object):
         z : array-like
             Redshift(s) to shift to rest frame.
         """
-
-        line_data = dict(
-            restwave = [],
-            plotwave = [],
-            name = [],
-            longname = [],
-            plotname = [],
-            emission = [],
-            major = [],
-            #y = []
-        )
+        line_data = dict(restwave=[], plotwave=[], name=[], longname=[],
+                         plotname=[], emission=[], major=[])  #, y=[])
         for line_category in ('emission', 'absorption'):
             # encoding=utf-8 is needed to read greek letters
             with open(importlib.resources.files('prospect').joinpath("data", f"{line_category}_lines.txt")) as LINES:
@@ -442,24 +431,4 @@ class ViewerCDS(object):
             line_data['plotname'].extend(name)
             line_data['emission'].extend([line_category == 'emission']*len(name))
             line_data['major'].extend(major)
-            # line_array = np.genfromtxt(importlib.resources.files('prospect').joinpath("data", f"{line_category}_lines.txt"),
-            #                            delimiter=",",
-            #                            dtype=[("name", "|U20"),
-            #                                   ("longname", "|U20"),
-            #                                   ("wavelength", float),
-            #                                   ("vacuum", bool),
-            #                                   ("major", bool)],
-            #                             encoding='utf-8')
-            # vacuum_wavelengths = line_array['wavelength']
-            # w, = np.where(line_array['vacuum']==False)
-            # vacuum_wavelengths[w] = np.array([_airtovac(wave) for wave in line_array['wavelength'][w]])
-            # line_data['restwave'].extend(vacuum_wavelengths)
-            # line_data['plotwave'].extend(vacuum_wavelengths * (1+z))
-            # line_data['name'].extend(line_array['name'])
-            # line_data['longname'].extend(line_array['longname'])
-            # line_data['plotname'].extend(line_array['name'])
-            # emission_flag = True if line_category=='emission' else False
-            # line_data['emission'].extend([emission_flag for row in line_array])
-            # line_data['major'].extend(line_array['major'])
-
         self.cds_spectral_lines = ColumnDataSource(line_data)
