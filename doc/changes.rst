@@ -2,7 +2,7 @@
 prospect's Change Log
 =====================
 
-2.0.0 (unreleased)
+2.0.0 (2025-06-01)
 ------------------
 
 * Support Bokeh 3 and NumPy 2 (PR `#111`_).
