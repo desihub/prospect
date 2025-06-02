@@ -54,8 +54,9 @@ def _metadata_table(table_keys, viewer_cds, table_width=500, shortcds_name='shor
     # In order to be able to copy-paste the metadata in browser,
     #   the combination selectable=True, editable=True is needed:
     editable = True if selectable else False
-    output_table = DataTable(source = shortcds, columns=table_columns,
-                             index_position=None, selectable=selectable, editable=editable, width=table_width)
+    output_table = DataTable(source=shortcds, columns=table_columns,
+                             index_position=None, selectable=selectable,
+                             editable=editable, width=table_width)
     output_table.height = 2 * output_table.row_height
     return (shortcds, output_table)
 
@@ -249,7 +250,11 @@ class ViewerWidgets(object):
         self.waveframe_callback = CustomJS(
             args = waveframe_args,
             code = self.js_files["shift_wave.js"] + self.js_files["change_waveframe.js"])
-        self.waveframe_buttons.js_on_click(self.waveframe_callback)
+        try:
+            self.waveframe_buttons.js_on_click(self.waveframe_callback)
+        except AttributeError:
+            # Bokeh 3
+            self.waveframe_buttons.js_on_change('active', self.waveframe_callback)
 
     def add_oii_widgets(self, plots):
         #------
@@ -317,7 +322,11 @@ class ViewerWidgets(object):
             }
             """
         )
-        self.coaddcam_buttons.js_on_click(self.coaddcam_callback)
+        try:
+            self.coaddcam_buttons.js_on_click(self.coaddcam_callback)
+        except AttributeError:
+            # Bokeh 3
+            self.coaddcam_buttons.js_on_event('button_click', self.coaddcam_callback)
 
 
     def add_metadata_tables(self, viewer_cds, show_zcat=True,
@@ -415,37 +424,41 @@ class ViewerWidgets(object):
                         lines_button_group = self.speclines_button_group,
                         majorline_checkbox = self.majorline_checkbox),
             code="""
-            var show_emission = false
-            var show_absorption = false
-            if (lines_button_group.active.indexOf(0) >= 0) {  // index 0=Emission in active list
-                show_emission = true
-            }
-            if (lines_button_group.active.indexOf(1) >= 0) {  // index 1=Absorption in active list
-                show_absorption = true
-            }
-
-            for(var i=0; i<lines.length; i++) {
-                if ( !(line_data.data['major'][i]) && (majorline_checkbox.active.indexOf(0)>=0) ) {
-                    lines[i].visible = false
-                    line_labels[i].visible = false
-                    zlines[i].visible = false
-                    zline_labels[i].visible = false
+            // console.log("lines_button_group.active == " + lines_button_group.active);
+            // console.log("lines_button_group.active == " + lines_button_group.active);
+            // console.log("majorline_checkbox.active == " + majorline_checkbox.active);
+            var show_emission = (lines_button_group.active.indexOf(0) >= 0);
+            var show_absorption = (lines_button_group.active.indexOf(1) >= 0);
+            for (var i = 0; i < lines.length; i++) {
+                if ( !(line_data.data['major'][i]) && (majorline_checkbox.active.indexOf(0) >= 0) ) {
+                    lines[i].visible = false;
+                    line_labels[i].visible = false;
+                    zlines[i].visible = false;
+                    zline_labels[i].visible = false;
                 } else if (line_data.data['emission'][i]) {
-                    lines[i].visible = show_emission
-                    line_labels[i].visible = show_emission
-                    zlines[i].visible = show_emission
-                    zline_labels[i].visible = show_emission
+                    lines[i].visible = show_emission;
+                    line_labels[i].visible = show_emission;
+                    zlines[i].visible = show_emission;
+                    zline_labels[i].visible = show_emission;
                 } else {
-                    lines[i].visible = show_absorption
-                    line_labels[i].visible = show_absorption
-                    zlines[i].visible = show_absorption
-                    zline_labels[i].visible = show_absorption
+                    lines[i].visible = show_absorption;
+                    line_labels[i].visible = show_absorption;
+                    zlines[i].visible = show_absorption;
+                    zline_labels[i].visible = show_absorption;
                 }
             }
             """
         )
-        self.speclines_button_group.js_on_click(self.speclines_callback)
-        self.majorline_checkbox.js_on_click(self.speclines_callback)
+        try:
+            self.speclines_button_group.js_on_click(self.speclines_callback)
+        except AttributeError:
+            # Bokeh 3
+            self.speclines_button_group.js_on_change('active', self.speclines_callback)
+        try:
+            self.majorline_checkbox.js_on_click(self.speclines_callback)
+        except AttributeError:
+            # Bokeh 3
+            self.majorline_checkbox.js_on_change('active', self.speclines_callback)
 
 
     def add_model_select(self, viewer_cds, num_approx_fits):
