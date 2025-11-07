@@ -416,7 +416,8 @@ class ViewerCDS(object):
                          plotname=[], emission=[], major=[])  #, y=[])
         for line_category in ('emission', 'absorption'):
             # encoding=utf-8 is needed to read greek letters
-            with open(importlib.resources.files('prospect').joinpath("data", f"{line_category}_lines.txt")) as LINES:
+            with open(importlib.resources.files('prospect').joinpath("data", f"{line_category}_lines.txt"),
+                      encoding='utf-8') as LINES:
                 data = LINES.readlines()
             name, longname, wavelength, vacuum, major = zip(*[line.strip().split(',') for line in data if not line.startswith('#')])
             # wavelength = np.array([float(w) for w in wavelength])
