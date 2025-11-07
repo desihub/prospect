@@ -54,6 +54,29 @@ def _airtovac(w):
     return vac
 
 
+def _ColumnToArray(column, convert_bytes=True):
+    """Converts an astropy table Column to an array which
+    can be safely used in a bokeh ColumnDataSource.
+
+    Parameters
+    ----------
+    column : :class:`astropy.table.Column`
+    convert_bytes : :class:`bool`
+        if True, convert byte strings to Unicode strings
+        (useful since bytes is not JSON serializable).
+
+    Returns
+    -------
+    :class:`numpy.array`
+        Converted columm.
+    """
+    out = column.data
+    if convert_bytes:
+        if out.dtype.kind == 'S':
+            out = out.astype('U')
+    return out
+
+
 class ViewerCDS(object):
     """
     Encapsulates Bokeh ColumnDataSource objects to be passed to js callback functions.
@@ -312,13 +335,12 @@ class ViewerCDS(object):
                 if all([ (x+fm_key in spectra.fibermap.keys()) for x in ['FIRST_','LAST_','NUM_'] ]):
                     if np.any(spectra.fibermap['NUM_'+fm_key] > 1) : # if NUM==1, use fm_key only
                         use_first_last_num = True
-                        self.cds_metadata.add(spectra.fibermap['FIRST_'+fm_key].data, name='FIRST_'+fm_key)
-                        self.cds_metadata.add(spectra.fibermap['LAST_'+fm_key].data, name='LAST_'+fm_key)
-                        self.cds_metadata.add(spectra.fibermap['NUM_'+fm_key].data, name='NUM_'+fm_key)
+                        for x in ['FIRST_','LAST_','NUM_']:
+                            self.cds_metadata.add(_ColumnToArray(spectra.fibermap[x+fm_key]), name=x+fm_key)
                 if (not use_first_last_num) and fm_key in spectra.fibermap.keys():
                     # Do not load placeholder metadata:
                     if not (np.all(spectra.fibermap[fm_key]==0) or np.all(spectra.fibermap[fm_key]==-1)):
-                        self.cds_metadata.add(spectra.fibermap[fm_key].data, name=fm_key)
+                        self.cds_metadata.add(_ColumnToArray(spectra.fibermap[fm_key]), name=fm_key)
             #- "Normal" keys
             for fm_key in fibermap_keys:
                 # Arbitrary choice:
@@ -330,7 +352,7 @@ class ViewerCDS(object):
                     continue
                 if fm_key in spectra.fibermap.keys():
                     if not (np.all(spectra.fibermap[fm_key]==0) or np.all(spectra.fibermap[fm_key]==-1)):
-                        self.cds_metadata.add(spectra.fibermap[fm_key].data, name=fm_key)
+                        self.cds_metadata.add(_ColumnToArray(spectra.fibermap[fm_key]), name=fm_key)
         elif survey == 'SDSS':
             #- Set 'TARGETID' name to OBJID for convenience
             self.cds_metadata.add([str(x.tolist()) for x in spectra.meta['plugmap']['OBJID']], name='TARGETID')
@@ -393,11 +415,7 @@ class ViewerCDS(object):
         #- Redshift fit
         if zcatalog is not None:
             for zcat_key in self.zcat_keys:
-                if 'TYPE' in zcat_key or 'CLASS' in zcat_key:
-                    zdata = zcatalog[zcat_key].astype('U{0:d}'.format(zcatalog[zcat_key].dtype.itemsize)).data
-                else :
-                    zdata = zcatalog[zcat_key].data
-                self.cds_metadata.add(zdata, name=zcat_key)
+                self.cds_metadata.add(_ColumnToArray(zcatalog[zcat_key]), name=zcat_key)
 
         #- VI informations
         default_vi_info = [ (x[1],x[3]) for x in vi_file_fields if x[0][0:3]=="VI_" ]
