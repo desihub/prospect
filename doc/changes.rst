@@ -2,10 +2,15 @@
 prospect's Change Log
 =====================
 
-2.0.1 (unreleased)
+2.0.1 (2025-11-12)
 ------------------
 
-* No changes yet.
+* Bug fixes:
+  - encoding when reading line lists (PR `#118`_).
+  - column conversion to ColumnDataSource (PR `#117`_).
+
+.. _`#117`: https://github.com/desihub/prospect/pull/117
+.. _`#118`: https://github.com/desihub/prospect/pull/118
 
 2.0.0 (2025-06-01)
 ------------------
