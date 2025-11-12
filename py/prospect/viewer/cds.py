@@ -61,6 +61,8 @@ def _ColumnToArray(column, convert_bytes=True):
     Parameters
     ----------
     column : :class:`astropy.table.Column`
+        an astropy Column to be converted.
+
     convert_bytes : :class:`bool`
         if True, convert byte strings to Unicode strings
         (useful since bytes is not JSON serializable).
