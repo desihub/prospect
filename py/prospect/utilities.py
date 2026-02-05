@@ -280,7 +280,7 @@ def match_rrdetails_to_spectra(redrockfile, spectra, Nfit=None):
     """
 
     assert _redrock_imported
-    dummy, rr_table = redrock.results.read_zscan(redrockfile)
+    rr_table = redrock.results.read_zfit(redrockfile)
     rr_targets = rr_table['targetid']
     if Nfit is None:
         ww, = np.where( (rr_targets == rr_targets[0]) )
