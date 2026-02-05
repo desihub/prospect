@@ -676,11 +676,14 @@ def load_spectra_zcat_from_targets(targetids, datadir, targetdb, dirtree_type=No
     #- Sort according to input target list. Check if all targets were found in spectra
     tids_spectra = spectra.fibermap['TARGETID']
     sorted_indices = []
+    nb_targets_not_found = 0
     for target in targetids:
         w, = np.where(tids_spectra == target)
         sorted_indices.extend(w)
         if len(w)==0:
-            print("Warning! TARGETID not found:", target)
+            nb_targets_not_found += 1
+    if nb_targets_not_found>0 :
+        print(f"Warning: {nb_targets_not_found} targets from the list were not found.")
     assert(len(tids_spectra)==len(sorted_indices)) # check, should always be true
     spectra = spectra[ sorted_indices ]
 
