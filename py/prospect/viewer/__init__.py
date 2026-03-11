@@ -23,9 +23,14 @@ import bokeh.plotting as bk
 
 _specutils_imported = True
 try:
-    from specutils import Spectrum1D, SpectrumList
+    from specutils import SpectrumList
 except ImportError:
     _specutils_imported = False
+else:
+    try:
+        from specutils import Spectrum
+    except ImportError:
+        from specutils import Spectrum1D as Spectrum
 
 _desispec_imported = True
 try:
@@ -146,8 +151,8 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False,
 
     Parameters
     ----------
-    spectra : :class:`~desispec.spectra.Spectra` or :class:`~specutils.Spectrum1D` or :class:`~specutils.SpectrumList` or list of :class:`~desispec.frame.Frame`
-        Input spectra. :class:`~specutils.Spectrum1D` are assumed to be SDSS/BOSS/eBOSS.
+    spectra : :class:`~desispec.spectra.Spectra` or :class:`~specutils.Spectrum` or :class:`~specutils.SpectrumList` or list of :class:`~desispec.frame.Frame`
+        Input spectra. :class:`~specutils.Spectrum` are assumed to be SDSS/BOSS/eBOSS.
         Otherwise DESI spectra or frames is assumed.
     zcatalog : :class:`~astropy.table.Table`, optional
         Redshift values, matched one-to-one with the input spectra.
@@ -214,7 +219,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False,
 
     #- Check input spectra.
     #- Set masked bins to NaN for compatibility with bokeh.
-    if _specutils_imported and isinstance(spectra, Spectrum1D):
+    if _specutils_imported and isinstance(spectra, Spectrum):
         # We will assume this is from an SDSS/BOSS/eBOSS spPlate file.
         survey = 'SDSS'
         nspec = spectra.flux.shape[0]
