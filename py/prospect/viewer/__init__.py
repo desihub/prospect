@@ -30,6 +30,7 @@ else:
     try:
         from specutils import Spectrum
     except ImportError:
+        # support specutils 1.x
         from specutils import Spectrum1D as Spectrum
 
 _desispec_imported = True

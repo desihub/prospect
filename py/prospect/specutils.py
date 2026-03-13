@@ -20,6 +20,7 @@ from specutils import SpectrumList
 try:
     from specutils import Spectrum
 except ImportError:
+    # support specutils 1.x
     from specutils import Spectrum1D as Spectrum
 
 _desiutil_imported = True
