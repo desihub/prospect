@@ -17,9 +17,15 @@ from bokeh.models import ColumnDataSource
 
 _specutils_imported = True
 try:
-    from specutils import Spectrum1D, SpectrumList
+    from specutils import SpectrumList
 except ImportError:
     _specutils_imported = False
+else:
+    try:
+        from specutils import Spectrum
+    except ImportError:
+        # support specutils 1.x
+        from specutils import Spectrum1D as Spectrum
 
 _desispec_imported = True
 try:
@@ -105,7 +111,7 @@ class ViewerCDS(object):
         if _specutils_imported and isinstance(spectra, SpectrumList):
             s = spectra
             bands = spectra.bands
-        elif _specutils_imported and isinstance(spectra, Spectrum1D):
+        elif _specutils_imported and isinstance(spectra, Spectrum):
             s = [spectra]
             bands = ['coadd']
         else : # Assume desispec Spectra obj
@@ -147,7 +153,7 @@ class ViewerCDS(object):
             s = spectra
             bands = spectra.bands
             nspec = spectra[0].flux.shape[0]
-        elif _specutils_imported and isinstance(spectra, Spectrum1D):
+        elif _specutils_imported and isinstance(spectra, Spectrum):
             s = [spectra]
             bands = ['coadd']
             nspec = spectra.flux.shape[0]

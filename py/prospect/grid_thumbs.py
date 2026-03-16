@@ -27,7 +27,7 @@ def grid_thumbs(spectra, thumb_width, x_range=(3400, 10000), thumb_height=None,
     - smooth+resample to reduce size of embedded CDS, according to resamp_factor
     - titles : optional list of titles for each thumb
 
-    TODO: Not tested on Spectrum1D objects.
+    TODO: Not tested on :class:`~specutils.Spectrum` objects.
     '''
 
     if thumb_height is None:

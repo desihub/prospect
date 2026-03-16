@@ -46,6 +46,7 @@ intersphinx_mapping = {
     # 'matplotlib': ('https://matplotlib.org/stable/', None),
     'astropy': ('https://docs.astropy.org/en/stable/', None),
     # 'h5py': ('https://docs.h5py.org/en/latest/', None),
+    'specutils': ('https://specutils.readthedocs.io/en/stable/', None),
     'bokeh': ('https://docs.bokeh.org/en/latest/', None)
     }
 
