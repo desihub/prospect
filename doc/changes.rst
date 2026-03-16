@@ -2,10 +2,12 @@
 prospect's Change Log
 =====================
 
-2.0.2 (unreleased)
+2.0.2 (2026-03-16)
 ------------------
 
-* No changes yet.
+* Support specutils 2.0, *i.e.* renaming of ``Spectrum1D`` to ``Spectrum`` (PR `#119`_).
+
+.. _`#119`: https://github.com/desihub/prospect/pull/119
 
 2.0.1 (2025-11-12)
 ------------------
