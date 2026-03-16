@@ -183,7 +183,7 @@ if [[ $1 == 9 ]] || [[ $1 == '' ]]; then
     DATAPATH=${DESI_SPECTRO_REDUX}/iron/healpix/main/bright
     TARGET_LIST_FILE=${TMPDIR}/tmp_target_list.txt
     SPECTRA_LIST_FILE=${TMPDIR}/tmp_spectra_list.txt
-    echo -e "2376933706825728 \n 2376982100705280 \n 2377019157381120 \n 2376644622811136 \n 2376978715901952" > ${TARGET_LIST_FILE}
+    echo -e "2376982100705280 \n 2376933706825728 \n 2377019157381120 \n 2376978715901952 \n 2376644622811136" > ${TARGET_LIST_FILE}
     echo -e "${DATAPATH}/7/733/coadd-main-bright-733.fits \n ${DATAPATH}/21/2110/coadd-main-bright-2110.fits \n ${DATAPATH}/22/2202/coadd-main-bright-2202.fits \n ${DATAPATH}/42/4285/coadd-main-bright-4285.fits \n ${DATAPATH}/52/5264/coadd-main-bright-5264.fits" > ${SPECTRA_LIST_FILE}
     prospect_pages --spectra_file_list ${SPECTRA_LIST_FILE} \
                    --titlepage_prefix high-pm-stars \

@@ -390,6 +390,17 @@ def main():
             redrock_cat = vstack(redrock_list)
         else:
             redrock_cat = None
+        if target_filter:  # Keep spectra sorted according to the target list
+            tids_spectra = spectra.fibermap['TARGETID']
+            sorted_indices = []
+            for target in targetids:
+                w, = np.where(tids_spectra == target)
+                sorted_indices.extend(w)  # (can have several spectra for a given TARGETID)
+            spectra = spectra[sorted_indices]
+            if zcat_files is not None:
+                zcat = zcat[sorted_indices]
+            if redrock_details_files is not None:
+                redrock_cat = redrock_cat[sorted_indices]
 
         #- Run viewer.plotspectra()
         log.info('Prospect_pages: start creating html page(s)')
