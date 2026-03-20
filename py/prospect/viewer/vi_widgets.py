@@ -78,7 +78,10 @@ class ViewerVIWidgets(object):
 
 
     def add_vi_z(self, viewer_cds, widgets):
-    ## TODO: z_tovi behaviour if with_vi_widget=False ..?
+        """Add redshift vi information.
+
+        TODO: z_tovi behaviour if with_vi_widget=False ..?
+        """
         #- Optional VI information on redshift
         self.vi_z_input = TextInput(value='', title="VI redshift:")
         vi_z_code = self.js_files["CSVtoArray.js"] + self.js_files["save_vi.js"]

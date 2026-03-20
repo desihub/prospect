@@ -12,7 +12,7 @@ Class containing bokeh plots needed for the viewer
 import numpy as np
 _specutils_imported = True
 try:
-    from specutils import Spectrum1D, SpectrumList
+    from specutils import SpectrumList
 except ImportError:
     _specutils_imported = False
 

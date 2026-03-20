@@ -16,7 +16,12 @@ from astropy.nddata import InverseVariance
 from astropy.io import fits
 from astropy.table import Table
 from astropy.wcs import WCS
-from specutils import SpectrumList, Spectrum1D
+from specutils import SpectrumList
+try:
+    from specutils import Spectrum
+except ImportError:
+    # support specutils 1.x
+    from specutils import Spectrum1D as Spectrum
 
 _desiutil_imported = True
 try:
@@ -157,11 +162,11 @@ class Spectra(SpectrumList):
                 band_meta['extra'] = dict()
                 for k, v in extra[b].items():
                     band_meta['extra'][k] = np.copy(v.astype(self._ftype))
-            self.append(Spectrum1D(spectral_axis=np.copy(wave[b].astype(self._ftype))*u.Angstrom,
-                                   flux=np.copy(flux[b].astype(self._ftype))*u.Unit('10**-17 erg/(s cm2 Angstrom)'),
-                                   uncertainty=InverseVariance(np.copy(ivar[b].astype(self._ftype))),
-                                   mask=bool_mask,
-                                   meta=band_meta))
+            self.append(Spectrum(spectral_axis=np.copy(wave[b].astype(self._ftype))*u.Angstrom,
+                                 flux=np.copy(flux[b].astype(self._ftype))*u.Unit('10**-17 erg/(s cm2 Angstrom)'),
+                                 uncertainty=InverseVariance(np.copy(ivar[b].astype(self._ftype))),
+                                 mask=bool_mask,
+                                 meta=band_meta))
 
     @property
     def bands(self):
@@ -652,11 +657,11 @@ class Spectra(SpectrumList):
                 band_meta['extra'] = dict()
                 for k, v in newextra[b].items():
                     band_meta['extra'][k] = v
-            s = Spectrum1D(spectral_axis=newwave[b]*u.Angstrom,
-                           flux=newflux[b]*u.Unit('10**-17 erg/(s cm2 Angstrom)'),
-                           uncertainty=InverseVariance(newivar),
-                           mask=bool_mask,
-                           meta=band_meta)
+            s = Spectrum(spectral_axis=newwave[b]*u.Angstrom,
+                         flux=newflux[b]*u.Unit('10**-17 erg/(s cm2 Angstrom)'),
+                         uncertainty=InverseVariance(newivar),
+                         mask=bool_mask,
+                         meta=band_meta)
             try:
                 self[i] = s
             except IndexError:
@@ -946,7 +951,7 @@ def read_spPlate(filename, limit=None):
 
     Returns
     -------
-    Spectrum1D
+    :class:`~specutils.Spectrum`
         The spectra.
     """
     with fits.open(filename) as hdulist:
@@ -968,8 +973,8 @@ def read_spPlate(filename, limit=None):
         mask = hdulist[2].data[0:limit, :] != 0
         meta['plugmap'] = Table.read(hdulist[5])[0:limit]
 
-    return Spectrum1D(flux=flux, spectral_axis=dispersion*dispersion_unit,
-                      uncertainty=uncertainty, meta=meta, mask=mask)
+    return Spectrum(flux=flux, spectral_axis=dispersion*dispersion_unit,
+                    uncertainty=uncertainty, meta=meta, mask=mask)
 
 
 def read_spZbest(filename, limit=None):
@@ -985,8 +990,8 @@ def read_spZbest(filename, limit=None):
     Returns
     -------
     tuple
-        A Table containing the redshift values and a Spectrum1D object containing
-        the best-fit models.
+        A Table containing the redshift values and a :class:`~specutils.Spectrum`
+        object containing the best-fit models.
     """
     with fits.open(filename) as hdulist:
         header = hdulist[0].header
@@ -1001,8 +1006,8 @@ def read_spZbest(filename, limit=None):
                           header['CD1_1'] * np.arange(hdulist[2].header['NAXIS1'],
                                                       dtype=hdulist[2].data.dtype))
         dispersion_unit = u.Unit('Angstrom')
-        models = Spectrum1D(flux=flux, spectral_axis=dispersion*dispersion_unit,
-                            meta=meta)
+        models = Spectrum(flux=flux, spectral_axis=dispersion*dispersion_unit,
+                          meta=meta)
     return redshifts, models
 
 

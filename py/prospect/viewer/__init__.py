@@ -23,9 +23,15 @@ import bokeh.plotting as bk
 
 _specutils_imported = True
 try:
-    from specutils import Spectrum1D, SpectrumList
+    from specutils import SpectrumList
 except ImportError:
     _specutils_imported = False
+else:
+    try:
+        from specutils import Spectrum
+    except ImportError:
+        # support specutils 1.x
+        from specutils import Spectrum1D as Spectrum
 
 _desispec_imported = True
 try:
@@ -122,12 +128,9 @@ def create_model(spectra, zcat, archetype_fit=False, archetypes_dir=None, templa
             band_up = sorted_bands[i_band+1]
             wavecut_up = 0.5*(spectra.wave[band][-1] + spectra.wave[band_up][0])
         keep[band] = (spectra.wave[band]>wavecut_low) & (spectra.wave[band]<wavecut_up)
-    model_wave = np.concatenate(
-        [ spectra.wave[band][keep[band]] for band in sorted_bands ]
-    )
-    mflux = np.concatenate(
-        [ model_flux[band][:, keep[band]] for band in sorted_bands ],
-    axis=1)
+    model_wave = np.concatenate([spectra.wave[band][keep[band]] for band in sorted_bands])
+    mflux = np.concatenate([model_flux[band][:, keep[band]] for band in sorted_bands],
+                           axis=1)
 
     return model_wave, mflux
 
@@ -146,8 +149,8 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False,
 
     Parameters
     ----------
-    spectra : :class:`~desispec.spectra.Spectra` or :class:`~specutils.Spectrum1D` or :class:`~specutils.SpectrumList` or list of :class:`~desispec.frame.Frame`
-        Input spectra. :class:`~specutils.Spectrum1D` are assumed to be SDSS/BOSS/eBOSS.
+    spectra : :class:`~desispec.spectra.Spectra` or :class:`~specutils.Spectrum` or :class:`~specutils.SpectrumList` or list of :class:`~desispec.frame.Frame`
+        Input spectra. :class:`~specutils.Spectrum` are assumed to be SDSS/BOSS/eBOSS.
         Otherwise DESI spectra or frames is assumed.
     zcatalog : :class:`~astropy.table.Table`, optional
         Redshift values, matched one-to-one with the input spectra.
@@ -214,7 +217,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False,
 
     #- Check input spectra.
     #- Set masked bins to NaN for compatibility with bokeh.
-    if _specutils_imported and isinstance(spectra, Spectrum1D):
+    if _specutils_imported and isinstance(spectra, Spectrum):
         # We will assume this is from an SDSS/BOSS/eBOSS spPlate file.
         survey = 'SDSS'
         nspec = spectra.flux.shape[0]
@@ -236,7 +239,7 @@ def plotspectra(spectra, zcatalog=None, redrock_cat=None, notebook=False,
         if _desispec_imported and isinstance(spectra, desispec.spectra.Spectra):
             nspec = spectra.num_spectra()
         elif _desispec_imported and isinstance(spectra, list) and isinstance(spectra[0], desispec.frame.Frame):
-        # If inputs are frames, convert to a spectra object
+            # If inputs are frames, convert to a spectra object
             spectra = frames2spectra(spectra)
             nspec = spectra.num_spectra()
             if title is None:

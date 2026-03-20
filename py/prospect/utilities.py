@@ -8,7 +8,8 @@ prospect.utilities
 Utility functions for prospect.
 """
 
-import os, sys
+import os
+import sys
 import importlib.resources
 
 import numpy as np
@@ -426,8 +427,8 @@ def create_subsetdb(datadir, dirtree_type=None, spectra_type='coadd', tiles=None
        - Extensions can be fits or fits.gz
     """
 
-    if ( (nights is not None and dirtree_type not in ['pernight', 'exposures', 'cumulative'])
-        or (expids is not None and dirtree_type!='perexp' and dirtree_type!='exposures') ):
+    if ((nights is not None and dirtree_type not in ['pernight', 'exposures', 'cumulative']) or
+        (expids is not None and dirtree_type!='perexp' and dirtree_type!='exposures')):
         raise ValueError('Nights/expids option is incompatible with dirtree_type.')
     if (pixels is not None or survey_program is not None) and dirtree_type!='healpix':
         raise ValueError('Pixels/survey_program option is incompatible with dirtree_type.')
