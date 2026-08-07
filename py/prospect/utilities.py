@@ -435,7 +435,7 @@ def create_subsetdb(datadir, dirtree_type=None, spectra_type='coadd', tiles=None
     if ((nights is not None and dirtree_type not in ['pernight', 'exposures', 'cumulative']) or
         (expids is not None and dirtree_type!='perexp' and dirtree_type!='exposures')):
         raise ValueError('Nights/expids option is incompatible with dirtree_type.')
-    if (pixels is not None or survey_program is not None) and ((dirtree_type!='healpix') or (dirtree_type!='uniqpix')):
+    if (pixels is not None or survey_program is not None) and ~np.any(dirtree_type != ['healpix','uniqpix']):
         raise ValueError('Pixels/survey_program option is incompatible with dirtree_type.')
     if dirtree_type == 'exposures':
         if spectra_type not in ['frame', 'cframe', 'sframe']:
@@ -479,9 +479,9 @@ def create_subsetdb(datadir, dirtree_type=None, spectra_type='coadd', tiles=None
             all_subsets = []
             for pixelgroup in os.listdir(os.path.join(datadir, dataset[0], dataset[1])):
                 if not os.path.isdir(os.path.join(base, pixelgroup)):
-        	    continue
+                    continue
                 else:
-		    all_subsets.extend(os.listdir(os.path.join(datadir, dataset[0], dataset[1], pixelgroup)))
+                    all_subsets.extend(os.listdir(os.path.join(datadir, dataset[0], dataset[1], pixelgroup)))
         else:
             all_subsets = os.listdir(os.path.join(datadir, dataset))
         if (nights is not None) and (dirtree_type!='exposures'):
