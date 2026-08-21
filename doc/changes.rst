@@ -5,7 +5,9 @@ prospect's Change Log
 2.0.3 (unreleased)
 ------------------
 
-* No changes yet.
+* Update github test package installations (PR `#122`_)
+
+.. _`#122`: https://github.com/desihub/prospect/pull/122
 
 2.0.2 (2026-03-16)
 ------------------
